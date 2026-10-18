@@ -20,9 +20,9 @@ const TYPES = [
 ];
 const TN = TYPES.map(t => t.name);
 const HAND = 8;
-const DECK = 70;          // 52 карты + 2 джокера + 16 карт-действий
-/* карты-действия: 4 вида × 4 масти, как цветные карты в УНО.
-   Масть решает, когда карта срабатывает; козырная версия сильнее */
+const DECK = 54;          // 52 карты + 2 джокера
+/* карты-действия не лежат в колоде: их получают за полный заряд.
+   4 вида × 4 масти, как цветные карты в УНО; масть решает, когда карта срабатывает, козырная версия сильнее */
 const ACTS = {
   shield:  { name: 'Щит', icon: 'ЩИТ', desc: s => `При защите: атака, в которой есть ${s}, уходит в бито без покрытия. Козырный щит отбивает любую атаку.` },
   reverse: { name: 'Разворот', icon: '↺', desc: s => `При защите: вся атака возвращается атакующему, если в ней есть ${s}. Козырный — любая атака. Вместо своего хода — передать ход.` },
@@ -39,7 +39,8 @@ const rn = r => (r === JOKER_R ? '★' : ({ 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
 const other = s => (s === 'p' ? 'b' : 'p');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* карта — число 0..53: 0..51 обычные (масть = n/13, ранг = n%13 + 2), 52 и 53 — джокеры */
-const mkCard = n => (n >= 54 ? { n, r: 16, s: (n - 54) % 4, id: 'c' + n, action: ACT_KEYS[Math.floor((n - 54) / 4)] }
+/* карты-действия, полученные за заряд: n = 1000 + номер·16 + вид·4 + масть */
+const mkCard = n => (n >= 1000 ? { n, r: 16, s: (n - 1000) % 4, id: 'c' + n, action: ACT_KEYS[Math.floor(((n - 1000) % 16) / 4)] }
   : n >= 52 ? { n, r: JOKER_R, s: 4, id: 'c' + n, joker: true } : { n, r: n % 13 + 2, s: Math.floor(n / 13), id: 'c' + n });
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const plural = n => (n === 1 ? 'карта' : n < 5 ? 'карты' : 'карт');
@@ -179,6 +180,7 @@ function checkMove(seat, cs) {
     if (e.n !== a.n) return { ok: false, e, why: `Нужно ${a.n} ${plural(a.n)}` };
     return beats(e, a) ? { ok: true, e, why: 'Бьёт!' } : { ok: false, e, why: 'Не бьёт' };
   }
+  if (k !== 'attack' && e.n === 1) return { ok: false, e, why: 'Одиночкой не подкидывают — только комбинацией' };
   if (k !== 'attack' && !e.cards.some(c => tableRanks().has(c.r))) return { ok: false, e, why: 'Номинала нет на столе' };
   const room = G.limit - atkCount();
   if (e.n > room) return { ok: false, e, why: room ? `Влезет ещё ${room} ${plural(room)}` : 'Стол полон' };

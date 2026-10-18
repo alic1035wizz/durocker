@@ -136,3 +136,11 @@ function drive() {
     if (!act('b', type, cards)) { console.warn('бот: ход отклонён', type); act('b', G.phase.kind === 'defend' ? 'take' : G.phase.kind === 'throw' ? 'bito' : 'enough'); }
   });
 }
+
+/* бот сразу забирает действие за полный заряд: щит и разворот спасают в защите, +2 — давит */
+function botPick() {
+  if (NET || !G || G.over || !G.offer || !G.offer.b) return;
+  const pref = ['shield', 'plus', 'reverse', 'trump'];
+  const k = G.offer.b.kinds.slice().sort((a, b) => pref.indexOf(a) - pref.indexOf(b))[0];
+  act('b', 'pick', k);
+}
