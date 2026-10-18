@@ -148,10 +148,10 @@ function fan(el, opts) {
   const s = [...el.children], n = s.length;
   if (!n) return;
   const W = el.clientWidth, cw = s[0].firstElementChild.offsetWidth;
-  const step = n > 1 ? Math.min(cw * opts.spread, (W - cw) / (n - 1)) : 0;
+  const pad = cw * 0.28, step = n > 1 ? Math.min(cw * opts.spread, (W - cw - pad * 2) / (n - 1)) : 0;
   const x0 = (W - (step * (n - 1) + cw)) / 2, k = Math.min(1, 9 / n);
   s.forEach((sl, i) => {
-    const off = i - (n - 1) / 2, rot = off * opts.ang * k * opts.dir, y = off * off * opts.arc * k * opts.dir;
+    const mx = (n - 1) / 2, off = i - mx, rot = off * opts.ang * k * opts.dir, y = (off * off - mx * mx) * opts.arc * k * opts.dir;
     const lift = sl.classList.contains('sel') ? -24 : 0;
     sl.style.left = (x0 + i * step) + 'px'; sl.style.zIndex = i;
     sl.style.transform = `translateY(${y + lift}px) rotate(${rot}deg)`;
