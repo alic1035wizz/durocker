@@ -1,4 +1,4 @@
-/* Дурокер — отрисовка, анимации раздачи и «сочные» надписи комбинаций, лобби, управление. */
+/* Дурокер — отрисовка, анимации раздачи и «сочные» надписи комбинаций, подсказки, лобби, управление. */
 'use strict';
 
 /* ---------- эффекты ---------- */
@@ -7,7 +7,7 @@ function showFx(o) {
   const me = o.actor === 'p', opp = oppName();
   if (o.what === 'trump') {
     const c = o.low != null ? mkCard(o.low) : null;
-    const t = c ? `${rn(c.r)}${SU[c.s]}` : '';
+    const t = c ? cardName(c) : '';
     return banner('КОЗЫРЬ ' + SU[G.T],
       c ? (me ? `Младший козырь твой: ${t}. Ходи!` : `У соперника ${t}. Он ходит.`)
         : (me ? 'Козырей нет. Ходи первым.' : 'Козырей нет. Соперник ходит.'), 'gold');
@@ -17,13 +17,18 @@ function showFx(o) {
     if (!me && NET) say('Беру…');
     return banner(me ? 'БЕРУ' : 'БЕРЁТ!', me ? 'Соперник может подкинуть' : 'Можешь подкинуть вдогонку', 'take');
   }
+  if (o.what === 'transfer') {
+    if (!me && NET) say('Перевожу!');
+    banner('ПЕРЕВОД', me ? 'Теперь отбивается соперник' : 'Атака перешла к тебе', 'gold');
+    return shake(6);
+  }
   const sub = {
     attack: me ? 'Твой ход' : `${opp} ходит`, throw: me ? 'Подкидываешь' : `${opp} подкидывает`,
     defend: me ? 'Покрыл!' : `${opp} кроет`, addtake: me ? 'Вдогонку' : `${opp} вдогонку`,
   }[o.what] || '';
   if (NET && !me) say({ attack: 'Хожу', throw: 'Подкину', defend: 'Бью!', addtake: 'Вдогонку!' }[o.what] || '');
   banner(String(o.big || '').toUpperCase(), sub, o.kind);
-  if (o.t >= 4) shake(o.t);
+  if (o.t >= 5) shake(o.t);
 }
 function banner(big, sub, kind) {
   const b = $('banner');
@@ -32,7 +37,7 @@ function banner(big, sub, kind) {
 }
 function shake(t) {
   if (reduced) return;
-  const m = t >= 6 ? 9 : 5;
+  const m = t >= 9 ? 9 : 5;
   $('felt').animate([{ transform: 'none' }, { transform: `translate(${m}px,-2px) rotate(.6deg)` },
     { transform: `translate(-${m}px,2px) rotate(-.6deg)` }, { transform: `translate(${m / 2}px,0)` }, { transform: 'none' }], { duration: 380 });
 }
@@ -53,24 +58,26 @@ function uiPhase() {
   return 'wait';
 }
 function cardHTML(c, down) {
+  if (down) return `<div class="card down" data-id="${c.id}"><div class="back"></div></div>`;
+  if (c.joker) return `<div class="card joker" data-id="${c.id}"><div class="front"><span class="ix tl">★<i>JK</i></span><span class="pip"><span class="jk">★<small>джокер</small></span></span><span class="ix br">★<i>JK</i></span></div><div class="back"></div></div>`;
   const red = c.s === 1 || c.s === 2, tr = c.s === G.T, rk = rn(c.r);
   const center = c.r > 10 && c.r < 14 ? `<span class="fc">${rk}<small>${SU[c.s]}</small></span>` : SU[c.s];
-  const front = down ? '' : `<div class="front ${red ? 'red' : ''}"><span class="ix tl">${rk}<i>${SU[c.s]}</i></span><span class="pip">${center}</span><span class="ix br">${rk}<i>${SU[c.s]}</i></span></div>`;
-  return `<div class="card ${down ? 'down' : ''} ${tr && !down ? 'trump' : ''}" data-id="${c.id}">${front}<div class="back"></div></div>`;
+  return `<div class="card ${tr ? 'trump' : ''}" data-id="${c.id}"><div class="front ${red ? 'red' : ''}"><span class="ix tl">${rk}<i>${SU[c.s]}</i></span><span class="pip">${center}</span><span class="ix br">${rk}<i>${SU[c.s]}</i></span></div><div class="back"></div></div>`;
 }
 function sortHand(h) {
   return h.slice().sort(G.sort === 'r' ? (a, b) => a.r - b.r || a.s - b.s
-    : (a, b) => ((a.s === G.T) - (b.s === G.T)) || a.s - b.s || a.r - b.r);
+    : (a, b) => (!!a.joker - !!b.joker) || ((a.s === G.T) - (b.s === G.T)) || a.s - b.s || a.r - b.r);
 }
 function renderNet() {
   const live = !!NET, nb = $('netBtn');
   nb.textContent = live ? 'Выйти' : 'Онлайн'; nb.classList.toggle('live', live);
   $('newBtn').disabled = !!(NET && NET.role === 'guest');
-  const sc = NET ? NET.score : score;
-  $('scorePill').innerHTML = live ? `${esc(NET.code.toUpperCase())} · <b>${sc.w || 0}</b>:<b>${sc.l || 0}</b>`
-    : `Ты <b>${sc.w}</b> : <b>${sc.l}</b> Бот`;
+  $('scorePill').innerHTML = `${live ? esc(NET.code.toUpperCase()) + ' · ' : ''}<span class="pen">штраф</span> <b>${SERIES.p}</b>:<b>${SERIES.b}</b> <span class="pen">/ ${SERIES_TO}</span>`;
   const dot = $('oppDot'); dot.hidden = !live; dot.classList.toggle('off', !!(NET && !NET.connected));
+  const bot = currentBot(), av = $('oppAva');
+  av.hidden = live; av.textContent = bot.face; av.style.background = bot.color;
   $('oppName').textContent = oppName();
+  $('oppBtn').disabled = live;
 }
 function render() {
   renderNet();
@@ -80,31 +87,72 @@ function render() {
     <div class="lbl"><b>${SU[G.T]}</b>козырь</div>`;
   $('gravecol').innerHTML = `<div class="grave ${G.grave ? '' : 'empty'}" id="grave">${G.grave ? '<i></i>' : ''}</div><div class="lbl">бито<br>${G.grave}</div>`;
   const ob = openB(), p = uiPhase();
-  $('battles').innerHTML = G.table.length ? G.table.map(b => `<div class="battle ${b === ob ? 'open' : ''}"><span class="tag">${b.a.name}</span>
+  $('battles').innerHTML = G.table.length ? G.table.map(b => `<div class="battle ${b === ob ? 'open' : ''}"><span class="tag">${b.a.name}${b.a.jk ? ' ★' : ''}</span>
       <div class="row atk">${b.a.cards.map(c => cardHTML(c)).join('')}</div>
       ${b.d ? `<div class="row def">${b.d.cards.map(c => cardHTML(c)).join('')}</div>` : ''}</div>`).join('')
     : `<div class="empty-felt">${p === 'p_attack' ? 'Выбери карты и ходи' : p === 'over' ? '' : G.phase.who === 'b' ? `${esc(oppName())} думает…` : ''}</div>`;
-  $('hand').innerHTML = sortHand(G.P).map((c, i) => `<div class="slot ${G.sel.has(c.id) ? 'sel' : ''}" style="--i:${i}">${cardHTML(c)}</div>`).join('');
+  const hint = p === 'p_defend' ? defenseHint() : null;
+  const can = hint ? hint.ids : new Set();
+  $('hand').innerHTML = sortHand(G.P).map((c, i) => `<div class="slot ${G.sel.has(c.id) ? 'sel' : ''} ${can.has(c.id) ? 'can' : ''}" style="--i:${i}">${cardHTML(c)}</div>`).join('');
   $('handInfo').textContent = `На руке ${G.P.length}`;
   $('sortR').classList.toggle('on', G.sort === 'r'); $('sortS').classList.toggle('on', G.sort === 's');
   renderPanel(); renderActions(); layout();
 }
+
+/* ---------- подсказка при защите ---------- */
+function defenseHint() {
+  const ob = openB();
+  if (!ob) return null;
+  const key = G.P.map(c => c.id).join() + '|' + G.table.map(b => b.a.cards.map(c => c.id).join('.') + (b.d ? 'd' : '')).join('/');
+  if (G.hintKey === key) return G.hint;
+  const o = defenseOptions('p');
+  const ids = new Set();
+  o.cover.forEach(e => e.cards.forEach(c => ids.add(c.id)));
+  o.transfer.forEach(e => e.cards.forEach(c => ids.add(c.id)));
+  G.hintKey = key; G.hint = { ...o, ids };
+  return G.hint;
+}
+function useHint() {
+  const h = uiPhase() === 'p_defend' ? defenseHint() : null;
+  if (!h) return;
+  const best = h.cover[0] || h.transfer[0];
+  if (!best) return;
+  G.sel = new Set(best.cards.map(c => c.id));
+  update();
+}
+
 function check() { if (G.guest && G.pending) return { ok: false, e: null }; return checkMove('p', selected()); }
 function renderPanel() {
-  const r = check(), p = uiPhase(), ob = openB(), ct = $('ctype'), vd = $('verdict');
-  const hint = {
+  let r = check();
+  const p = uiPhase(), ob = openB(), ct = $('ctype'), vd = $('verdict'), rh = $('ruleHint');
+  const tr = p === 'p_defend' && selected().length ? checkTransfer('p', selected()) : { ok: false };
+  if (!r.ok && tr.ok) r = tr;
+  const hint = p === 'p_defend' ? defenseHint() : null;
+  const idle = {
     p_attack: 'Выбери комбинацию для хода',
-    p_defend: ob ? `Покрой: ${ob.a.name.toLowerCase()}, ${ob.a.n} ${plural(ob.a.n)}` : '',
+    p_defend: hint && !hint.cover.length && !hint.transfer.length ? 'Нечем крыть — бери' : (hint ? `Вариантов: ${hint.cover.length + hint.transfer.length}` : ''),
     p_throw: 'Подкинь или скажи «Бито»', p_addtake: 'Подкинь вдогонку или «Хватит»', over: 'Партия окончена',
   }[p] || `Ход: ${oppName()}…`;
-  if (r.e) { ct.textContent = r.e.name.toUpperCase(); ct.className = 'ctype'; }
+  if (r.e) { ct.textContent = r.e.name.toUpperCase() + (r.e.jk ? ' ★' : ''); ct.className = 'ctype'; }
   else if (selected().length) { ct.textContent = 'НЕ КОМБО'; ct.className = 'ctype none'; }
   else if (p === 'p_defend' && ob) { ct.textContent = ob.a.name.toUpperCase(); ct.className = 'ctype target'; }
   else { ct.textContent = '—'; ct.className = 'ctype none'; }
-  vd.textContent = r.why || hint;
-  vd.className = 'verdict ' + (r.why ? (r.ok ? 'ok' : 'no') : 'hint');
+  vd.textContent = r.why || idle;
+  const dead = p === 'p_defend' && !selected().length && hint && !hint.cover.length && !hint.transfer.length;
+  vd.className = 'verdict ' + (r.why ? (r.ok ? 'ok' : 'no') : dead ? 'no' : 'hint');
+  /* как отбиваться: правило под текущую атаку */
+  if (p === 'p_defend' && ob) {
+    let t = coverRule(ob.a);
+    if (hint && hint.transfer.length) t += ' Можно перевести тем же старшинством.';
+    rh.innerHTML = `<span>${esc(t)}</span>${hint && (hint.cover.length || hint.transfer.length) ? '<button type="button" class="hintbtn" id="hintBtn">Подсказка</button>' : ''}`;
+    rh.hidden = false;
+    const hb = $('hintBtn'); if (hb) hb.onclick = useHint;
+  } else if (p === 'p_attack' && !G.table.length && !selected().length) {
+    rh.innerHTML = '<span>Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт.</span>';
+    rh.hidden = false;
+  } else { rh.hidden = true; }
   const tgt = ob && p === 'p_defend' ? ob.a.t : -1, cur = r.e ? r.e.t : -1;
-  $('ladder').innerHTML = LADDER.map(t => `<span class="${t === cur ? 'on' : ''} ${t === tgt ? 'tgt' : ''}" title="${TN[t]}"></span>`).join('');
+  $('ladder').innerHTML = TYPES.map((t, i) => `<span class="${i === cur ? 'on' : ''} ${i === tgt ? 'tgt' : ''} ${i > 0 && TYPES[i - 1].n !== t.n ? 'gap' : ''}" title="${t.name}"></span>`).join('');
 }
 function renderActions() {
   const p = uiPhase(), ok = check().ok, host = !NET || NET.role === 'host';
@@ -112,9 +160,13 @@ function renderActions() {
   let h;
   if (p === 'p_attack') h = `<button class="btn blue" type="button" data-a="play" ${dis}>Ходить</button>`;
   else if (p === 'p_throw') h = `<button class="btn blue" type="button" data-a="play" ${dis}>Подкинуть</button><button class="btn orange" type="button" data-a="bito">Бито</button>`;
-  else if (p === 'p_defend') h = `<button class="btn blue" type="button" data-a="play" ${dis}>Покрыть</button><button class="btn red" type="button" data-a="take">Беру</button>`;
+  else if (p === 'p_defend') {
+    const tr = selected().length && checkTransfer('p', selected()).ok;
+    h = tr ? `<button class="btn gold" type="button" data-a="transfer">Перевести</button>` : `<button class="btn blue" type="button" data-a="play" ${dis}>Покрыть</button>`;
+    h += `<button class="btn red" type="button" data-a="take">Беру</button>`;
+  }
   else if (p === 'p_addtake') h = `<button class="btn blue" type="button" data-a="play" ${dis}>Подкинуть</button><button class="btn grey" type="button" data-a="enough">Хватит</button>`;
-  else if (p === 'over') h = host ? `<button class="btn blue" type="button" data-a="new">Ещё партия</button>` : `<button class="btn grey" type="button" disabled>Ждём новую раздачу</button>`;
+  else if (p === 'over') h = host ? `<button class="btn blue" type="button" data-a="new">${SERIES.done ? 'Новая серия' : 'Следующая партия'}</button>` : `<button class="btn grey" type="button" disabled>Ждём новую раздачу</button>`;
   else h = `<button class="btn grey" type="button" disabled>${G && G.pending ? 'Отправляем…' : `Ход: ${esc(oppName())}…`}</button>`;
   $('actions').innerHTML = h;
 }
@@ -132,18 +184,42 @@ function showOver() {
     $('leaveBtn').onclick = leaveTable; return;
   }
   if (!G.over) { o.hidden = true; return; }
-  const opp = esc(oppName());
+  const opp = esc(oppName()), pen = G.penalty || 0;
   let h, s;
-  if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно.'; }
-  else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp} остался с картами.`; }
-  else { h = 'ДУРАК!'; s = `${opp} скинул всё, у тебя осталось ${G.P.length} ${plural(G.P.length)}.`; }
+  if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно. Штрафа нет.'; }
+  else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp} остался с картами: +${pen} штрафа ему.`; }
+  else { h = 'ДУРАК!'; s = `У тебя осталось ${pen} ${plural(pen)}: +${pen} штрафа.`; }
+  let ser = `<div class="series"><div><span>Ты</span><b>${SERIES.p}</b></div><div class="to">до ${SERIES_TO}</div><div><span>${opp}</span><b>${SERIES.b}</b></div></div>`;
+  if (SERIES.done) {
+    const lost = SERIES.p >= SERIES_TO && SERIES.p >= SERIES.b;
+    h = lost ? 'СЕРИЯ ПРОИГРАНА' : 'СЕРИЯ ТВОЯ!';
+    s = lost ? `Ты набрал ${SERIES.p} штрафных за ${SERIES.games} ${SERIES.games === 1 ? 'партию' : SERIES.games < 5 ? 'партии' : 'партий'}.` : `${opp} набрал ${SERIES.b} штрафных. Ты ушёл из-за стола чистым.`;
+  }
   const host = !NET || NET.role === 'host';
   o.hidden = false;
-  o.innerHTML = `<h2>${h}</h2><p>${s}</p>${host ? '<button class="btn blue" type="button" id="again">Ещё партия</button>' : '<p class="small">Ждём, пока хозяин стола раздаст заново.</p>'}`;
-  if (host) $('again').onclick = newGame;
+  o.innerHTML = `<h2>${h}</h2><p>${s}</p>${ser}${host ? `<button class="btn blue" type="button" id="again">${SERIES.done ? 'Новая серия' : 'Следующая партия'}</button>` : '<p class="small">Ждём, пока хозяин стола раздаст заново.</p>'}`;
+  if (host) $('again').onclick = nextGame;
+}
+function nextGame() {
+  if (SERIES.done && !NET) { openBots(); return; }
+  newGame();
 }
 
-/* веер карт: шаг, наклон и дуга подстраиваются под ширину и число карт */
+/* ---------- таймер хода ---------- */
+function tickTimer() {
+  const el = $('timer');
+  if (G && G.deadline && !G.over && !G.busy) {
+    const left = Math.max(0, G.deadline - Date.now());
+    el.hidden = false;
+    el.firstElementChild.style.width = (left / TURN_MS * 100) + '%';
+    el.classList.toggle('late', left < 5000);
+    el.classList.toggle('mine', G.phase.who === 'p');
+    $('timerTxt').textContent = Math.ceil(left / 1000) + ' с · ' + (G.phase.who === 'p' ? 'твой ход' : 'ход соперника');
+  } else el.hidden = true;
+  requestAnimationFrame(tickTimer);
+}
+
+/* веер карт: края на одной линии, середина приподнята */
 function fan(el, opts) {
   const s = [...el.children], n = s.length;
   if (!n) return;
@@ -211,7 +287,30 @@ async function flyToGrave() {
   }));
 }
 
-/* ---------- лобби ---------- */
+/* ---------- выбор соперника ---------- */
+function transferToggle(id) {
+  const on = tableRules().transfer;
+  return `<label class="toggle"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><span></span>Переводной: можно перевести атаку комбинацией того же старшинства</label>`;
+}
+function openBots() {
+  const cur = currentBot().id;
+  $('botsIn').innerHTML = `<h2>Выбери соперника</h2>
+    <div class="bots">${BOTS.map(b => `<button type="button" class="botcard ${b.id === cur ? 'on' : ''}" data-bot="${b.id}">
+      <span class="ava" style="background:${b.color}">${b.face}</span>
+      <span class="bt"><b>${b.name}</b><em>${b.level}</em><span>${b.desc}</span></span></button>`).join('')}</div>
+    ${transferToggle('trBot')}
+    <p class="small">Серия идёт до ${SERIES_TO} штрафных: проигравший партию получает столько очков, сколько карт у него осталось.</p>`;
+  $('bots').hidden = false;
+}
+function pickBot(id) {
+  store('durocker-bot', id);
+  store('durocker-transfer', $('trBot').checked ? '1' : '0');
+  $('bots').hidden = true;
+  loadSeries(); if (SERIES.done) newSeries();
+  newGame();
+}
+
+/* ---------- лобби онлайна ---------- */
 function lobbyStatus(t, err) { const s = $('lobbyStatus'); if (s) { s.textContent = t; s.className = 'status' + (err ? ' err' : ''); } }
 function renderLobby() {
   const L = $('lobbyIn');
@@ -220,7 +319,7 @@ function renderLobby() {
       <div class="codebox"><div class="small">Код для друга</div><div class="code" id="codeShow">${NET.ready ? esc(NET.code.toUpperCase()) : '····'}</div>
         <button class="btn orange" type="button" id="copyCode" style="flex:none;padding:10px 18px" ${NET.ready ? '' : 'disabled'}>Скопировать код</button></div>
       <div class="status" id="lobbyStatus"><span class="wait">${NET.ready ? 'Ждём соперника…' : 'Открываем стол…'}</span></div>
-      <p class="small">Друг открывает этот же сайт на телефоне или компьютере, жмёт «Онлайн» и вводит код. Партия начнётся сама.</p>
+      <p class="small">Друг открывает эту же страницу на телефоне или компьютере, жмёт «Онлайн» и вводит код. Партия начнётся сама. На ход — ${TURN_MS / 1000} секунд.</p>
       <div class="actions"><button class="btn grey" type="button" id="cancelHost">Закрыть стол</button></div>`;
     $('copyCode').onclick = () => {
       const t = NET.code.toUpperCase(), btn = $('copyCode');
@@ -238,14 +337,15 @@ function renderLobby() {
   }
   L.innerHTML = `<h2>Игра с другом</h2>
     <label class="field">Твоё имя за столом<input id="nickIn" maxlength="16" value="${esc(myNick())}" autocomplete="off"></label>
+    ${transferToggle('trNet')}
     <div class="actions"><button class="btn blue" type="button" id="hostBtn">Создать стол</button></div>
     <div class="or">или войди к другу</div>
     <div class="joinrow"><input id="codeIn" maxlength="4" placeholder="КОД" autocomplete="off" aria-label="Код стола"><button class="btn orange" type="button" id="joinBtn">Войти</button></div>
     <div class="status" id="lobbyStatus"></div>
-    <p class="small">Нужен интернет у обоих. Подключение идёт напрямую между устройствами.</p>
+    <p class="small">Правила стола (переводной или нет) выбирает тот, кто создаёт стол.</p>
     <div class="actions"><button class="btn grey" type="button" id="lobbyClose">Играть с ботом</button></div>`;
   const saveNick = () => store('durocker-nick', ($('nickIn').value.trim() || 'Игрок').slice(0, 16));
-  $('hostBtn').onclick = () => { saveNick(); hostTable(); };
+  $('hostBtn').onclick = () => { saveNick(); store('durocker-transfer', $('trNet').checked ? '1' : '0'); hostTable(); };
   $('joinBtn').onclick = () => { saveNick(); joinTable(); };
   $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') { saveNick(); joinTable(); } });
   $('lobbyClose').onclick = () => { $('lobby').hidden = true; };
@@ -263,11 +363,14 @@ function bindUI() {
   $('actions').addEventListener('click', e => {
     const a = e.target.closest('[data-a]');
     if (!a || a.disabled) return;
-    if (a.dataset.a === 'new') newGame(); else sendAct(a.dataset.a);
+    if (a.dataset.a === 'new') nextGame(); else sendAct(a.dataset.a);
   });
   $('sortR').onclick = () => { G.sort = 'r'; update(); };
   $('sortS').onclick = () => { G.sort = 's'; update(); };
-  $('newBtn').onclick = () => newGame();
+  $('newBtn').onclick = () => { if (NET) newGame(); else openBots(); };
+  $('oppBtn').onclick = () => { if (!NET) openBots(); };
+  $('botsIn').addEventListener('click', e => { const b = e.target.closest('[data-bot]'); if (b) pickBot(b.dataset.bot); });
+  $('bots').addEventListener('click', e => { if (e.target.id === 'bots') $('bots').hidden = true; });
   $('netBtn').onclick = () => { if (NET) { leaveTable(); return; } renderLobby(); $('lobby').hidden = false; };
   $('rulesBtn').onclick = () => { $('sheet').hidden = false; };
   $('closeSheet').onclick = () => { $('sheet').hidden = true; };
@@ -277,12 +380,13 @@ function bindUI() {
   /* клавиатура на ПК */
   addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('input')) return;
-    if (!$('sheet').hidden || !$('lobby').hidden) { if (e.key === 'Escape') { $('sheet').hidden = true; if (!NET) $('lobby').hidden = true; } return; }
+    const sheets = ['sheet', 'lobby', 'bots'].filter(id => !$(id).hidden);
+    if (sheets.length) { if (e.key === 'Escape') { $('sheet').hidden = true; $('bots').hidden = true; if (!NET) $('lobby').hidden = true; } return; }
+    const k = e.key.toLowerCase();
     if (e.key === 'Enter') { const b = document.querySelector('#actions .btn:not(:disabled)'); if (b) { e.preventDefault(); b.click(); } }
     else if (e.key === 'Escape') { if (G) { G.sel.clear(); update(); } }
-    else if (e.key === 'b' || e.key === 'B' || e.key === 'и' || e.key === 'И') {
-      const b = document.querySelector('#actions [data-a="take"],#actions [data-a="bito"],#actions [data-a="enough"]'); if (b) b.click();
-    }
+    else if (k === 'b' || k === 'и') { const b = document.querySelector('#actions [data-a="take"],#actions [data-a="bito"],#actions [data-a="enough"]'); if (b) b.click(); }
+    else if (k === 'h' || k === 'р') useHint();
   });
 }
 

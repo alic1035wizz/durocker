@@ -22,12 +22,12 @@
     <div class="score"><span class="pill" id="scorePill"></span>
       <button class="iconbtn net" id="netBtn" type="button">Онлайн</button>
       <button class="iconbtn" id="rulesBtn" type="button" aria-label="Правила">?</button>
-      <button class="iconbtn" id="newBtn" type="button" aria-label="Новая партия">↻</button></div>
+      <button class="iconbtn" id="newBtn" type="button" aria-label="Новая серия">↻</button></div>
   </header>
 
   <main class="tcol">
     <section class="opp">
-      <div class="oppname"><span class="dot" id="oppDot" hidden></span><b id="oppName"></b><span id="oppCount"></span></div>
+      <button class="oppname" id="oppBtn" type="button" aria-label="Сменить соперника"><span class="ava" id="oppAva"></span><span class="dot" id="oppDot" hidden></span><b id="oppName"></b><span id="oppCount"></span></button>
       <div class="botHand" id="botHand"></div>
       <div class="bubble" id="bubble"></div>
     </section>
@@ -51,19 +51,27 @@
     <section class="panel" aria-live="polite">
       <div class="prow"><span class="ctype none" id="ctype">—</span><span class="verdict hint" id="verdict"></span></div>
       <div class="ladder" id="ladder" aria-hidden="true"></div>
+      <div class="rulehint" id="ruleHint" hidden></div>
     </section>
+    <div class="timer" id="timer" hidden><i></i><span id="timerTxt"></span></div>
     <div class="actions" id="actions"></div>
     <section class="siderules">
       <h3>Что старше</h3>
-      <ol>
-        <li>Одиночка <span>1</span></li><li>Пара <span>2</span></li><li>Сет <span>3</span></li>
-        <li>Две пары <span>4</span></li><li>Каре <span>4</span></li><li>Стрит <span>5</span></li>
-        <li>Флеш <span>5</span></li><li>Фулл-хаус <span>5</span></li><li>Стрит-флеш <span>5</span></li>
-      </ol>
-      <p>Кроют тем же числом карт. Внутри типа решают козыри, потом старшинство.</p>
-      <p class="keys"><kbd>Enter</kbd> главная кнопка · <kbd>Esc</kbd> снять выбор · <kbd>B</kbd> беру / бито</p>
+      <dl>
+        <dt>1 карта</dt><dd>старшая той же масти или козырь</dd>
+        <dt>2 карты</dt><dd>пара</dd>
+        <dt>3 карты</dt><dd>мини-флеш → мини-стрит → сет → мини-стрит-флеш</dd>
+        <dt>4 карты</dt><dd>две пары → каре</dd>
+        <dt>5 карт</dt><dd>стрит → флеш → фулл-хаус → стрит-флеш</dd>
+      </dl>
+      <p>Внутри типа решают козыри, потом старшинство. Джокер — любая карта; одиночный джокер бьёт всё, кроме козырного туза.</p>
+      <p class="keys"><kbd>Enter</kbd> главная кнопка · <kbd>H</kbd> подсказка · <kbd>B</kbd> беру / бито · <kbd>Esc</kbd> снять выбор</p>
     </section>
   </aside>
+</div>
+
+<div class="sheet" id="bots" hidden>
+  <div class="in" id="botsIn"></div>
 </div>
 
 <div class="sheet" id="lobby" hidden>
@@ -73,32 +81,41 @@
 <div class="sheet" id="sheet" hidden>
   <div class="in">
     <h2>Как играть</h2>
-    <p>Это дурак на 52 карты, только отбиваешься покерными комбинациями. На руке 8 карт, козырь лежит под колодой.</p>
+    <p>Это дурак, только отбиваешься покерными комбинациями. В колоде 52 карты и 2 джокера, на руке 8, козырь лежит под колодой.</p>
     <h3>Ход</h3>
     <ul>
-      <li>Атакуешь одиночной картой, парой, сетом, двумя парами, каре или пятикарточной комбинацией.</li>
-      <li>Кроют тем же числом карт и комбинацией старше. Одиночку бьют как в обычном дураке: старшей той же масти или козырем.</li>
-      <li>Если отбился, атакующий может подкинуть комбинацию, где есть номинал со стола. Отбился от всего — «Бито».</li>
-      <li>Не можешь — «Беру». Тогда атакующий подкидывает вдогонку и ходит снова.</li>
-      <li>Всего в атаке за ход не больше карт, чем было у защитника, и не больше 8.</li>
+      <li>Атакуешь одиночкой, парой, тройкой, двумя парами, каре или пятью картами.</li>
+      <li>Кроют <b>тем же числом карт</b> и комбинацией старше. Одиночку бьют как в обычном дураке: старшей той же масти или козырем.</li>
+      <li>Отбился — атакующий может подкинуть комбинацию с номиналом со стола. Отбился от всего — «Бито».</li>
+      <li>Не можешь — «Беру». Атакующий подкидывает вдогонку и ходит снова.</li>
+      <li>В атаке за ход не больше карт, чем было у защитника, и не больше 8.</li>
       <li>Первым ходит тот, у кого младший козырь. Колода кончилась — кто первым скинул всё, тот не дурак.</li>
     </ul>
-    <h3>Что старше</h3>
+    <h3>Чем крыть</h3>
     <div class="rank">
-      <span>1</span><span>Одиночка</span><span>1 карта</span>
-      <span>2</span><span>Пара</span><span>2 карты</span>
-      <span>3</span><span>Сет</span><span>3 карты</span>
-      <span>4</span><span>Две пары</span><span>4 карты</span>
-      <span>5</span><span>Каре</span><span>4 карты, бьёт две пары</span>
-      <span>6</span><span>Стрит</span><span>5 карт</span>
-      <span>7</span><span>Флеш</span><span>бьёт стрит</span>
-      <span>8</span><span>Фулл-хаус</span><span>бьёт флеш</span>
-      <span>9</span><span>Стрит-флеш</span><span>бьёт всё из пяти</span>
+      <span>1</span><span>Одиночка</span><span>старше той же масти или козырь</span>
+      <span>2</span><span>Пара</span><span>старшая пара</span>
+      <span>3</span><span>Мини-флеш</span><span>3 одной масти</span>
+      <span>3</span><span>Мини-стрит</span><span>3 подряд, бьёт мини-флеш</span>
+      <span>3</span><span>Сет</span><span>бьёт мини-стрит</span>
+      <span>3</span><span>Мини-стрит-флеш</span><span>старшая тройка</span>
+      <span>4</span><span>Две пары</span><span></span>
+      <span>4</span><span>Каре</span><span>бьёт две пары</span>
+      <span>5</span><span>Стрит</span><span></span>
+      <span>5</span><span>Флеш</span><span>бьёт стрит</span>
+      <span>5</span><span>Фулл-хаус</span><span>бьёт флеш</span>
+      <span>5</span><span>Стрит-флеш</span><span>старше всех из пяти</span>
     </div>
-    <h3>Козыри в комбинациях</h3>
-    <p>Внутри одного типа сначала смотрят, в какой комбинации больше козырей, потом старшинство. Пара двоек с козырной двойкой бьёт пару тузов без козыря, а флеш из козырей бьёт любой обычный флеш.</p>
+    <p>Если тип одинаковый, сначала смотрят, где больше козырей, потом старшинство карт. Пара двоек с козырной двойкой бьёт пару тузов без козыря.</p>
+    <p>При защите внизу всегда написано, чем можно покрыть атаку, а подходящие карты в руке подсвечены. Кнопка «Подсказка» сама выберет самый дешёвый ответ.</p>
+    <h3>Джокеры</h3>
+    <p>Джокер становится той картой, которая делает комбинацию сильнее. Такая комбинация проигрывает точно такой же без джокера. Одиночный джокер — старший козырь: его бьёт только козырной туз.</p>
+    <h3>Перевод</h3>
+    <p>Пока на атаку никто не ответил, защитник может перевести её, положив комбинацию того же типа и старшинства: на пару восьмёрок — свою пару восьмёрок. Теперь отбивается соперник. Перевод включается при выборе соперника или создании стола.</p>
+    <h3>Серия до 21</h3>
+    <p>Проигравший партию получает столько штрафных очков, сколько карт у него осталось. Кто первым набрал 21, проиграл серию.</p>
     <h3>Онлайн</h3>
-    <p>Нажми «Онлайн», создай стол и отправь другу код из 4 символов. Друг открывает этот же сайт с телефона или компьютера, жмёт «Онлайн» и вводит код.</p>
+    <p>Нажми «Онлайн», создай стол и отправь другу код из 4 символов. Друг открывает этот же сайт, жмёт «Онлайн» и вводит код. На ход 30 секунд: если время вышло, игра сама берёт карты или говорит «Бито».</p>
     <div class="actions"><button class="btn blue" type="button" id="closeSheet">Понятно</button></div>
   </div>
 </div>
@@ -108,6 +125,7 @@
 <script src="js/engine.js"></script>
 <script src="js/bot.js"></script>
 <script src="js/net.js"></script>
+<script src="js/transport-peer.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>
