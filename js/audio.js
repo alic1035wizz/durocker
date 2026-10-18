@@ -5,10 +5,15 @@
 const AU = (() => {
   let ctx = null, out, music, sfx, lp, noise, started = false, step = 0, nextT = 0, level = 1, timer = null;
   let musicOn = load('durocker-music') !== '0', sfxOn = load('durocker-sfx') !== '0';
-  const BPM = 94, STEP = 60 / BPM / 4;
+  /* три трека: казино-лаунж, ночной рынок (быстрее, минор), гараж (драйв) */
+  const TRACKS = {
+    lounge: { bpm: 94, chords: [[57, 60, 64, 67], [50, 57, 60, 65], [55, 59, 62, 65], [48, 55, 59, 64], [53, 57, 60, 64], [47, 53, 57, 62], [52, 56, 59, 62], [57, 60, 64, 67]], drive: 0 },
+    night: { bpm: 108, chords: [[52, 55, 59, 62], [48, 52, 55, 59], [57, 60, 64, 67], [47, 51, 54, 57], [52, 55, 59, 62], [45, 48, 52, 55], [50, 54, 57, 60], [47, 51, 54, 59]], drive: 1 },
+    garage: { bpm: 126, chords: [[52, 59, 64, 67], [52, 59, 64, 67], [55, 62, 67, 71], [57, 64, 69, 72], [52, 59, 64, 67], [60, 67, 72, 76], [59, 66, 71, 74], [57, 64, 69, 72]], drive: 2 },
+  };
+  let TR_ = TRACKS.lounge, STEP = 60 / TR_.bpm / 4;
   const N = m => 440 * Math.pow(2, (m - 69) / 12);
   /* Am7 Dm7 G7 Cmaj7 Fmaj7 Bm7b5 E7 Am7 — по такту на аккорд */
-  const CHORDS = [[57, 60, 64, 67], [50, 57, 60, 65], [55, 59, 62, 65], [48, 55, 59, 64], [53, 57, 60, 64], [47, 53, 57, 62], [52, 56, 59, 62], [57, 60, 64, 67]];
   const SCALE = [69, 72, 74, 76, 79, 81, 84];
 
   function init() {
@@ -52,10 +57,10 @@ const AU = (() => {
   /* ---------- музыка ---------- */
   function schedule() {
     if (!ctx) return;
-    while (nextT < ctx.currentTime + 0.12) { playStep(step, nextT); step = (step + 1) % (16 * CHORDS.length); nextT += STEP * (step % 2 ? 1.12 : 0.88); }
+    while (nextT < ctx.currentTime + 0.12) { playStep(step, nextT); step = (step + 1) % (16 * TR_.chords.length); nextT += STEP * (step % 2 ? 1.12 : 0.88); }
   }
   function playStep(s, t) {
-    const bar = Math.floor(s / 16), i = s % 16, ch = CHORDS[bar], root = ch[0] - 12;
+    const bar = Math.floor(s / 16), i = s % 16, ch = TR_.chords[bar % TR_.chords.length], root = ch[0] - 12, lv = Math.max(level, TR_.drive >= 2 ? 2 : 1);
     /* бас: шагающий, с проходящими нотами */
     if (i === 0 || i === 6 || i === 8 || i === 14) {
       const note = i === 0 ? root : i === 8 ? root + 7 : i === 6 ? root + 12 : root + (bar % 2 ? 5 : 3);
@@ -67,11 +72,11 @@ const AU = (() => {
     /* мягкий пэд на весь такт */
     if (i === 0) ch.forEach(m => tone(music, 'sine', N(m + 12), t, STEP * 15, 0.03, { a: 0.4 }));
     /* барабаны: щётки в спокойной игре, плотнее в конце колоды */
-    if (i === 0 || (level >= 2 && i === 8) || (i === 10 && bar % 4 === 3)) tone(music, 'sine', 120, t, 0.18, 0.5, { to: 45 });
-    if (i === 4 || i === 12) hiss(music, t, level >= 2 ? 0.16 : 0.1, level >= 2 ? 0.25 : 0.12, 1800);
-    if (i % 2 === 0 || level >= 2) hiss(music, t, 0.035, level >= 2 ? 0.08 : 0.045, 8000, 0, 'highpass');
+    if (i === 0 || (lv >= 2 && i === 8) || (i === 10 && bar % 4 === 3)) tone(music, 'sine', 120, t, 0.18, 0.5, { to: 45 });
+    if (i === 4 || i === 12) hiss(music, t, lv >= 2 ? 0.16 : 0.1, lv >= 2 ? 0.25 : 0.12, 1800);
+    if (i % 2 === 0 || lv >= 2) hiss(music, t, 0.035, lv >= 2 ? 0.08 : 0.045, 8000, 0, 'highpass');
     /* мелодия появляется, когда колода кончилась */
-    if (level >= 2 && (i === 2 || i === 7 || i === 11 || (i === 14 && Math.random() < 0.5))) {
+    if ((level >= 2 || TR_.drive >= 1) && (i === 2 || i === 7 || i === 11 || (i === 14 && Math.random() < 0.5))) {
       const pool = SCALE.filter(m => ch.some(c => (m - c) % 12 === 0) || Math.random() < 0.3);
       tone(music, 'square', N(pool[Math.floor(Math.random() * pool.length)] || 76), t, STEP * 1.8, 0.06, { detune: 4 });
     }
@@ -110,10 +115,14 @@ const AU = (() => {
     win() { const t = at(); [60, 64, 67, 72, 76, 79, 84].forEach((m, k) => { tone(sfx, 'square', N(m), t + k * 0.09, 0.35, 0.08); tone(sfx, 'triangle', N(m - 12), t + k * 0.09, 0.4, 0.1); }); },
     lose() { const t = at(); [67, 66, 65, 61].forEach((m, k) => tone(sfx, 'sawtooth', N(m - 12), t + k * 0.32, k === 3 ? 0.9 : 0.3, 0.1)); },
     tick() { tone(sfx, 'square', 1400, at(), 0.03, 0.06); },
+    /* хайп: удар баса и аккорд вверх; по тебе — провал вниз */
+    hype() { const t = at(); tone(sfx, 'sine', 90, t, 0.5, 0.7, { to: 35 }); hiss(sfx, t, 0.3, 0.35, 900, 5000); [72, 76, 79, 84].forEach((m, k) => tone(sfx, 'square', N(m), t + 0.05 + k * 0.05, 0.3, 0.07)); },
+    hypeBad() { const t = at(); tone(sfx, 'sawtooth', 220, t, 0.7, 0.12, { to: 55 }); tone(sfx, 'sine', 70, t, 0.6, 0.6, { to: 30 }); hiss(sfx, t, 0.4, 0.3, 3000, 400); },
   };
   function play(name, arg) { if (!ctx || !sfxOn || ctx.state !== 'running') return; try { S[name](arg); } catch (e) {} }
 
   function setMusic(on) { musicOn = on; store('durocker-music', on ? '1' : '0'); if (ctx) music.gain.setTargetAtTime(on ? 0.3 : 0, ctx.currentTime, 0.2); }
   function setSfx(on) { sfxOn = on; store('durocker-sfx', on ? '1' : '0'); if (ctx) sfx.gain.setTargetAtTime(on ? 0.55 : 0, ctx.currentTime, 0.05); }
-  return { unlock, play, setLevel, setMusic, setSfx, get music() { return musicOn; }, get sfx() { return sfxOn; } };
+  function setTrack(id) { TR_ = TRACKS[id] || TRACKS.lounge; STEP = 60 / TR_.bpm / 4; }
+  return { unlock, play, setLevel, setMusic, setSfx, setTrack, get music() { return musicOn; }, get sfx() { return sfxOn; } };
 })();

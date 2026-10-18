@@ -67,7 +67,7 @@ function newGame() {
   commit();
   for (let i = 0; i < HAND; i++) { G.P.push(G.deck.pop()); G.B.push(G.deck.pop()); }
   update(true); sync();
-  if (!NET && currentBot().boss === 'major') makeOffer('b');
+  if (!NET && (currentBot().boss === 'major' || currentBot().boss === 'sharper')) makeOffer('b');
   const low = s => H(s).filter(c => c.s === G.T && c.r <= 14).sort((a, b) => a.r - b.r)[0];
   const lp = low('p'), lb = low('b');
   const first = !lb || (lp && lp.r < lb.r) ? 'p' : 'b';
@@ -183,8 +183,8 @@ function judgeCover(seat, e, a) {
   const att = other(seat);
   G.turnCovers++;
   if (e.n === 1 && e.jk && !a.jk) hype('legend', seat);
-  /* «могнул»: покрыл комбинацией старшего типа или с козырем против некозырной */
-  if (e.n >= 2 && (e.t > a.t || (e.t === a.t && e.tr > a.tr))) {
+  /* «могнул»: покрыл комбинацией старшего типа (на мини-флеш — сетом, на стрит — фулл-хаусом) */
+  if (e.n >= 2 && e.t > a.t) {
     G.stats.mognul[seat]++;
     SERIES[att] += 1;
     saveSeries();
@@ -294,7 +294,8 @@ function checkOver() {
   G.penalty = 0;
   if (G.over !== 'draw') {
     const loser = other(G.over);
-    G.penalty = H(loser).length;
+    /* больше 10 штрафных за партию не дают, чтобы одна неудачная раздача не убивала серию */
+    G.penalty = Math.min(10, H(loser).length);
     SERIES[loser] += G.penalty;
     hype(G.penalty >= 8 ? 'dry' : 'gg', G.over);
   }

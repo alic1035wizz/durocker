@@ -1,15 +1,44 @@
 /* Дурокер — три соперника. Студент ошибается, Дядя Валера играет ровно, Шулер помнит твои карты. */
 'use strict';
 
+/* ai — как играет (student / valera / sharper), boss — особое правило босса */
 const BOTS = [
-  { id: 'student', name: 'Студент', face: 'СТ', color: '#4f8fd8', level: 'легко',
+  { id: 'student', ai: 'student', name: 'Студент', face: 'СТ', color: '#4f8fd8', level: 'легко',
     desc: 'Ходит что попало, тратит козыри не глядя и иногда берёт, хотя мог отбиться.' },
-  { id: 'valera', name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', level: 'средне',
+  { id: 'valera', ai: 'valera', name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', level: 'средне',
     desc: 'Сбрасывает мелочь, бережёт козыри, кроет самым дешёвым. Переводит, когда выгодно.' },
-  { id: 'sharper', name: 'Шулер', face: 'Ш', color: '#c8402f', level: 'сложно',
-    desc: 'Помнит каждую карту, которую ты забрал, ходит тем, чем тебе нечем крыть, и копит джокеров к концу колоды.' },
+  { id: 'sharper', ai: 'sharper', name: 'Шулер', face: 'Ш', color: '#c8402f', level: 'сложно',
+    desc: "Подглядывает в твои карты и ходит тем, чем тебе нечем крыть. Честно играть не умеет." },
 ];
-const currentBot = () => BOTS.find(b => b.id === load('durocker-bot')) || BOTS[1];
+/* карьера «С подъезда в казино»: 5 районов, в каждом двое соседей и босс */
+const CAREER = [
+  { name: 'Подъезд', reward: { table: 'kitchen' }, ops: [
+    { id: 'c-tolik', ai: 'student', name: 'Сосед Толик', face: 'Т', color: '#6d8fb8', desc: 'Играет в тапках и спешит к сериалу.' },
+    { id: 'c-vovan', ai: 'student', name: 'Вован с пятого', face: 'В', color: '#7b6db8', desc: 'Уверен, что козырь — это любая красная.' },
+    { id: 'c-babka', ai: 'valera', boss: 'babka', name: 'Бабка у подъезда', face: 'Б', color: '#b86d9a', desc: 'БОСС: каждый третий ход меняет козырь. «Я так всегда играла».' } ] },
+  { name: 'Двор', reward: { back: 'blue' }, ops: [
+    { id: 'c-mihalych', ai: 'valera', name: 'Дворник Михалыч', face: 'М', color: '#8a9a5b', desc: 'Метёт всё со стола. Терпеливый.' },
+    { id: 'c-patsan', ai: 'valera', name: 'Пацан с района', face: 'П', color: '#5b8a8a', desc: 'Любит переводить и смотреть, как ты злишься.' },
+    { id: 'c-vahter', ai: 'valera', boss: 'vahter', name: 'Вахтёр', face: 'ВХ', color: '#8a6a3b', desc: 'БОСС: «Не положено!» — переводы запрещены.' } ] },
+  { name: 'Рынок', reward: { track: 'night' }, ops: [
+    { id: 'c-torgash', ai: 'valera', name: 'Торгаш', face: 'ТР', color: '#b8863b', desc: 'Каждую карту продаёт дороже, чем она стоит.' },
+    { id: 'c-zina', ai: 'sharper', name: 'Тётя Зина', face: 'З', color: '#b85b5b', desc: 'Всё помнит. Всё.' },
+    { id: 'c-taxi', ai: 'valera', boss: 'taxi', name: 'Таксист', face: 'ТК', color: '#d9c23c', desc: 'БОСС: счётчик тикает — у тебя 10 секунд на ход.' } ] },
+  { name: 'Вокзал', reward: { table: 'neon' }, ops: [
+    { id: 'c-provod', ai: 'sharper', name: 'Проводница', face: 'ПР', color: '#3b6db8', desc: 'Видала и не таких пассажиров.' },
+    { id: 'c-dembel', ai: 'valera', name: 'Дембель', face: 'Д', color: '#4f7a3b', desc: 'Два года тренировался в казарме.' },
+    { id: 'c-major', ai: 'sharper', boss: 'major', name: 'Мажор', face: 'МЖ', color: '#c79bff', desc: 'БОСС: начинает партию с полным зарядом. Папа купил.' } ] },
+  { name: 'Казино', reward: { table: 'gold', back: 'gold' }, ops: [
+    { id: 'c-krupie', ai: 'sharper', name: 'Крупье', face: 'КР', color: '#2e9d5b', desc: 'Улыбается и считает каждую карту.' },
+    { id: 'c-valera', ai: 'valera', name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', desc: 'Старый друг. Теперь играет по-крупному.' },
+    { id: 'c-sharper', ai: 'sharper', boss: 'sharper', name: 'Шулер', face: 'Ш', color: '#c8402f', desc: 'ФИНАЛЬНЫЙ БОСС: знает твою руку в конце колоды и не прощает ошибок.' } ] },
+];
+const CAREER_OPS = CAREER.flatMap((d, di) => d.ops.map((o, oi) => ({ ...o, district: di, slot: oi, level: o.boss ? 'босс' : d.name })));
+function currentBot() {
+  if (MODE.kind === 'career') return CAREER_OPS[MODE.stage] || CAREER_OPS[0];
+  if (MODE.kind === 'daily') return BOTS[2];
+  return BOTS.find(b => b.id === load('durocker-bot')) || BOTS[1];
+}
 const oppName = () => (NET ? (NET.oppNick || 'Соперник') : currentBot().name);
 
 /* насколько охотно бот отдаёт эти карты; когда колода кончилась — сбрасывает всё подряд */
@@ -24,30 +53,34 @@ const sizesUpTo = m => [1, 2, 3, 4, 5].filter(n => n <= m);
 /* Шулер: чем игрок может ответить. Он помнит карты, которые ты забрал со стола,
    а когда колода кончилась, вычисляет твою руку целиком: все карты, которых нет у него, в бито и на столе */
 function playerAnswers() {
-  const kc = !G.deck.length ? G.P : G.P.filter(c => G.known && G.known.has(c.id));
+  /* Шулер подглядывает: видит твою руку целиком; остальные помнят только забранные со стола карты */
+  const kc = !G.deck.length || currentBot().ai === 'sharper' ? G.P : G.P.filter(c => G.known && G.known.has(c.id));
   const by = {};
   if (kc.length) combos(kc, [1, 2, 3, 4, 5]).forEach(e => (by[e.n] = by[e.n] || []).push(e));
   return by;
 }
 const canBeat = (by, e) => (by[e.n] || []).some(d => beats(d, e));
 
+
 function botAttackPick(bot) {
   const list = combos(G.B, sizesUpTo(Math.min(5, G.limit - atkCount(), G.P.length)));
-  if (bot.id === 'student') return (pickMax(list, e => heur(e, 30) - e.n * 3) || {}).e;
-  if (bot.id === 'sharper') {
+  if (bot.ai === 'student') return (pickMax(list, e => heur(e, 30) - e.n * 3) || {}).e;
+  if (bot.ai === 'sharper') {
     const by = playerAnswers(), late = !G.deck.length;
-    return (pickMax(list, e => heur(e) + (canBeat(by, e) ? -25 : late ? 20 : 0) + (e.n >= 3 ? 4 : 0)) || {}).e;
+    /* видит твою руку: бьёт тем, чем нечем крыть, а если крыть есть чем — заставляет тратить дорогое */
+    const coverCost = e => { const l = (by[e.n] || []).filter(d => beats(d, e)); return l.length ? Math.min(...l.map(d => cost(d.cards))) : -1; };
+    return (pickMax(list, e => { const cc = coverCost(e); return heur(e) + (cc < 0 ? 22 + e.n * 4 + (late ? 10 : 0) : cc / 4 - 8); }) || {}).e;
   }
   return (pickMax(list, e => heur(e)) || {}).e;
 }
 function botThrowPick(bot, forTake) {
   const room = Math.min(5, G.limit - atkCount(), forTake ? 99 : G.P.length);
   if (room < 1) return null;
-  if (bot.id === 'student' && Math.random() < 0.5) return null;
+  if (bot.ai === 'student' && Math.random() < 0.5) return null;
   const rs = tableRanks(), late = !G.deck.length;
-  const list = combos(G.B, sizesUpTo(room)).filter(e =>
+  const list = combos(G.B, sizesUpTo(room).filter(n => n >= 2)).filter(e =>
     e.cards.some(c => rs.has(c.r)) && (late || (e.tr === 0 && !e.jk && e.cards.every(c => c.r <= 11))));
-  const by = bot.id === 'sharper' && !forTake ? playerAnswers() : null;
+  const by = bot.ai === 'sharper' && !forTake ? playerAnswers() : null;
   const r = pickMax(list, e => heur(e) + (by ? (canBeat(by, e) ? -14 : late ? 12 : 0) : 0));
   if (!r || (!late && r.h <= 0)) return null;
   return r.e;
@@ -55,7 +88,7 @@ function botThrowPick(bot, forTake) {
 /* ответ на открытую атаку: покрыть, перевести или взять */
 function botDefense(bot) {
   const { cover, transfer } = defenseOptions('b');
-  if (bot.id === 'student') {
+  if (bot.ai === 'student') {
     if (!cover.length || Math.random() < 0.15) return null;
     return { type: 'play', e: cover[Math.floor(Math.random() * cover.length)] };
   }
@@ -64,7 +97,8 @@ function botDefense(bot) {
   if (t && (!c || pricey || cost(t.cards) + 8 < cost(c.cards))) return { type: 'transfer', e: t };
   if (!c) return null;
   /* Шулер не тратит джокера на мелкую атаку, пока колода толстая */
-  if (bot.id === 'sharper' && c.jk && G.deck.length > 14 && openB().a.n <= 2) return null;
+  /* Шулер видит твою руку: если после этого покрытия ты всё равно не сможешь отбиться от его следующей атаки — кроет, иначе бережёт козыри и берёт мелочь */
+  if (bot.ai === 'sharper' && G.deck.length > 10 && openB().a.n === 1 && c.tr > 0 && openB().a.cards[0].r <= 6 && G.B.length <= 6) return null;
   return { type: 'play', e: c };
 }
 
@@ -76,7 +110,7 @@ function trumpWorth(c) {
   return cnt(c.s) >= cnt(G.T) + 2;
 }
 function botActionFirst(bot) {
-  const k = G.phase.kind, rnd = bot.id === 'student' ? Math.random() < 0.5 : true;
+  const k = G.phase.kind, rnd = bot.ai === 'student' ? Math.random() < 0.5 : true;
   const only = G.B.every(c => c.action);
   if (k === 'attack' || k === 'throw' || k === 'addtake') {
     const plus = botActs('plus')[0];
@@ -92,7 +126,7 @@ function botDefenseAction(bot, d) {
   const a = openB().a;
   if (!d) return sh[0] || rv[0] || null;
   /* Шулер и Валера бросают щит на дорогую атаку, чтобы не тратить козыри */
-  if (bot.id !== 'student' && (d.e.tr > 0 || d.e.jk > 0 || a.n >= 4)) return sh[0] || null;
+  if (bot.ai !== 'student' && (d.e.tr > 0 || d.e.jk > 0 || a.n >= 4)) return sh[0] || null;
   return null;
 }
 
@@ -128,7 +162,7 @@ function drive() {
   if (NET || !G || G.over || G.busy || G.phase.who !== 'b') return;
   const q = ++botQueued, bot = currentBot();
   run(async () => {
-    await wait(bot.id === 'student' ? 650 : 850);
+    await wait(bot.ai === 'student' ? 650 : 850);
     if (q !== botQueued || G.phase.who !== 'b' || G.busy) return;
     const [type, cards, line] = botDecide(bot);
     if (line) say(line);

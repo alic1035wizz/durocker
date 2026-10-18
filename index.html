@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Дурокер</title>
-<meta name="description" content="Дурак на 52 карты, где отбиваются покерными комбинациями. Игра с ботом и онлайн с другом по коду стола.">
+<meta name="description" content="Дурак, где отбиваются покерными комбинациями. Карьера, боссы, ежедневная раздача и онлайн с другом по коду стола.">
 <meta name="theme-color" content="#06191a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
@@ -17,130 +17,126 @@
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
 <div class="app">
-  <header class="top">
-    <div class="logo">ДУРОКЕР</div>
-    <div class="score"><span class="pill" id="scorePill"></span>
-      <button class="iconbtn net" id="netBtn" type="button">Онлайн</button>
+
+  <!-- табло: слева на ПК и лёжа, полосой сверху на вертикальном телефоне -->
+  <aside class="hud">
+    <div class="hudbar">
+      <button class="iconbtn" id="menuBtn" type="button" aria-label="Меню">☰</button>
+      <button class="oppcard" id="oppBtn" type="button" aria-label="Соперник">
+        <span class="ava" id="oppAva"></span>
+        <span class="oppinfo"><b id="oppName"></b><small><span class="dot" id="oppDot" hidden></span><span id="oppCount"></span></small></span>
+        <span class="pips" id="oppPips" aria-label="Заряд соперника"></span>
+      </button>
+      <div class="scorebox" id="scoreBox" aria-label="Штрафные очки">
+        <div><span>ты</span><b id="scP">0</b></div><i>:</i><div><span id="scOpp">он</span><b id="scB">0</b></div>
+        <em id="scTo">до 21</em>
+      </div>
       <button class="iconbtn snd" id="sndBtn" type="button">♫</button>
-      <button class="iconbtn" id="rulesBtn" type="button" aria-label="Правила">?</button>
-      <button class="iconbtn" id="newBtn" type="button" aria-label="Новая серия">↻</button></div>
-  </header>
-
-  <main class="tcol">
-    <section class="opp">
-      <button class="oppname" id="oppBtn" type="button" aria-label="Сменить соперника"><span class="ava" id="oppAva"></span><span class="dot" id="oppDot" hidden></span><b id="oppName"></b><span id="oppCount"></span></button>
-      <div class="botHand" id="botHand"></div>
-      <div class="bubble" id="bubble"></div>
-    </section>
-
-    <section class="felt" id="felt">
-      <svg class="print" viewBox="0 0 400 120" aria-hidden="true"><path id="arc" d="M30,20 Q200,110 370,20" fill="none"/>
-        <text><textPath href="#arc" startOffset="50%" text-anchor="middle">КРОЙ ТЕМ ЖЕ ЧИСЛОМ КАРТ</textPath></text></svg>
-      <div class="deckcol" id="deckcol"></div>
-      <div class="battles" id="battles"></div>
-      <div class="gravecol" id="gravecol"></div>
-      <div class="banner" id="banner"><div class="big" id="bBig"></div><div class="sub" id="bSub"></div></div>
-      <div class="over" id="over" hidden></div>
-      <div class="lastround" aria-hidden="true">ПОСЛЕДНИЙ КРУГ</div>
-    </section>
-
-    <div class="handwrap"><span id="handInfo"></span>
-      <div class="sortbtns"><button type="button" id="sortR" class="on">Ранг</button><button type="button" id="sortS">Масть</button></div></div>
-    <section class="hand" id="hand" aria-label="Твоя рука"></section>
-  </main>
-
-  <aside class="side">
-    <section class="panel" aria-live="polite">
-      <div class="prow"><span class="ctype none" id="ctype">—</span><span class="verdict hint" id="verdict"></span></div>
-      <div class="ladder" id="ladder" aria-hidden="true"></div>
-      <div class="rulehint" id="ruleHint" hidden></div>
-    </section>
-    <div class="timer" id="timer" hidden><i></i><span id="timerTxt"></span></div>
-    <div class="actions" id="actions"></div>
-    <section class="siderules">
+    </div>
+    <div class="modebox" id="modeBox"></div>
+    <div class="trumpbox" id="trumpBox"></div>
+    <section class="combo" id="combo" aria-live="polite"></section>
+    <div class="rulehint" id="ruleHint" hidden></div>
+    <section class="siderules" id="sideRules">
       <h3>Что старше</h3>
       <dl>
-        <dt>1 карта</dt><dd>старшая той же масти или козырь</dd>
+        <dt>1 карта</dt><dd>старше той же масти или козырь</dd>
         <dt>2 карты</dt><dd>пара</dd>
         <dt>3 карты</dt><dd>мини-флеш → мини-стрит → сет → мини-стрит-флеш</dd>
         <dt>4 карты</dt><dd>две пары → каре</dd>
         <dt>5 карт</dt><dd>стрит → флеш → фулл-хаус → стрит-флеш</dd>
       </dl>
-      <p>Внутри типа решают козыри, потом старшинство. Джокер — любая карта; одиночный джокер бьёт всё, кроме козырного туза.</p>
-      <p><b>Действия:</b> щит и разворот — при защите, если в атаке есть их масть; +2 и смена козыря — в свой ход.</p>
-      <p class="keys"><kbd>Enter</kbd> главная кнопка · <kbd>H</kbd> подсказка · <kbd>B</kbd> беру / бито · <kbd>Esc</kbd> снять выбор</p>
     </section>
+    <div class="timer" id="timer" hidden><i></i><span id="timerTxt"></span></div>
   </aside>
-</div>
 
-<div class="sheet" id="bots" hidden>
-  <div class="in" id="botsIn"></div>
-</div>
-
-<div class="sheet" id="lobby" hidden>
-  <div class="in" id="lobbyIn"></div>
-</div>
-
-<div class="actzoom" id="actzoom" hidden></div>
-
-<div class="sheet" id="sheet" hidden>
-  <div class="in">
-    <h2>Настройки</h2>
-    <div id="settings" class="settings"></div>
-    <h2>Как играть</h2>
-    <p>Это дурак, только отбиваешься покерными комбинациями. В колоде 52 обычные карты, 2 джокера и 16 карт-действий, на руке 8, козырь лежит под колодой.</p>
-    <h3>Ход</h3>
-    <ul>
-      <li>Атакуешь одиночкой, парой, тройкой, двумя парами, каре или пятью картами.</li>
-      <li>Кроют <b>тем же числом карт</b> и комбинацией старше. Одиночку бьют как в обычном дураке: старшей той же масти или козырем.</li>
-      <li>Отбился — атакующий может подкинуть комбинацию с номиналом со стола. Отбился от всего — «Бито».</li>
-      <li>Не можешь — «Беру». Атакующий подкидывает вдогонку и ходит снова.</li>
-      <li>В атаке за ход не больше карт, чем было у защитника, и не больше 8.</li>
-      <li>Первым ходит тот, у кого младший козырь. Колода кончилась — кто первым скинул всё, тот не дурак.</li>
-    </ul>
-    <h3>Чем крыть</h3>
-    <div class="rank">
-      <span>1</span><span>Одиночка</span><span>старше той же масти или козырь</span>
-      <span>2</span><span>Пара</span><span>старшая пара</span>
-      <span>3</span><span>Мини-флеш</span><span>3 одной масти</span>
-      <span>3</span><span>Мини-стрит</span><span>3 подряд, бьёт мини-флеш</span>
-      <span>3</span><span>Сет</span><span>бьёт мини-стрит</span>
-      <span>3</span><span>Мини-стрит-флеш</span><span>старшая тройка</span>
-      <span>4</span><span>Две пары</span><span></span>
-      <span>4</span><span>Каре</span><span>бьёт две пары</span>
-      <span>5</span><span>Стрит</span><span></span>
-      <span>5</span><span>Флеш</span><span>бьёт стрит</span>
-      <span>5</span><span>Фулл-хаус</span><span>бьёт флеш</span>
-      <span>5</span><span>Стрит-флеш</span><span>старше всех из пяти</span>
+  <main class="board">
+    <div class="botHand" id="botHand"></div>
+    <div class="bubble" id="bubble"></div>
+    <section class="felt" id="felt">
+      <svg class="print" viewBox="0 0 400 120" aria-hidden="true"><path id="arc" d="M30,20 Q200,110 370,20" fill="none"/>
+        <text><textPath href="#arc" startOffset="50%" text-anchor="middle">КРОЙ ТЕМ ЖЕ ЧИСЛОМ КАРТ</textPath></text></svg>
+      <div class="battles" id="battles"></div>
+      <div class="gravecol" id="gravecol"></div>
+      <div class="deckcol" id="deckcol"></div>
+      <div class="banner" id="banner"><div class="big" id="bBig"></div><div class="sub" id="bSub"></div></div>
+      <div class="hype" id="hype" hidden></div>
+      <div class="lastround" aria-hidden="true">ПОСЛЕДНИЙ КРУГ</div>
+      <div class="over" id="over" hidden></div>
+    </section>
+    <div class="handtop">
+      <span class="charge" id="myCharge"></span>
+      <span class="handinfo" id="handInfo"></span>
+      <button class="reactbtn" id="reactBtn" type="button" hidden aria-label="Реакция">💬</button>
     </div>
-    <p>Если тип одинаковый, сначала смотрят, где больше козырей, потом старшинство карт. Пара двоек с козырной двойкой бьёт пару тузов без козыря.</p>
-    <p>При защите внизу всегда написано, чем можно покрыть атаку, а подходящие карты в руке подсвечены. Кнопка «Подсказка» сама выберет самый дешёвый ответ.</p>
-    <h3>Джокеры</h3>
-    <p>Джокер становится той картой, которая делает комбинацию сильнее. Такая комбинация проигрывает точно такой же без джокера. Одиночный джокер — старший козырь: его бьёт только козырной туз.</p>
-    <h3>Карты-действия</h3>
-    <p>Четыре вида, каждый в четырёх мастях, как цветные карты в УНО. Масть решает, когда карта срабатывает, козырная версия сильнее. Карту-действие играют отдельно, выбрав только её.</p>
-    <ul>
-      <li><b>Щит</b> — при защите: атака, в которой есть масть щита, уходит в бито без покрытия. Козырный щит отбивает любую атаку.</li>
-      <li><b>Разворот ↺</b> — при защите, пока ничего не покрыто: вся атака возвращается атакующему, если в ней есть масть разворота. Вместо своего хода — пас.</li>
-      <li><b>+2</b> — когда ходишь ты: соперник добирает 2 карты (козырная — 3). Колода пуста — столько же штрафных очков.</li>
-      <li><b>Смена козыря</b> — в любой свой ход: козырем до конца партии становится масть карты.</li>
-    </ul>
-    <p>Карта-действие, оставшаяся на руке в конце партии, стоит 2 штрафных очка.</p>
-    <h3>Перевод</h3>
-    <p>Пока на атаку никто не ответил, защитник может перевести её, положив комбинацию того же типа и старшинства: на пару восьмёрок — свою пару восьмёрок. Теперь отбивается соперник. Перевод включается при выборе соперника или создании стола.</p>
-    <h3>Серия до 21</h3>
-    <p>Проигравший партию получает столько штрафных очков, сколько карт у него осталось. Кто первым набрал 21, проиграл серию.</p>
-    <h3>Онлайн</h3>
-    <p>Нажми «Онлайн», создай стол и отправь другу код из 4 символов. Друг открывает этот же сайт, жмёт «Онлайн» и вводит код. На ход 30 секунд: если время вышло, игра сама берёт карты или говорит «Бито».</p>
-    <div class="actions"><button class="btn blue" type="button" id="closeSheet">Понятно</button></div>
-  </div>
+    <section class="hand" id="hand" aria-label="Твоя рука"></section>
+    <div class="controls">
+      <div class="ctl" id="actMain"></div>
+      <div class="sorter"><span>Сортировать</span><div><button type="button" id="sortR" class="on">Ранг</button><button type="button" id="sortS">Масть</button></div></div>
+      <div class="ctl" id="actAlt"></div>
+    </div>
+  </main>
 </div>
+
+<div class="offer" id="offer" hidden></div>
+<div class="reacts" id="reacts" hidden></div>
+<div class="actzoom" id="actzoom" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="sheet" id="menu" hidden><div class="in" id="menuIn"></div></div>
+<div class="sheet" id="bots" hidden><div class="in" id="botsIn"></div></div>
+<div class="sheet" id="lobby" hidden><div class="in" id="lobbyIn"></div></div>
+<div class="sheet" id="page" hidden><div class="in" id="pageIn"></div></div>
+
+<template id="rulesTpl">
+  <h2>Как играть</h2>
+  <p>Это дурак, только отбиваешься покерными комбинациями. В колоде 52 карты и 2 джокера, на руке 8, козырь лежит под колодой.</p>
+  <h3>Ход</h3>
+  <ul>
+    <li>Атакуешь одиночкой, парой, тройкой, двумя парами, каре или пятью картами.</li>
+    <li>Кроют <b>тем же числом карт</b> и комбинацией старше. Одиночку бьют как в обычном дураке: старшей той же масти или козырем.</li>
+    <li>Отбился — атакующий может подкинуть <b>комбинацию</b> с номиналом со стола (одиночкой не подкидывают). Отбился от всего — «Бито».</li>
+    <li>Не можешь — «Беру». Атакующий подкидывает вдогонку и ходит снова.</li>
+    <li>В атаке за ход не больше карт, чем было у защитника, и не больше 8.</li>
+    <li>Первым ходит тот, у кого младший козырь. Колода кончилась — кто первым скинул всё, тот не дурак.</li>
+  </ul>
+  <h3>Чем крыть</h3>
+  <div class="rank">
+    <span>1</span><span>Одиночка</span><span>старше той же масти или козырь</span>
+    <span>2</span><span>Пара</span><span>старшая пара</span>
+    <span>3</span><span>Мини-флеш</span><span>3 одной масти</span>
+    <span>3</span><span>Мини-стрит</span><span>3 подряд</span>
+    <span>3</span><span>Сет</span><span>3 одинаковые</span>
+    <span>3</span><span>Мини-стрит-флеш</span><span>старшая тройка</span>
+    <span>4</span><span>Две пары</span><span></span>
+    <span>4</span><span>Каре</span><span>бьёт две пары</span>
+    <span>5</span><span>Стрит</span><span></span>
+    <span>5</span><span>Флеш</span><span>бьёт стрит</span>
+    <span>5</span><span>Фулл-хаус</span><span>бьёт флеш</span>
+    <span>5</span><span>Стрит-флеш</span><span>старше всех из пяти</span>
+  </div>
+  <p>Если тип одинаковый, сначала смотрят, где больше козырей, потом старшинство карт.</p>
+  <h3>«Могнул» и заряд</h3>
+  <p>Покрыл комбинацией старшего типа или с козырем против некозырной — ты <b>могнул</b>: сопернику сразу +1 штраф, тебе +1 заряд. Заряд дают ещё перевод, одиночка, покрытая той же мастью без козыря, и три отбитые атаки за ход.</p>
+  <p>Три деления заряда — выбираешь одну из двух карт-действий. Её масть — масть твоей последней карты.</p>
+  <ul>
+    <li><b>Щит</b> — при защите: атака с его мастью уходит в бито. Козырный щит отбивает любую.</li>
+    <li><b>Разворот ↺</b> — при защите, пока ничего не покрыто: атака возвращается атакующему (если в ней есть его масть). Вместо своего хода — пас.</li>
+    <li><b>+2</b> — в свой ход: соперник добирает 2 карты (козырная — 3), при пустой колоде — штрафные очки.</li>
+    <li><b>Смена козыря ↻</b> — в свой ход: козырем становится масть карты.</li>
+  </ul>
+  <h3>Джокеры и перевод</h3>
+  <p>Джокер становится той картой, которая делает комбинацию сильнее. Одиночный джокер — старший козырь, его бьёт только козырной туз. Пока на атаку никто не ответил, её можно перевести комбинацией того же типа и старшинства.</p>
+  <h3>Серия</h3>
+  <p>Проигравший партию получает столько штрафных очков, сколько карт у него осталось. Серия до 21, в Блице до 11.</p>
+</template>
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>if(!window.mqtt){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';document.head.appendChild(s)}</script>
 <script src="js/rules.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/bot.js"></script>
+<script src="js/meta.js"></script>
 <script src="js/net.js"></script>
 <script src="js/transport-mqtt.js"></script>
 <script src="js/audio.js"></script>

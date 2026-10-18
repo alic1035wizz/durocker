@@ -67,10 +67,11 @@ const VFX = (() => {
     $('hand').addEventListener('pointerout', e => { const c = e.target.closest('.card'); if (c) { c.style.removeProperty('--rx'); c.style.removeProperty('--ry'); } });
   }
   /* скины стола */
-  const SKINS = [{ id: 'felt', name: 'Сукно' }, { id: 'kitchen', name: 'Кухня' }, { id: 'neon', name: 'Ночной клуб' }];
+  const SKINS = [{ id: 'felt', name: 'Сукно' }, { id: 'kitchen', name: 'Кухня' }, { id: 'neon', name: 'Ночной клуб' }, { id: 'gold', name: 'Казино' }];
   function skin(id) {
     if (id) store('durocker-skin', id);
-    const cur = load('durocker-skin') || 'felt';
+    let cur = load('durocker-skin') || 'felt';
+    if (typeof prog === 'function' && !prog().unlocked.table.includes(cur)) cur = 'felt';
     document.documentElement.dataset.skin = cur;
     return cur;
   }

@@ -70,7 +70,7 @@ const TR = (() => {
           if (m.f !== other) return;
           lastSeen = now();
           if (lost) { lost = false; h.msg('hi', { nick }); }
-          if (m.t === 'act') h.msg('act', m.d);
+          if (m.t !== 'hi' && m.t !== 'ping') h.msg(m.t, m.d);
         });
         timers.push(setInterval(() => { if (other) pub('g', 'hb', null, other); }, BEAT));
         watch();
@@ -86,6 +86,7 @@ const TR = (() => {
           other = m.f; lastSeen = now();
           if (lost) lost = false;
           if (m.t === 'st') { if (!got) { got = true; h.open(); } h.msg('st', m.d); }
+          else if (m.t !== 'hb') h.msg(m.t, m.d);
         });
         const hi = () => pub('h', 'hi', { nick: nk });
         hi();

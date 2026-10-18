@@ -29,6 +29,8 @@ const TR = (() => {
           other = m.peer; h.msg('hi', m.data);
         }),
         room.on('act', m => { if (m.peer === other) h.msg('act', m.data); }),
+        room.on('react', m => { if (m.peer === other) h.msg('react', m.data); }),
+        room.on('rematch', m => { if (m.peer === other) h.msg('rematch', m.data); }),
         watchGone(h),
       );
       h.ready();
@@ -46,6 +48,7 @@ const TR = (() => {
           if (!got) { got = true; h.open(); }
           other = m.peer; h.msg('st', m.data);
         }),
+        room.on('react', m => { if (!m.isMe && m.peer === other) h.msg('react', m.data); }),
         watchGone(h),
       );
       const hi = () => { if (!got && room) { room.emit('hi', { nick }).catch(() => {}); hiTimer = setTimeout(hi, 2000); } };
