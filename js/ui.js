@@ -5,6 +5,7 @@
 function fx(o) { o.id = ++fxId; G.fx = o; showFx(o); }
 function showFx(o) {
   const me = o.actor === 'p', opp = oppName();
+  sfxFor(o);
   if (o.what === 'trump') {
     const c = o.low != null ? mkCard(o.low) : null;
     const t = c ? cardName(c) : '';
@@ -16,6 +17,13 @@ function showFx(o) {
   if (o.what === 'takes') {
     if (!me && NET) say('Беру…');
     return banner(me ? 'БЕРУ' : 'БЕРЁТ!', me ? 'Соперник может подкинуть' : 'Можешь подкинуть вдогонку', 'take');
+  }
+  if (o.what === 'action') {
+    const c = { action: o.act, s: o.s, id: 'z', n: -1, r: 16 };
+    if (!me) say(ACTS[o.act].name + '!');
+    VFX.actionZoom(c, me);
+    if (o.act === 'trump') setTimeout(() => { $('felt').classList.remove('tpulse'); void $('felt').offsetWidth; $('felt').classList.add('tpulse'); }, 400);
+    return;
   }
   if (o.what === 'transfer') {
     if (!me && NET) say('Перевожу!');
@@ -29,6 +37,17 @@ function showFx(o) {
   if (NET && !me) say({ attack: 'Хожу', throw: 'Подкину', defend: 'Бью!', addtake: 'Вдогонку!' }[o.what] || '');
   banner(String(o.big || '').toUpperCase(), sub, o.kind);
   if (o.t >= 5) shake(o.t);
+  if (o.t >= 3) VFX.burstFelt(o.t);
+}
+function sfxFor(o) {
+  const w = o.what;
+  if (w === 'attack' || w === 'throw' || w === 'addtake') { AU.play('place'); AU.play('combo', o.t || 0); }
+  else if (w === 'defend') { AU.play('place'); AU.play('cover'); if (o.t) AU.play('combo', o.t); }
+  else if (w === 'takes') AU.play('take');
+  else if (w === 'bito') AU.play('bito');
+  else if (w === 'transfer') AU.play('transfer');
+  else if (w === 'action') { AU.play('action'); if (o.act === 'trump') AU.play('trump'); }
+  else if (w === 'trump') AU.play('trump');
 }
 function banner(big, sub, kind) {
   const b = $('banner');
@@ -59,6 +78,10 @@ function uiPhase() {
 }
 function cardHTML(c, down) {
   if (down) return `<div class="card down" data-id="${c.id}"><div class="back"></div></div>`;
+  if (c.action) {
+    const red = c.s === 1 || c.s === 2, a = ACTS[c.action];
+    return `<div class="card act act-${c.action} ${c.s === G.T ? 'trump' : ''}" data-id="${c.id}"><div class="front ${red ? 'red' : ''}"><span class="ix tl">${SU[c.s]}</span><span class="pip"><span class="ai">${a.icon}</span><small>${a.name}</small></span><span class="ix br">${SU[c.s]}</span></div><div class="back"></div></div>`;
+  }
   if (c.joker) return `<div class="card joker" data-id="${c.id}"><div class="front"><span class="ix tl">★<i>JK</i></span><span class="pip"><span class="jk">★<small>джокер</small></span></span><span class="ix br">★<i>JK</i></span></div><div class="back"></div></div>`;
   const red = c.s === 1 || c.s === 2, tr = c.s === G.T, rk = rn(c.r);
   const center = c.r > 10 && c.r < 14 ? `<span class="fc">${rk}<small>${SU[c.s]}</small></span>` : SU[c.s];
@@ -81,6 +104,11 @@ function renderNet() {
 }
 function render() {
   renderNet();
+  const felt = $('felt');
+  felt.dataset.trump = G.T;
+  const last = !G.deck.length && !G.over;
+  felt.classList.toggle('last', last);
+  AU.setLevel(last ? 2 : 1);
   $('oppCount').textContent = G.B.length ? `${G.B.length} ${plural(G.B.length)}` : '';
   $('botHand').innerHTML = G.B.map(c => `<div class="slot">${cardHTML(c, true)}</div>`).join('');
   $('deckcol').innerHTML = `<div class="deck">${G.deck.length > 1 ? '<div class="stack"></div>' : ''}${G.deck.length ? `<div class="trumpcard">${cardHTML(G.trump, false)}</div>` : ''}${G.deck.length > 1 ? `<div class="cnt">${G.deck.length}</div>` : ''}</div>
@@ -109,6 +137,7 @@ function defenseHint() {
   const ids = new Set();
   o.cover.forEach(e => e.cards.forEach(c => ids.add(c.id)));
   o.transfer.forEach(e => e.cards.forEach(c => ids.add(c.id)));
+  (o.acts || []).forEach(c => ids.add(c.id));
   G.hintKey = key; G.hint = { ...o, ids };
   return G.hint;
 }
@@ -116,8 +145,9 @@ function useHint() {
   const h = uiPhase() === 'p_defend' ? defenseHint() : null;
   if (!h) return;
   const best = h.cover[0] || h.transfer[0];
-  if (!best) return;
-  G.sel = new Set(best.cards.map(c => c.id));
+  const act = (h.acts || []).find(c => c.action === 'shield') || (h.acts || []).find(c => c.action === 'reverse');
+  if (!best && !act) return;
+  G.sel = new Set(best ? best.cards.map(c => c.id) : [act.id]);
   update();
 }
 
@@ -130,21 +160,33 @@ function renderPanel() {
   const hint = p === 'p_defend' ? defenseHint() : null;
   const idle = {
     p_attack: 'Выбери комбинацию для хода',
-    p_defend: hint && !hint.cover.length && !hint.transfer.length ? 'Нечем крыть — бери' : (hint ? `Вариантов: ${hint.cover.length + hint.transfer.length}` : ''),
+    p_defend: hint && !hint.cover.length && !hint.transfer.length && !hint.acts.length ? 'Нечем крыть — бери' : (hint ? `Вариантов: ${hint.cover.length + hint.transfer.length + hint.acts.length}` : ''),
     p_throw: 'Подкинь или скажи «Бито»', p_addtake: 'Подкинь вдогонку или «Хватит»', over: 'Партия окончена',
   }[p] || `Ход: ${oppName()}…`;
+  const actSel = selectedAction();
+  if (actSel) {
+    const ar = actSel === 'mixed' ? { ok: false, why: 'Карту-действие играют отдельно' } : checkAction('p', actSel);
+    ct.textContent = actSel === 'mixed' ? 'ДЕЙСТВИЕ' : ACTS[actSel.action].name.toUpperCase() + ' ' + SU[actSel.s];
+    ct.className = 'ctype act';
+    vd.textContent = ar.why || 'Сейчас не сыграть'; vd.className = 'verdict ' + (ar.ok ? 'ok' : 'no');
+    rh.innerHTML = actSel === 'mixed' ? '<span>Выбери только карту-действие или только обычные карты.</span>' : `<span>${esc(ACTS[actSel.action].desc(SU[actSel.s]))}</span>`;
+    rh.hidden = false;
+    $('ladder').innerHTML = TYPES.map((t, i) => `<span class="${i > 0 && TYPES[i - 1].n !== t.n ? 'gap' : ''}"></span>`).join('');
+    return;
+  }
   if (r.e) { ct.textContent = r.e.name.toUpperCase() + (r.e.jk ? ' ★' : ''); ct.className = 'ctype'; }
   else if (selected().length) { ct.textContent = 'НЕ КОМБО'; ct.className = 'ctype none'; }
   else if (p === 'p_defend' && ob) { ct.textContent = ob.a.name.toUpperCase(); ct.className = 'ctype target'; }
   else { ct.textContent = '—'; ct.className = 'ctype none'; }
   vd.textContent = r.why || idle;
-  const dead = p === 'p_defend' && !selected().length && hint && !hint.cover.length && !hint.transfer.length;
+  const dead = p === 'p_defend' && !selected().length && hint && !hint.cover.length && !hint.transfer.length && !hint.acts.length;
   vd.className = 'verdict ' + (r.why ? (r.ok ? 'ok' : 'no') : dead ? 'no' : 'hint');
   /* как отбиваться: правило под текущую атаку */
   if (p === 'p_defend' && ob) {
     let t = coverRule(ob.a);
     if (hint && hint.transfer.length) t += ' Можно перевести тем же старшинством.';
-    rh.innerHTML = `<span>${esc(t)}</span>${hint && (hint.cover.length || hint.transfer.length) ? '<button type="button" class="hintbtn" id="hintBtn">Подсказка</button>' : ''}`;
+    if (hint && hint.acts.length) t += ` Подходит: ${hint.acts.map(c => cardName(c)).join(', ')}.`;
+    rh.innerHTML = `<span>${esc(t)}</span>${hint && (hint.cover.length || hint.transfer.length || hint.acts.some(c => c.action !== 'trump')) ? '<button type="button" class="hintbtn" id="hintBtn">Подсказка</button>' : ''}`;
     rh.hidden = false;
     const hb = $('hintBtn'); if (hb) hb.onclick = useHint;
   } else if (p === 'p_attack' && !G.table.length && !selected().length) {
@@ -154,10 +196,24 @@ function renderPanel() {
   const tgt = ob && p === 'p_defend' ? ob.a.t : -1, cur = r.e ? r.e.t : -1;
   $('ladder').innerHTML = TYPES.map((t, i) => `<span class="${i === cur ? 'on' : ''} ${i === tgt ? 'tgt' : ''} ${i > 0 && TYPES[i - 1].n !== t.n ? 'gap' : ''}" title="${t.name}"></span>`).join('');
 }
+function selectedAction() {
+  const cs = selected(), a = cs.filter(c => c.action);
+  if (!a.length) return null;
+  return cs.length === 1 ? a[0] : 'mixed';
+}
 function renderActions() {
   const p = uiPhase(), ok = check().ok, host = !NET || NET.role === 'host';
   const dis = ok ? '' : 'disabled';
   let h;
+  const actSel = p.startsWith('p_') ? selectedAction() : null;
+  if (actSel) {
+    const aok = actSel !== 'mixed' && checkAction('p', actSel).ok;
+    h = `<button class="btn gold" type="button" data-a="action" ${aok ? '' : 'disabled'}>${actSel === 'mixed' ? 'Действие — отдельно' : 'Сыграть «' + esc(ACTS[actSel.action].name) + '»'}</button>`;
+    if (p === 'p_defend') h += `<button class="btn red" type="button" data-a="take">Беру</button>`;
+    else if (p === 'p_throw') h += `<button class="btn orange" type="button" data-a="bito">Бито</button>`;
+    else if (p === 'p_addtake') h += `<button class="btn grey" type="button" data-a="enough">Хватит</button>`;
+    $('actions').innerHTML = h; return;
+  }
   if (p === 'p_attack') h = `<button class="btn blue" type="button" data-a="play" ${dis}>Ходить</button>`;
   else if (p === 'p_throw') h = `<button class="btn blue" type="button" data-a="play" ${dis}>Подкинуть</button><button class="btn orange" type="button" data-a="bito">Бито</button>`;
   else if (p === 'p_defend') {
@@ -184,11 +240,17 @@ function showOver() {
     $('leaveBtn').onclick = leaveTable; return;
   }
   if (!G.over) { o.hidden = true; return; }
+  if (G.overFx !== G.over) {
+    G.overFx = G.over;
+    if (G.over === 'p') { AU.play('win'); VFX.confetti(); } else if (G.over === 'b') AU.play('lose');
+  }
   const opp = esc(oppName()), pen = G.penalty || 0;
   let h, s;
   if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно. Штрафа нет.'; }
   else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp} остался с картами: +${pen} штрафа ему.`; }
-  else { h = 'ДУРАК!'; s = `У тебя осталось ${pen} ${plural(pen)}: +${pen} штрафа.`; }
+  else { h = 'ДУРАК!'; s = `У тебя осталось карт на ${pen} штрафа (карта-действие — 2 очка).`; }
+  const ex = G.extra || { p: 0, b: 0 };
+  if (ex.p || ex.b) s += ` Ещё от «+2» при пустой колоде: ты +${ex.p}, ${opp} +${ex.b}.`;
   let ser = `<div class="series"><div><span>Ты</span><b>${SERIES.p}</b></div><div class="to">до ${SERIES_TO}</div><div><span>${opp}</span><b>${SERIES.b}</b></div></div>`;
   if (SERIES.done) {
     const lost = SERIES.p >= SERIES_TO && SERIES.p >= SERIES.b;
@@ -214,7 +276,9 @@ function tickTimer() {
     el.firstElementChild.style.width = (left / TURN_MS * 100) + '%';
     el.classList.toggle('late', left < 5000);
     el.classList.toggle('mine', G.phase.who === 'p');
-    $('timerTxt').textContent = Math.ceil(left / 1000) + ' с · ' + (G.phase.who === 'p' ? 'твой ход' : 'ход соперника');
+    const sec = Math.ceil(left / 1000);
+    $('timerTxt').textContent = sec + ' с · ' + (G.phase.who === 'p' ? 'твой ход' : 'ход соперника');
+    if (sec <= 5 && G.phase.who === 'p' && tickTimer.last !== sec) { tickTimer.last = sec; AU.play('tick'); }
   } else el.hidden = true;
   requestAnimationFrame(tickTimer);
 }
@@ -266,6 +330,7 @@ function update(deal) {
       el.animate([{ transform: `translate(${dx}px,${dy}px) ${o.down ? 'rotateY(180deg)' : ''}` }, { transform: end }],
         { duration: 420, easing: 'cubic-bezier(.2,.9,.25,1.08)' });
     } else if (deal && el.closest('.hand,.botHand')) {
+      if (k < 12) setTimeout(() => AU.play('deal'), k * 70);
       el.animate([{ transform: `translate(${dx0 - cx}px,${dy0 - cy}px) rotate(-25deg) rotateY(180deg)` }, { transform: end }],
         { duration: 480, delay: (k++) * 70, easing: 'cubic-bezier(.2,.9,.25,1.05)', fill: 'backwards' });
     } else {
@@ -355,10 +420,38 @@ function renderLobby() {
 function toggleCard(id) {
   if (!uiPhase().startsWith('p_')) return;
   if (G.sel.has(id)) G.sel.delete(id); else if (G.sel.size < 5) G.sel.add(id);
+  AU.play('select');
   document.querySelectorAll('#hand .slot').forEach(s => s.classList.toggle('sel', G.sel.has(s.firstElementChild.dataset.id)));
   layout(); renderPanel(); renderActions();
 }
+function renderSound() {
+  const b = $('sndBtn');
+  b.textContent = AU.music ? '♫' : AU.sfx ? '♪' : '×';
+  b.setAttribute('aria-label', AU.music ? 'Музыка и звуки включены' : AU.sfx ? 'Только звуки' : 'Звук выключен');
+  b.classList.toggle('off', !AU.sfx);
+}
+function renderSettings() {
+  const cur = VFX.skin();
+  $('settings').innerHTML = `<h3>Звук</h3>
+    <label class="toggle"><input type="checkbox" id="stMusic" ${AU.music ? 'checked' : ''}><span></span>Музыка</label>
+    <label class="toggle"><input type="checkbox" id="stSfx" ${AU.sfx ? 'checked' : ''}><span></span>Звуки карт и эффектов</label>
+    <h3>Стол</h3>
+    <div class="skins">${VFX.SKINS.map(k => `<button type="button" class="skin sk-${k.id} ${k.id === cur ? 'on' : ''}" data-skin="${k.id}"><i></i>${k.name}</button>`).join('')}</div>`;
+  $('stMusic').onchange = e => { AU.unlock(); AU.setMusic(e.target.checked); renderSound(); };
+  $('stSfx').onchange = e => { AU.unlock(); AU.setSfx(e.target.checked); renderSound(); };
+  $('settings').querySelectorAll('[data-skin]').forEach(b => { b.onclick = () => { VFX.skin(b.dataset.skin); renderSettings(); }; });
+}
 function bindUI() {
+  addEventListener('pointerdown', () => AU.unlock(), { passive: true });
+  addEventListener('keydown', () => AU.unlock());
+  document.addEventListener('click', e => { if (e.target.closest('button')) AU.play('click'); });
+  $('sndBtn').onclick = () => {
+    AU.unlock();
+    if (AU.music) AU.setMusic(false); else if (AU.sfx) AU.setSfx(false); else { AU.setSfx(true); AU.setMusic(true); }
+    renderSound();
+  };
+  renderSound();
+  VFX.skin(); VFX.bindTilt();
   $('hand').addEventListener('click', e => { const c = e.target.closest('.card'); if (c) toggleCard(c.dataset.id); });
   $('actions').addEventListener('click', e => {
     const a = e.target.closest('[data-a]');
@@ -372,7 +465,7 @@ function bindUI() {
   $('botsIn').addEventListener('click', e => { const b = e.target.closest('[data-bot]'); if (b) pickBot(b.dataset.bot); });
   $('bots').addEventListener('click', e => { if (e.target.id === 'bots') $('bots').hidden = true; });
   $('netBtn').onclick = () => { if (NET) { leaveTable(); return; } renderLobby(); $('lobby').hidden = false; };
-  $('rulesBtn').onclick = () => { $('sheet').hidden = false; };
+  $('rulesBtn').onclick = () => { renderSettings(); $('sheet').hidden = false; };
   $('closeSheet').onclick = () => { $('sheet').hidden = true; };
   $('sheet').addEventListener('click', e => { if (e.target.id === 'sheet') $('sheet').hidden = true; });
   $('lobby').addEventListener('click', e => { if (e.target.id === 'lobby' && !NET) $('lobby').hidden = true; });

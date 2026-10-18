@@ -68,6 +68,61 @@ function botDefense(bot) {
   return { type: 'play', e: c };
 }
 
+/* карты-действия бота */
+const botActs = kind => G.B.filter(c => c.action === kind && checkAction('b', c).ok);
+function trumpWorth(c) {
+  /* меняем козырь, если в новой масти у бота заметно больше карт, чем в старой */
+  const cnt = s => G.B.filter(x => x.s === s && !x.action && !x.joker).length;
+  return cnt(c.s) >= cnt(G.T) + 2;
+}
+function botActionFirst(bot) {
+  const k = G.phase.kind, rnd = bot.id === 'student' ? Math.random() < 0.5 : true;
+  const only = G.B.every(c => c.action);
+  if (k === 'attack' || k === 'throw' || k === 'addtake') {
+    const plus = botActs('plus')[0];
+    if (plus && rnd && (k !== 'attack' || G.B.length > 1 || only)) return plus;
+    const tr = botActs('trump').find(trumpWorth);
+    if (tr && rnd) return tr;
+    if (k === 'attack' && only) return G.B.find(c => checkAction('b', c).ok) || null;
+  }
+  return null;
+}
+function botDefenseAction(bot, d) {
+  const sh = botActs('shield'), rv = botActs('reverse');
+  const a = openB().a;
+  if (!d) return sh[0] || rv[0] || null;
+  /* Шулер и Валера бросают щит на дорогую атаку, чтобы не тратить козыри */
+  if (bot.id !== 'student' && (d.e.tr > 0 || d.e.jk > 0 || a.n >= 4)) return sh[0] || null;
+  return null;
+}
+
+/* решение бота: что сделать сейчас. Возвращает [действие, карты, реплика] */
+function botDecide(bot) {
+  const k = G.phase.kind;
+  const first = botActionFirst(bot);
+  if (first) return ['action', [first], ACTS[first.action].name + '!'];
+  if (k === 'attack') {
+    const e = botAttackPick(bot);
+    if (e) return ['play', e.cards];
+    const any = G.B.find(c => checkAction('b', c).ok);
+    return any ? ['action', [any]] : ['pass'];
+  }
+  if (k === 'throw') {
+    const e = botThrowPick(bot, false);
+    return e ? ['play', e.cards, 'Подкину'] : ['bito', [], 'Бито'];
+  }
+  if (k === 'defend') {
+    const d = botDefense(bot);
+    const ac = botDefenseAction(bot, d);
+    if (ac) return ['action', [ac], ACTS[ac.action].name + '!'];
+    if (!d) return ['take', [], 'Беру…'];
+    if (d.type === 'transfer') return ['transfer', d.e.cards, 'Перевожу!'];
+    return ['play', d.e.cards, ['Бью!', 'Покрыл', 'Держи'][Math.floor(Math.random() * 3)]];
+  }
+  const e = botThrowPick(bot, true);
+  return e ? ['play', e.cards, 'Вдогонку!'] : ['enough', []];
+}
+
 let botQueued = 0;
 function drive() {
   if (NET || !G || G.over || G.busy || G.phase.who !== 'b') return;
@@ -75,21 +130,9 @@ function drive() {
   run(async () => {
     await wait(bot.id === 'student' ? 650 : 850);
     if (q !== botQueued || G.phase.who !== 'b' || G.busy) return;
-    const k = G.phase.kind;
-    if (k === 'attack') {
-      const e = botAttackPick(bot);
-      if (e) act('b', 'play', e.cards); else run(() => endTurn(true));
-    } else if (k === 'throw') {
-      const e = botThrowPick(bot, false);
-      if (e) { say('Подкину'); act('b', 'play', e.cards); } else { say('Бито'); act('b', 'bito'); }
-    } else if (k === 'defend') {
-      const d = botDefense(bot);
-      if (!d) { say('Беру…'); act('b', 'take'); }
-      else if (d.type === 'transfer') { say('Перевожу!'); act('b', 'transfer', d.e.cards); }
-      else { say(['Бью!', 'Покрыл', 'Держи'][Math.floor(Math.random() * 3)]); act('b', 'play', d.e.cards); }
-    } else if (k === 'addtake') {
-      const e = botThrowPick(bot, true);
-      if (e) { say('Вдогонку!'); act('b', 'play', e.cards); } else act('b', 'enough');
-    }
+    const [type, cards, line] = botDecide(bot);
+    if (line) say(line);
+    if (type === 'pass') { run(() => endTurn(true)); return; }
+    if (!act('b', type, cards)) { console.warn('бот: ход отклонён', type); act('b', G.phase.kind === 'defend' ? 'take' : G.phase.kind === 'throw' ? 'bito' : 'enough'); }
   });
 }

@@ -21,6 +21,7 @@
     <div class="logo">ДУРОКЕР</div>
     <div class="score"><span class="pill" id="scorePill"></span>
       <button class="iconbtn net" id="netBtn" type="button">Онлайн</button>
+      <button class="iconbtn snd" id="sndBtn" type="button">♫</button>
       <button class="iconbtn" id="rulesBtn" type="button" aria-label="Правила">?</button>
       <button class="iconbtn" id="newBtn" type="button" aria-label="Новая серия">↻</button></div>
   </header>
@@ -40,6 +41,7 @@
       <div class="gravecol" id="gravecol"></div>
       <div class="banner" id="banner"><div class="big" id="bBig"></div><div class="sub" id="bSub"></div></div>
       <div class="over" id="over" hidden></div>
+      <div class="lastround" aria-hidden="true">ПОСЛЕДНИЙ КРУГ</div>
     </section>
 
     <div class="handwrap"><span id="handInfo"></span>
@@ -65,6 +67,7 @@
         <dt>5 карт</dt><dd>стрит → флеш → фулл-хаус → стрит-флеш</dd>
       </dl>
       <p>Внутри типа решают козыри, потом старшинство. Джокер — любая карта; одиночный джокер бьёт всё, кроме козырного туза.</p>
+      <p><b>Действия:</b> щит и разворот — при защите, если в атаке есть их масть; +2 и смена козыря — в свой ход.</p>
       <p class="keys"><kbd>Enter</kbd> главная кнопка · <kbd>H</kbd> подсказка · <kbd>B</kbd> беру / бито · <kbd>Esc</kbd> снять выбор</p>
     </section>
   </aside>
@@ -78,10 +81,14 @@
   <div class="in" id="lobbyIn"></div>
 </div>
 
+<div class="actzoom" id="actzoom" hidden></div>
+
 <div class="sheet" id="sheet" hidden>
   <div class="in">
+    <h2>Настройки</h2>
+    <div id="settings" class="settings"></div>
     <h2>Как играть</h2>
-    <p>Это дурак, только отбиваешься покерными комбинациями. В колоде 52 карты и 2 джокера, на руке 8, козырь лежит под колодой.</p>
+    <p>Это дурак, только отбиваешься покерными комбинациями. В колоде 52 обычные карты, 2 джокера и 16 карт-действий, на руке 8, козырь лежит под колодой.</p>
     <h3>Ход</h3>
     <ul>
       <li>Атакуешь одиночкой, парой, тройкой, двумя парами, каре или пятью картами.</li>
@@ -110,6 +117,15 @@
     <p>При защите внизу всегда написано, чем можно покрыть атаку, а подходящие карты в руке подсвечены. Кнопка «Подсказка» сама выберет самый дешёвый ответ.</p>
     <h3>Джокеры</h3>
     <p>Джокер становится той картой, которая делает комбинацию сильнее. Такая комбинация проигрывает точно такой же без джокера. Одиночный джокер — старший козырь: его бьёт только козырной туз.</p>
+    <h3>Карты-действия</h3>
+    <p>Четыре вида, каждый в четырёх мастях, как цветные карты в УНО. Масть решает, когда карта срабатывает, козырная версия сильнее. Карту-действие играют отдельно, выбрав только её.</p>
+    <ul>
+      <li><b>Щит</b> — при защите: атака, в которой есть масть щита, уходит в бито без покрытия. Козырный щит отбивает любую атаку.</li>
+      <li><b>Разворот ↺</b> — при защите, пока ничего не покрыто: вся атака возвращается атакующему, если в ней есть масть разворота. Вместо своего хода — пас.</li>
+      <li><b>+2</b> — когда ходишь ты: соперник добирает 2 карты (козырная — 3). Колода пуста — столько же штрафных очков.</li>
+      <li><b>Смена козыря</b> — в любой свой ход: козырем до конца партии становится масть карты.</li>
+    </ul>
+    <p>Карта-действие, оставшаяся на руке в конце партии, стоит 2 штрафных очка.</p>
     <h3>Перевод</h3>
     <p>Пока на атаку никто не ответил, защитник может перевести её, положив комбинацию того же типа и старшинства: на пару восьмёрок — свою пару восьмёрок. Теперь отбивается соперник. Перевод включается при выборе соперника или создании стола.</p>
     <h3>Серия до 21</h3>
@@ -121,12 +137,14 @@
 </div>
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
-<script>window.mqtt||document.write('<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"><\/script>')</script>
+<script>if(!window.mqtt){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';document.head.appendChild(s)}</script>
 <script src="js/rules.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/bot.js"></script>
 <script src="js/net.js"></script>
 <script src="js/transport-mqtt.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/vfx.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>

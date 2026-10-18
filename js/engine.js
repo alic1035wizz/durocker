@@ -25,17 +25,17 @@ function newGame() {
   for (let n = 0; n < DECK; n++) deck.push(mkCard(n));
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
   /* под колоду кладём обычную карту, а не джокера: по ней определяется козырь */
-  if (deck[0].joker) { const k = deck.findIndex(c => !c.joker); [deck[0], deck[k]] = [deck[k], deck[0]]; }
+  if (deck[0].joker || deck[0].action) { const k = deck.findIndex(c => !c.joker && !c.action); [deck[0], deck[k]] = [deck[k], deck[0]]; }
   G = {
     deck, T: deck[0].s, trump: deck[0], P: [], B: [], table: [], grave: 0, attacker: 'p', phase: { who: null },
     limit: HAND, sel: new Set(), sort: G ? G.sort : 'r', over: null, busy: true, fx: null, online: !!NET,
-    rules: tableRules(), known: new Set(), deadline: 0,
+    rules: tableRules(), known: new Set(), deadline: 0, extra: { p: 0, b: 0 },
   };
   $('over').hidden = true;
   commit();
   for (let i = 0; i < HAND; i++) { G.P.push(G.deck.pop()); G.B.push(G.deck.pop()); }
   update(true); sync();
-  const low = s => H(s).filter(c => c.s === G.T).sort((a, b) => a.r - b.r)[0];
+  const low = s => H(s).filter(c => c.s === G.T && c.r <= 14).sort((a, b) => a.r - b.r)[0];
   const lp = low('p'), lb = low('b');
   const first = !lb || (lp && lp.r < lb.r) ? 'p' : 'b';
   const lc = first === 'p' ? lp : lb;
@@ -67,9 +67,7 @@ function act(seat, type, cards) {
     if (k === 'defend') {
       openB().d = e;
       fx({ what: 'defend', actor: seat, kind: 'def', big: e.name, t: e.t });
-      if (!hand.length || (!openB() && !H(G.attacker).length)) { commit(); run(() => endTurn(true)); return true; }
-      G.phase = openB() ? { who: seat, kind: 'defend' } : { who: G.attacker, kind: 'throw' };
-      commit(); return true;
+      return afterCover(seat);
     }
     G.table.push({ a: e, d: null });
     if (k === 'addtake') {
@@ -81,6 +79,7 @@ function act(seat, type, cards) {
     G.phase = { who: other(seat), kind: 'defend' };
     commit(); return true;
   }
+  if (type === 'action') return playAction(seat, cards[0]);
   if (type === 'transfer') {
     const r = checkTransfer(seat, cards);
     if (!r.ok) return false;
@@ -102,6 +101,61 @@ function act(seat, type, cards) {
   if (type === 'enough' && k === 'addtake') { run(() => endTurn(false)); return true; }
   return false;
 }
+function afterCover(seat) {
+  if (!H(seat).length || (!openB() && !H(G.attacker).length)) { commit(); run(() => endTurn(true)); return true; }
+  G.phase = openB() ? { who: seat, kind: 'defend' } : { who: G.attacker, kind: 'throw' };
+  commit(); return true;
+}
+
+/* карта-действие */
+function playAction(seat, c) {
+  const r = checkAction(seat, c);
+  if (!r.ok) return false;
+  const k = G.phase.kind, opp = other(seat), hand = H(seat);
+  removeFrom(hand, [c]); forget([c]);
+  fx({ what: 'action', actor: seat, act: c.action, s: c.s, kind: 'gold' });
+  if ((c.action === 'shield' || c.action === 'reverse' || (c.action === 'trump' && c.s === G.T)) && k === 'attack') {
+    G.grave++; passTurn(seat); return true;
+  }
+  if (c.action === 'shield') {
+    openB().d = { t: -1, n: 1, tr: 0, jk: 0, keys: [], name: 'Щит', cards: [c], shield: true };
+    return afterCover(seat);
+  }
+  if (c.action === 'reverse') {
+    G.grave++;
+    G.attacker = seat;
+    G.limit = Math.min(HAND, H(opp).length);
+    G.phase = { who: opp, kind: 'defend' };
+    commit(); return true;
+  }
+  if (c.action === 'plus') {
+    G.grave++;
+    const n = c.s === G.T ? 3 : 2;
+    for (let i = 0; i < n; i++) { if (G.deck.length) H(opp).push(G.deck.pop()); else G.extra[opp]++; }
+    update(true);
+  }
+  if (c.action === 'trump') {
+    G.grave++;
+    G.T = c.s;
+    /* комбинации на столе пересчитываются под новый козырь */
+    G.table.forEach(b => { b.a = ev(b.a.cards) || b.a; if (b.d && !b.d.shield) b.d = ev(b.d.cards) || b.d; });
+    G.hintKey = null;
+  }
+  if (k === 'attack' && !hand.length) { commit(); run(() => endTurn(true)); return true; }
+  commit(); return true;
+}
+/* пас вместо хода: ход переходит сопернику */
+function passTurn(seat) {
+  G.busy = true; G.phase = { who: null }; commit();
+  run(async () => {
+    await wait(700);
+    refill(seat); refill(other(seat)); update(true); sync();
+    await wait(reduced ? 100 : 600);
+    if (checkOver()) return;
+    startTurn(other(seat));
+  });
+}
+
 /* Шулер помнит карты, которые ты забрал со стола */
 function forget(cs) { if (G.known) cs.forEach(c => G.known.delete(c.id)); }
 
@@ -137,9 +191,11 @@ function checkOver() {
   G.penalty = 0;
   if (G.over !== 'draw') {
     const loser = other(G.over);
-    G.penalty = H(loser).length;
+    /* каждая карта — очко, карта-действие на руке — два */
+    G.penalty = H(loser).reduce((s, c) => s + (c.action ? 2 : 1), 0);
     SERIES[loser] += G.penalty;
   }
+  SERIES.p += G.extra.p; SERIES.b += G.extra.b;
   SERIES.games++;
   if (SERIES.p >= SERIES_TO || SERIES.b >= SERIES_TO) SERIES.done = true;
   saveSeries();

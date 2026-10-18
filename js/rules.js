@@ -20,7 +20,16 @@ const TYPES = [
 ];
 const TN = TYPES.map(t => t.name);
 const HAND = 8;
-const DECK = 54;          // 52 карты + 2 джокера
+const DECK = 70;          // 52 карты + 2 джокера + 16 карт-действий
+/* карты-действия: 4 вида × 4 масти, как цветные карты в УНО.
+   Масть решает, когда карта срабатывает; козырная версия сильнее */
+const ACTS = {
+  shield:  { name: 'Щит', icon: 'ЩИТ', desc: s => `При защите: атака, в которой есть ${s}, уходит в бито без покрытия. Козырный щит отбивает любую атаку.` },
+  reverse: { name: 'Разворот', icon: '↺', desc: s => `При защите: вся атака возвращается атакующему, если в ней есть ${s}. Козырный — любая атака. Вместо своего хода — передать ход.` },
+  plus:    { name: '+2', icon: '+2', desc: s => `Когда ходишь ты: соперник добирает 2 карты из колоды (козырная — 3). Колода пуста — столько же штрафных очков.` },
+  trump:   { name: 'Смена козыря', icon: 'КОЗЫРЬ', desc: s => `В любой свой ход: козырем до конца партии становится ${s}.` },
+};
+const ACT_KEYS = ['shield', 'reverse', 'plus', 'trump'];
 const JOKER_R = 15;
 const TURN_MS = 30000;    // ход онлайн
 const SERIES_TO = 21;     // штрафных очков до проигрыша серии
@@ -30,10 +39,11 @@ const rn = r => (r === JOKER_R ? '★' : ({ 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
 const other = s => (s === 'p' ? 'b' : 'p');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* карта — число 0..53: 0..51 обычные (масть = n/13, ранг = n%13 + 2), 52 и 53 — джокеры */
-const mkCard = n => (n >= 52 ? { n, r: JOKER_R, s: 4, id: 'c' + n, joker: true } : { n, r: n % 13 + 2, s: Math.floor(n / 13), id: 'c' + n });
+const mkCard = n => (n >= 54 ? { n, r: 16, s: (n - 54) % 4, id: 'c' + n, action: ACT_KEYS[Math.floor((n - 54) / 4)] }
+  : n >= 52 ? { n, r: JOKER_R, s: 4, id: 'c' + n, joker: true } : { n, r: n % 13 + 2, s: Math.floor(n / 13), id: 'c' + n });
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const plural = n => (n === 1 ? 'карта' : n < 5 ? 'карты' : 'карт');
-const cardName = c => (c.joker ? 'джокер' : rn(c.r) + SU[c.s]);
+const cardName = c => (c.action ? `«${ACTS[c.action].name}» ${SU[c.s]}` : c.joker ? 'джокер' : rn(c.r) + SU[c.s]);
 
 /* G — партия; 'p' — ты (или хозяин стола), 'b' — соперник (бот или гость) */
 let G, TOK = 0, NET = null, fxId = 0;
@@ -99,7 +109,7 @@ function cmpE(a, b) {
 /* полная оценка: джокер сам становится картой, которая делает комбинацию сильнее всего */
 function ev(cs) {
   const n = cs.length;
-  if (!n || n > 5) return null;
+  if (!n || n > 5 || cs.some(c => c.action)) return null;
   const jokers = cs.filter(c => c.joker), real = cs.filter(c => !c.joker);
   if (!jokers.length) { const e = evPlain(cs); if (e) e.cards = cs; return e; }
   if (n === 1) return { t: 0, keys: [13.5], n: 1, tr: 1, jk: 1, name: 'Одиночка', cards: cs };
@@ -146,7 +156,7 @@ function sameRank(e, a) {
 
 /* ---------- состояние стола ---------- */
 const H = s => (s === 'p' ? G.P : G.B);
-const val = c => (c.joker ? 30 : c.r + (c.s === G.T ? 14 : 0));
+const val = c => (c.action ? 22 : c.joker ? 30 : c.r + (c.s === G.T ? 14 : 0));
 const cost = cs => cs.reduce((s, c) => s + val(c), 0);
 const atkCount = () => G.table.reduce((s, b) => s + b.a.n, 0);
 const openB = () => G.table.find(b => !b.d) || null;
@@ -187,10 +197,41 @@ function checkTransfer(seat, cs) {
   return { ok: true, e, why: 'Можно перевести!' };
 }
 
+/* можно ли сейчас сыграть карту-действие */
+function checkAction(seat, c) {
+  const no = why => ({ ok: false, why }), ok = why => ({ ok: true, why });
+  if (!c || !c.action || G.over || G.busy || G.phase.who !== seat) return { ok: false };
+  const k = G.phase.kind, opp = other(seat), trumpy = c.s === G.T;
+  const hasSuit = e => trumpy || e.cards.some(x => x.s === c.s);
+  if (c.action === 'shield') {
+    if (k === 'attack') return ok('Пас: щит уйдёт в бито, ход перейдёт сопернику');
+    if (k !== 'defend') return no('Щит играют при защите');
+    return hasSuit(openB().a) ? ok('Атака уйдёт в бито без покрытия') : no(`В атаке нет ${SU[c.s]} — щит не подходит`);
+  }
+  if (c.action === 'reverse') {
+    if (k === 'attack') return ok('Пас: ход перейдёт сопернику');
+    if (k !== 'defend') return no('Разворот играют при защите или вместо хода');
+    if (!noneDefended()) return no('Разворот — только пока ничего не покрыто');
+    if (!G.table.some(b => hasSuit(b.a))) return no(`В атаке нет ${SU[c.s]} — разворот не подходит`);
+    if (atkCount() > Math.min(HAND, H(opp).length)) return no('У соперника не хватит карт');
+    return ok('Вся атака вернётся атакующему');
+  }
+  if (c.action === 'plus') {
+    if (k === 'defend') return no('+2 играют, когда ходишь ты');
+    const n = trumpy ? 3 : 2;
+    return ok(G.deck.length ? `Соперник доберёт ${n} ${plural(n)}` : `Колода пуста: сопернику +${n} штрафа`);
+  }
+  if (c.action === 'trump') {
+    if (c.s !== G.T) return ok(`Козырем станет ${SU[c.s]}`);
+    return k === 'attack' ? ok('Эта масть уже козырь: пас, ход перейдёт сопернику') : no('Эта масть уже козырь');
+  }
+  return { ok: false };
+}
+
 /* все ответы на открытую атаку: чем покрыть и чем перевести */
 function defenseOptions(seat) {
   const b = openB();
-  if (!b) return { cover: [], transfer: [] };
+  if (!b) return { cover: [], transfer: [], acts: [] };
   const hand = H(seat), a = b.a;
   const cover = combos(hand, [a.n]).filter(e => beats(e, a)).sort((x, y) => cost(x.cards) - cost(y.cards));
   let transfer = [];
@@ -199,9 +240,11 @@ function defenseOptions(seat) {
     if (atkCount() + a.n <= Math.min(HAND, next))
       transfer = combos(hand, [a.n]).filter(e => sameRank(e, G.table[0].a)).sort((x, y) => cost(x.cards) - cost(y.cards));
   }
-  return { cover, transfer };
+  const acts = hand.filter(c => c.action && (c.action === 'shield' || c.action === 'reverse' || c.action === 'trump') && checkAction(seat, c).ok);
+  return { cover, transfer, acts };
 }
 function combos(hand, sizes) {
+  hand = hand.filter(c => !c.action);
   const out = [], L = hand.length, pick = [];
   for (const n of sizes) {
     if (n < 1 || n > L || (n === 5 && L > 24)) continue;
