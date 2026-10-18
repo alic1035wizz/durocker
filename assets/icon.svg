@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <rect width="64" height="64" rx="12" fill="#1c6b4b"/>
+  <rect x="8" y="12" width="26" height="38" rx="3" fill="#b8322b" stroke="#f8f1df" stroke-width="2" transform="rotate(-12 21 31)"/>
+  <rect x="28" y="10" width="26" height="38" rx="3" fill="#f8f1df" stroke="#eab54b" stroke-width="2" transform="rotate(10 41 29)"/>
+  <text x="41" y="36" font-family="monospace" font-size="20" font-weight="700" fill="#d9362f" text-anchor="middle" transform="rotate(10 41 29)">♥</text>
+</svg>

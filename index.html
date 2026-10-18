@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Дурокер</title>
+<meta name="description" content="Дурак на 52 карты, где отбиваются покерными комбинациями. Игра с ботом и онлайн с другом по коду стола.">
+<meta name="theme-color" content="#06191a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="app">
+  <header class="top">
+    <div class="logo">ДУРОКЕР</div>
+    <div class="score"><span class="pill" id="scorePill"></span>
+      <button class="iconbtn net" id="netBtn" type="button">Онлайн</button>
+      <button class="iconbtn" id="rulesBtn" type="button" aria-label="Правила">?</button>
+      <button class="iconbtn" id="newBtn" type="button" aria-label="Новая партия">↻</button></div>
+  </header>
+
+  <main class="tcol">
+    <section class="opp">
+      <div class="oppname"><span class="dot" id="oppDot" hidden></span><b id="oppName"></b><span id="oppCount"></span></div>
+      <div class="botHand" id="botHand"></div>
+      <div class="bubble" id="bubble"></div>
+    </section>
+
+    <section class="felt" id="felt">
+      <svg class="print" viewBox="0 0 400 120" aria-hidden="true"><path id="arc" d="M20,110 Q200,-10 380,110" fill="none"/>
+        <text><textPath href="#arc" startOffset="50%" text-anchor="middle">КРОЙ СТОЛЬКО ЖЕ КАРТ · КОМБИНАЦИЯ СТАРШЕ</textPath></text></svg>
+      <div class="deckcol" id="deckcol"></div>
+      <div class="battles" id="battles"></div>
+      <div class="gravecol" id="gravecol"></div>
+      <div class="banner" id="banner"><div class="big" id="bBig"></div><div class="sub" id="bSub"></div></div>
+      <div class="over" id="over" hidden></div>
+    </section>
+
+    <div class="handwrap"><span id="handInfo"></span>
+      <div class="sortbtns"><button type="button" id="sortR" class="on">Ранг</button><button type="button" id="sortS">Масть</button></div></div>
+    <section class="hand" id="hand" aria-label="Твоя рука"></section>
+  </main>
+
+  <aside class="side">
+    <section class="panel" aria-live="polite">
+      <div class="prow"><span class="ctype none" id="ctype">—</span><span class="verdict hint" id="verdict"></span></div>
+      <div class="ladder" id="ladder" aria-hidden="true"></div>
+    </section>
+    <div class="actions" id="actions"></div>
+    <section class="siderules">
+      <h3>Что старше</h3>
+      <ol>
+        <li>Одиночка <span>1</span></li><li>Пара <span>2</span></li><li>Сет <span>3</span></li>
+        <li>Две пары <span>4</span></li><li>Каре <span>4</span></li><li>Стрит <span>5</span></li>
+        <li>Флеш <span>5</span></li><li>Фулл-хаус <span>5</span></li><li>Стрит-флеш <span>5</span></li>
+      </ol>
+      <p>Кроют тем же числом карт. Внутри типа решают козыри, потом старшинство.</p>
+      <p class="keys"><kbd>Enter</kbd> главная кнопка · <kbd>Esc</kbd> снять выбор · <kbd>B</kbd> беру / бито</p>
+    </section>
+  </aside>
+</div>
+
+<div class="sheet" id="lobby" hidden>
+  <div class="in" id="lobbyIn"></div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="in">
+    <h2>Как играть</h2>
+    <p>Это дурак на 52 карты, только отбиваешься покерными комбинациями. На руке 8 карт, козырь лежит под колодой.</p>
+    <h3>Ход</h3>
+    <ul>
+      <li>Атакуешь одиночной картой, парой, сетом, двумя парами, каре или пятикарточной комбинацией.</li>
+      <li>Кроют тем же числом карт и комбинацией старше. Одиночку бьют как в обычном дураке: старшей той же масти или козырем.</li>
+      <li>Если отбился, атакующий может подкинуть комбинацию, где есть номинал со стола. Отбился от всего — «Бито».</li>
+      <li>Не можешь — «Беру». Тогда атакующий подкидывает вдогонку и ходит снова.</li>
+      <li>Всего в атаке за ход не больше карт, чем было у защитника, и не больше 8.</li>
+      <li>Первым ходит тот, у кого младший козырь. Колода кончилась — кто первым скинул всё, тот не дурак.</li>
+    </ul>
+    <h3>Что старше</h3>
+    <div class="rank">
+      <span>1</span><span>Одиночка</span><span>1 карта</span>
+      <span>2</span><span>Пара</span><span>2 карты</span>
+      <span>3</span><span>Сет</span><span>3 карты</span>
+      <span>4</span><span>Две пары</span><span>4 карты</span>
+      <span>5</span><span>Каре</span><span>4 карты, бьёт две пары</span>
+      <span>6</span><span>Стрит</span><span>5 карт</span>
+      <span>7</span><span>Флеш</span><span>бьёт стрит</span>
+      <span>8</span><span>Фулл-хаус</span><span>бьёт флеш</span>
+      <span>9</span><span>Стрит-флеш</span><span>бьёт всё из пяти</span>
+    </div>
+    <h3>Козыри в комбинациях</h3>
+    <p>Внутри одного типа сначала смотрят, в какой комбинации больше козырей, потом старшинство. Пара двоек с козырной двойкой бьёт пару тузов без козыря, а флеш из козырей бьёт любой обычный флеш.</p>
+    <h3>Онлайн</h3>
+    <p>Нажми «Онлайн», создай стол и отправь другу код из 4 символов. Друг открывает этот же сайт с телефона или компьютера, жмёт «Онлайн» и вводит код.</p>
+    <div class="actions"><button class="btn blue" type="button" id="closeSheet">Понятно</button></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/bot.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
