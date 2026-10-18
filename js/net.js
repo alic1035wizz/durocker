@@ -68,7 +68,8 @@ function joinTable() {
       if (!NET) return;
       if (topic === 'full') { lobbyStatus('За этим столом уже играют двое.', true); return; }
       if (topic === 'st' && data && typeof data === 'object') {
-        if (!NET.got) { NET.got = true; NET.connected = true; $('lobby').hidden = true; $('over').hidden = true; renderNet(); }
+        if (!NET.got) { NET.got = true; $('lobby').hidden = true; $('over').hidden = true; }
+        if (!NET.connected) { NET.connected = true; renderNet(); }
         applyView(data);
       }
     },

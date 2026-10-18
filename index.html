@@ -120,12 +120,13 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>window.mqtt||document.write('<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"><\/script>')</script>
 <script src="js/rules.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/bot.js"></script>
 <script src="js/net.js"></script>
-<script src="js/transport-peer.js"></script>
+<script src="js/transport-mqtt.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>
