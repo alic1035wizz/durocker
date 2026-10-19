@@ -645,8 +645,8 @@ function toggleCard(id) {
   layout(); renderCombo(); renderActions();
 }
 function bindUI() {
-  addEventListener('pointerdown', () => AU.unlock(), { passive: true });
-  addEventListener('keydown', () => AU.unlock());
+  /* звук можно включить только из «настоящего» жеста: на iPhone это касание (touchend) или клик, не pointerdown */
+  ['touchend', 'click', 'keydown'].forEach(ev => addEventListener(ev, () => AU.unlock(), { capture: true, passive: true }));
   document.addEventListener('click', e => {
     if (e.target.closest('button')) AU.play('click');
     if (e.target.closest('[data-close]')) closeSheets();

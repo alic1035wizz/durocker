@@ -177,7 +177,7 @@ function checkMove(seat, cs) {
   if (!e) return { ok: false, e, why: 'Не комбинация' };
   if (k === 'defend') {
     const a = openB().a;
-    if (e.n !== a.n) return { ok: false, e, why: `Нужно ${a.n} ${plural(a.n)}` };
+    if (e.n !== a.n) return { ok: false, e, why: `Кроют тем же числом: ${a.n} ${plural(a.n)}, у тебя ${e.n}` };
     return beats(e, a) ? { ok: true, e, why: 'Бьёт!' } : { ok: false, e, why: 'Не бьёт' };
   }
   if (k !== 'attack' && e.n === 1) return { ok: false, e, why: 'Одиночкой не подкидывают — только комбинацией' };

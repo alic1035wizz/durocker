@@ -29,12 +29,31 @@ const AU = (() => {
     const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     return true;
   }
-  /* браузер разрешает звук только после касания — включаемся на первом */
+  /* iPhone: без этого Web Audio молчит при включённом беззвучном режиме (переключатель сбоку).
+     Новый Safari понимает audioSession; для старых играем полсекунды тишины через <audio>. */
+  let kicked = false;
+  function kickIOS() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    if (kicked) return;
+    kicked = true;
+    try {
+      const n = 4410, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+      const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+      w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, 8820, true); v.setUint32(28, 17640, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+      const a = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+      a.setAttribute('playsinline', ''); a.play().catch(() => { kicked = false; });
+    } catch (e) { kicked = false; }
+  }
+  /* браузер разрешает звук только в обработчике касания или клика — включаемся на каждом, пока не заработает */
   function unlock() {
     if (!init()) return;
-    if (ctx.state === 'suspended') ctx.resume();
+    kickIOS();
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
     if (!started) { started = true; nextT = ctx.currentTime + 0.1; timer = setInterval(schedule, 25); }
   }
+  /* после сворачивания iOS ставит звук на паузу — оживляем, как только вернулись */
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); });
 
   function tone(dest, type, freq, t, dur, vol, opts = {}) {
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -124,5 +143,5 @@ const AU = (() => {
   function setMusic(on) { musicOn = on; store('durocker-music', on ? '1' : '0'); if (ctx) music.gain.setTargetAtTime(on ? 0.3 : 0, ctx.currentTime, 0.2); }
   function setSfx(on) { sfxOn = on; store('durocker-sfx', on ? '1' : '0'); if (ctx) sfx.gain.setTargetAtTime(on ? 0.55 : 0, ctx.currentTime, 0.05); }
   function setTrack(id) { TR_ = TRACKS[id] || TRACKS.lounge; STEP = 60 / TR_.bpm / 4; }
-  return { unlock, play, setLevel, setMusic, setSfx, setTrack, get music() { return musicOn; }, get sfx() { return sfxOn; } };
+  return { unlock, play, setLevel, setMusic, setSfx, setTrack, get state() { return ctx ? ctx.state : 'none'; }, get music() { return musicOn; }, get sfx() { return sfxOn; } };
 })();
