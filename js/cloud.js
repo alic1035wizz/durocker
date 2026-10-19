@@ -142,7 +142,7 @@ const CLOUD = (() => {
     let h = 2166136261;
     for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
     let s = '';
-    for (let i = 0; i < 4; i++) { s += CH[h % CH.length]; h = Math.floor(h / CH.length) ^ Math.imul(h, 2654435761) >>> 0; }
+    for (let i = 0; i < 4; i++) { s += CH[h % CH.length]; h = (Math.floor(h / CH.length) ^ Math.imul(h, 2654435761)) >>> 0; }
     return s;
   }
   /* сесть за стол с заданным кодом: hostTable берёт код из randCode() — подставляем нужные «случайные» числа на один вызов */
