@@ -16,7 +16,7 @@ function viewFor() {
     fx: G.fx ? { ...G.fx, actor: f(G.fx.actor) } : null, fxl: (G.fxList || []).map(o => ({ ...o, actor: f(o.actor) })), nick: myNick(),
     ch: { p: G.charge.b, b: G.charge.p }, of: G.offer.b, oof: G.offer.p ? 1 : 0, tm: G.turnMs || 30000,
     se: { p: SERIES.b, b: SERIES.p, games: SERIES.games, done: SERIES.done },
-    rt: G.rules.transfer ? 1 : 0, ro: G.rules.over === false ? 0 : 1, ru: G.rules, up: G.upgraded ? 1 : 0, bz: G.rules.blitz ? 1 : 0, ex: { p: G.extra.b, b: G.extra.p }, tl: G.deadline ? Math.max(0, G.deadline - Date.now()) : 0,
+    rt: G.rules.transfer ? 1 : 0, ro: G.rules.over === false ? 0 : 1, ru: G.rules, up: G.upgraded ? 1 : 0, bz: G.rules.blitz ? 1 : 0, ex: { p: G.extra.b, b: G.extra.p }, ck: G.clock ? { p: clockLeft('b'), b: clockLeft('p'), run: G.clock.run ? f(G.clock.run) : null } : null, ow: G.overWhy || null, tl: G.deadline ? Math.max(0, G.deadline - Date.now()) : 0,
   };
 }
 function sync() {
@@ -145,7 +145,7 @@ function applyView(st) {
       attacker: st.at, phase: st.ph ? { who: st.ph.w, kind: st.ph.k } : { who: null }, limit: st.lim, busy: st.busy,
       over: st.over, penalty: st.pen, sel: new Set([...keepSel].filter(id => st.P.some(n => 'c' + n === id))),
       sort: (prev && prev.sort) || 'r', pending: false, fx: null, rules: st.ru ? { ...st.ru } : { transfer: !!st.rt, over: st.ro !== 0, blitz: !!st.bz },
-      upgraded: !!st.up, deadline: st.tl ? Date.now() + st.tl : 0, extra: st.ex || { p: 0, b: 0 }, turnMs: st.tm || 30000,
+      upgraded: !!st.up, clock: st.ck ? { p: st.ck.p, b: st.ck.b, run: st.ck.run, since: Date.now() } : null, overWhy: st.ow || null, deadline: st.tl ? Date.now() + st.tl : 0, extra: st.ex || { p: 0, b: 0 }, turnMs: st.tm || 30000,
       charge: st.ch || { p: 0, b: 0 }, offer: { p: st.of || null, b: st.oof ? {} : null }, offerLater: prev && prev.offerLater,
     };
     G.table = st.tb.map(([a, d]) => ({ a: ev(a.map(mkCard)), d: d ? ev(d.map(mkCard)) : null }));

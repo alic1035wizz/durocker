@@ -409,6 +409,8 @@ function showOver() {
   const opp = esc(oppName()), pen = G.penalty || 0, lim = NET ? 11 : seriesTo();
   let h, s;
   if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно.'; }
+  else if (G.overWhy === 'time' && G.over === 'p') { h = 'ВРЕМЯ ВЫШЛО!'; s = `У ${opp} кончились часы: +${pen} штрафа ему.`; }
+  else if (G.overWhy === 'time') { h = 'ВРЕМЯ ВЫШЛО!'; s = `Твои часы кончились: +${pen} штрафа.`; }
   else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp} остался с ${pen} ${plural(pen)}: +${pen} штрафа ему.`; }
   else { h = 'ДУРАК!'; s = `У тебя осталось ${pen} ${plural(pen)}: +${pen} штрафа.`; }
   let extra = '', btns = '';
@@ -459,7 +461,26 @@ function tickTimer() {
     $('timerTxt').textContent = sec + ' с · ' + (G.phase.who === 'p' ? 'твой ход' : 'ход соперника');
     if (sec <= 5 && G.phase.who === 'p' && tickTimer.last !== sec) { tickTimer.last = sec; AU.play('tick'); }
   } else el.hidden = true;
+  renderClocks();
   requestAnimationFrame(tickTimer);
+}
+
+/* шахматные часы Блица: свои — у руки, соперника — в шапке */
+const fmtClock = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function renderClocks() {
+  const me = $('clkMe'), op = $('clkOpp');
+  if (!me || !op) return;
+  const c = G && G.clock;
+  me.hidden = op.hidden = !c;
+  if (!c) return;
+  [[me, 'p'], [op, 'b']].forEach(([el, s]) => {
+    const left = clockLeft(s), run = c.run === s && !G.over;
+    const txt = (s === 'p' ? '⏱ ' : '') + fmtClock(left);
+    if (el.textContent !== txt) el.textContent = txt;
+    el.classList.toggle('run', run); el.classList.toggle('low', run && left < 20000);
+  });
+  const l = clockLeft('p'), sec = Math.ceil(l / 1000);
+  if (c.run === 'p' && !G.over && sec <= 10 && renderClocks.last !== sec) { renderClocks.last = sec; AU.play('tick'); }
 }
 
 /* ================= веер и анимации ================= */
@@ -621,7 +642,7 @@ function openBots() {
     ${ruleSegHTML('rsBot', ruleSetName())}
     <p class="small">${RULESET_NOTE}</p>
     ${toggleHTML('trBot', 'Переводной: можно перевести атаку тем же старшинством', load('durocker-transfer') !== '0')}
-    ${toggleHTML('blzBot', 'Блиц: серия до 11', blitzOn())}`);
+    ${toggleHTML('blzBot', 'Блиц: 2,5 минуты на партию', blitzOn())}`);
   $('rsBot').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); $('rsBot').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
 }
 function toggleHTML(id, label, on) { return `<label class="toggle"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><span></span>${label}</label>`; }
@@ -703,7 +724,7 @@ function openSettings() {
     <h3>Игра с ботом и онлайн</h3>
     ${ruleSegHTML('stRules', ruleSetName())}
     <p class="small">${RULESET_NOTE} В карьере правила открываются по районам.</p>
-    ${toggleHTML('stBlitz', 'Блиц: серия до 11, онлайн 20 секунд на ход', blitzOn())}
+    ${toggleHTML('stBlitz', 'Блиц: 2,5 минуты на партию', blitzOn())}
     ${toggleHTML('stTransfer', 'Переводной', load('durocker-transfer') !== '0')}`);
   $('stMusic').onchange = e => { AU.unlock(); AU.setMusic(e.target.checked); renderSound(); };
   $('stSfx').onchange = e => { AU.unlock(); AU.setSfx(e.target.checked); renderSound(); };
@@ -743,7 +764,7 @@ function renderLobby() {
     ${ruleSegHTML('rsNet', ruleSetName())}
     <p class="small">${RULESET_NOTE}</p>
     ${toggleHTML('trNet', 'Переводной', load('durocker-transfer') !== '0')}
-    ${toggleHTML('blzNet', 'Блиц: 20 секунд на ход', blitzOn())}
+    ${toggleHTML('blzNet', 'Блиц: 2,5 минуты на партию', blitzOn())}
     <button class="btn blue" type="button" id="hostBtn">Создать стол</button>
     <div class="or">или войди к другу</div>
     <div class="joinrow"><input id="codeIn" maxlength="4" placeholder="КОД" autocomplete="off" aria-label="Код стола"><button class="btn orange" type="button" id="joinBtn">Войти</button></div>

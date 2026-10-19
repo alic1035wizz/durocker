@@ -8,7 +8,7 @@ const BOTS = [
     desc: 'Ходит что попало, тратит козыри не глядя и иногда берёт, хотя мог отбиться.' },
   { id: 'valera', ai: 'valera', name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', level: 'средне',
     desc: 'Сбрасывает мелочь, бережёт козыри, кроет самым дешёвым. Переводит, когда выгодно.' },
-  { id: 'sharper', ai: 'sharper', style: 'sharper', peek: 'always', name: 'Шулер', face: 'Ш', color: '#c8402f', level: 'сложно',
+  { id: 'sharper', ai: 'sharper', style: 'sharper', peek: 'always', cheat: 0.5, name: 'Шулер', face: 'Ш', color: '#c8402f', level: 'сложно',
     desc: 'Подглядывает в твои карты и просчитывает ходы вперёд. Честно играть не умеет.' },
 ];
 /* карьера «С подъезда в казино»: 5 районов, в каждом двое соседей и босс */
@@ -32,7 +32,7 @@ const CAREER = [
   { name: 'Казино', reward: { table: 'gold', back: 'gold' }, ops: [
     { id: 'c-krupie', ai: 'sharper', style: 'lite', name: 'Крупье', face: 'КР', color: '#2e9d5b', desc: 'Улыбается и считает каждую карту.' },
     { id: 'c-valera', ai: 'valera', style: 'lite', name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', desc: 'Старый друг. Теперь играет по-крупному.' },
-    { id: 'c-sharper', ai: 'sharper', style: 'sharper', peek: 'late', boss: 'sharper', name: 'Шулер', face: 'Ш', color: '#c8402f', desc: 'ФИНАЛЬНЫЙ БОСС: знает твою руку в конце колоды и не прощает ошибок.' } ] },
+    { id: 'c-sharper', ai: 'sharper', style: 'sharper', peek: 'late', cheat: 0.6, boss: 'sharper', name: 'Шулер', face: 'Ш', color: '#c8402f', desc: 'ФИНАЛЬНЫЙ БОСС: знает твою руку в конце колоды и не прощает ошибок.' } ] },
 ];
 const CAREER_OPS = CAREER.flatMap((d, di) => d.ops.map((o, oi) => ({ ...o, district: di, slot: oi, level: o.boss ? 'босс' : d.name })));
 function currentBot() {
@@ -410,8 +410,25 @@ function botDefenseAction(bot, d) {
   return null;
 }
 
+/* Шулер «подтасовывает»: раз за ход может незаметно сменить свою худшую карту на лучшую из верха колоды */
+function cheatSwap(bot) {
+  if (!bot.cheat || G.deck.length < 3 || G.cheated === G.turnNo || Math.random() > bot.cheat) return;
+  G.cheated = G.turnNo;
+  const mine = plainCards(G.B).filter(c => !c.joker);
+  if (!mine.length) return;
+  const worst = mine.reduce((a, c) => (power(c) < power(a) ? c : a));
+  /* смотрим верхние карты колоды (их и раздают), козырь под колодой не трогаем */
+  let bi = -1, bp = power(worst) + 0.25;
+  for (let i = G.deck.length - 1; i >= Math.max(1, G.deck.length - 6); i--) { const p = power(G.deck[i]); if (p > bp) { bp = p; bi = i; } }
+  if (bi < 0) return;
+  const got = G.deck[bi];
+  G.deck[bi] = worst;
+  G.B[G.B.indexOf(worst)] = got;
+}
+
 /* решение бота: что сделать сейчас. Возвращает [действие, карты, реплика] */
 function botDecide(bot) {
+  cheatSwap(bot);
   const k = G.phase.kind;
   const first = botActionFirst(bot);
   if (first) return ['action', [first], ACTS[first.action].name + '!'];

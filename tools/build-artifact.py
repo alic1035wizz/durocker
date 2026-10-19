@@ -12,7 +12,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'dist' / 'durocker-claude.html'
-SCRIPTS = ['rules', 'engine', 'bot', 'meta', 'net', 'transport-room', 'audio', 'vfx', 'ui', 'leaders', 'tg', 'main']
+SCRIPTS = ['rules', 'engine', 'bot', 'meta', 'net', 'transport-room', 'audio', 'vfx', 'ui', 'tutorial', 'leaders', 'tg', 'main']
 
 html = (ROOT / 'index.html').read_text(encoding='utf-8')
 css = (ROOT / 'css' / 'style.css').read_text(encoding='utf-8')

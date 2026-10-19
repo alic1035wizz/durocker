@@ -28,7 +28,7 @@
       <button class="iconbtn" id="menuBtn" type="button" aria-label="Меню">☰</button>
       <button class="oppcard" id="oppBtn" type="button" aria-label="Соперник">
         <span class="ava" id="oppAva"></span>
-        <span class="oppinfo"><b id="oppName"></b><small><span class="dot" id="oppDot" hidden></span><span id="oppCount"></span></small></span>
+        <span class="oppinfo"><b id="oppName"></b><small><span class="dot" id="oppDot" hidden></span><span id="oppCount"></span><span class="clk" id="clkOpp" hidden></span></small></span>
         <span class="pips" id="oppPips" aria-label="Заряд соперника"></span>
       </button>
       <div class="scorebox" id="scoreBox" aria-label="Штрафные очки">
@@ -70,6 +70,7 @@
     </section>
     <div class="handtop">
       <span class="charge" id="myCharge"></span>
+      <span class="clk" id="clkMe" hidden></span>
       <span class="handinfo" id="handInfo"></span>
       <button class="reactbtn" id="reactBtn" type="button" hidden aria-label="Реакция">💬</button>
     </div>
@@ -141,7 +142,7 @@
   <h3>Наборы правил</h3>
   <p><b>Классика</b> — комбинации, подкидывание и перевод. <b>Полные</b> — всё. В карьере правила открываются по районам: Подъезд — классика без перевода, Двор — перевод, Рынок — «могнул» и заряд, Вокзал — перекрытие и апгрейд, Казино — всё сразу.</p>
   <h3>Серия</h3>
-  <p>Проигравший партию получает столько штрафных очков, сколько карт у него осталось. Серия до 21, в Блице и онлайне до 11.</p>
+  <p>Проигравший партию получает столько штрафных очков, сколько карт у него осталось. Серия до 21, онлайне до 11. В Блице у каждого 2,5 минуты на всю партию: время кончилось — партия проиграна (штраф не меньше 3).</p>
 </template>
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
@@ -155,6 +156,7 @@
 <script src="js/audio.js"></script>
 <script src="js/vfx.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/tutorial.js"></script>
 <script src="js/leaders.js"></script>
 <script src="js/tg.js"></script>
 <script src="js/main.js"></script>

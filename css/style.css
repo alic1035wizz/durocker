@@ -159,6 +159,11 @@ kbd{font-family:var(--f-pix);font-size:12px;background:rgba(255,255,255,.1);bord
 .charge i.on{background:var(--gold);box-shadow:0 0 8px rgba(234,181,75,.9)}
 .charge em{font-style:normal;margin-left:4px}
 .handinfo{margin-left:auto}
+.clk{font-family:var(--f-hard);font-size:11px;color:var(--paper);background:rgba(0,0,0,.45);border:2px solid var(--line);border-radius:6px;padding:2px 6px;line-height:1.4}
+.clk.run{border-color:var(--gold);color:var(--gold)}
+.clk.low{border-color:var(--red);color:#fff;background:var(--red);animation:clkp .8s infinite}
+@keyframes clkp{50%{opacity:.6}}
+.oppinfo small .clk{font-size:9px;padding:1px 4px}
 .reactbtn{background:rgba(0,0,0,.45);border:2px solid var(--line);border-radius:8px;padding:0 8px;height:26px;font-size:14px}
 .hand{--w:60px;position:relative;height:130px;width:100%}
 .slot{position:absolute;bottom:12px;transform-origin:50% 120%;transition:transform .18s cubic-bezier(.3,1.5,.5,1);perspective:700px}

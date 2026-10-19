@@ -24,6 +24,6 @@ tgStart(() => {
   }
   setUrl(null);
   /* первый визит — сразу меню, чтобы было видно карьеру и режимы */
-  if (!load('durocker-seen')) { store('durocker-seen', '1'); openMenu(); }
+  if (!load('durocker-seen')) { store('durocker-seen', '1'); TUT.offer(); }
 });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
