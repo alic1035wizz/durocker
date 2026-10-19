@@ -1,4 +1,4 @@
-/* Дурокер — запуск внутри Telegram (Mini App) и вибрация.
+/* ДурКер — запуск внутри Telegram (Mini App) и вибрация.
    В Телеграме: имя игрока из профиля, вход за стол по ссылке t.me/…?startapp=t_код, вибрация и на iPhone. */
 'use strict';
 
@@ -38,9 +38,9 @@ function startCode() {
 }
 /* позвать друга: в Телеграме — выбор чата, на телефоне — системное «Поделиться», иначе копируем ссылку */
 function shareInvite(code, btn) {
-  const link = inviteLink(code), text = `Го в Дурокер! Стол ${code.toUpperCase()}`;
+  const link = inviteLink(code), text = `Го в ДурКер! Стол ${code.toUpperCase()}`;
   if (TGA && TGA.openTelegramLink) { TGA.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text)); return; }
-  if (navigator.share) { navigator.share({ title: 'Дурокер', text, url: link }).catch(() => {}); return; }
+  if (navigator.share) { navigator.share({ title: 'ДурКер', text, url: link }).catch(() => {}); return; }
   copyText(link, btn);
 }
 

@@ -1,4 +1,4 @@
-/* Дурокер — интерфейс: табло, блок «его × твоя», рука и кнопки под ней, хайп-фразы, заряд,
+/* ДурКер — интерфейс: табло, блок «его × твоя», рука и кнопки под ней, хайп-фразы, заряд,
    меню (карьера, своя игра, ежедневная, онлайн, коллекция, настройки, правила). */
 'use strict';
 
@@ -573,12 +573,12 @@ function postcardCanvas({ title, phrase, m }) {
   }
   if (phrase) { fitText(x, phrase, S - 220, 46, '800'); x.fillStyle = '#f8f1df'; x.fillText(phrase, S / 2, m && m.cards ? 885 : 560); }
   x.font = '700 34px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.9)'; x.fillText(myNick(), S / 2, 950);
-  x.font = '600 28px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('Дурокер · t.me/durocker_bot', S / 2, 996);
+  x.font = '600 28px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('ДурКер · t.me/durocker_bot', S / 2, 996);
   return cv;
 }
 function openPostcard(o) {
   AU.play('snap');
-  const cv = postcardCanvas(o), text = `${o.title} ${o.phrase || ''} — играю в Дурокер: https://t.me/durocker_bot`;
+  const cv = postcardCanvas(o), text = `${o.title} ${o.phrase || ''} — играю в ДурКер: https://t.me/durocker_bot`;
   const box = document.createElement('div'); box.className = 'postcard';
   const url = cv.toDataURL('image/png');
   box.innerHTML = `<img alt="Открытка" src="${url}"><p>Долгое нажатие на картинку — сохранить</p><div class="row">
@@ -718,7 +718,7 @@ const head = t => `<div class="sheethead"><h2>${t}</h2><button type="button" cla
 
 function openMenu() {
   const p = prog(), st = CAREER_OPS[Math.min(p.career, CAREER_OPS.length - 1)], day = todayKey(), played = !!p.daily[day];
-  sheet('menu', `${head('Дурокер')}
+  sheet('menu', `${head('ДурКер')}
     <div class="menugrid">
       <button type="button" class="mi hero" data-go="career"><b>КАРЬЕРА: С ПОДЪЕЗДА В КАЗИНО</b><small>${p.careerDone ? 'Пройдена! Можно переиграть любого' : `Район «${esc(CAREER[st.district].name)}» · следующий: ${esc(st.name)}`}</small></button>
       <button type="button" class="mi" data-go="free"><b>Своя игра</b><small>Студент, Валера или Шулер</small></button>

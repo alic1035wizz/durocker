@@ -1,4 +1,4 @@
-/* Дурокер — обучение на 2 минуты: три подстроенные раздачи против Учителя.
+/* ДурКер — обучение на 2 минуты: три подстроенные раздачи против Учителя.
    Работает на обычном движке: раздача выставляется вручную, ходы Учителя — по сценарию.
    Результаты обучения не идут ни в серию, ни в статистику, ни в таблицу лидеров (до конца партии дело не доходит). */
 'use strict';
@@ -194,7 +194,7 @@ const TUT = (() => {
   /* первый запуск: предлагаем обучение (тем, кто уже играл, — не навязываем) */
   function offer() {
     if (load('durocker-tut') || prog().games > 0) { openMenu(); return; }
-    sheet('page', `<div class="rulecard tutcard"><span class="tag">ДУРОКЕР</span><h2>Впервые за столом?</h2>
+    sheet('page', `<div class="rulecard tutcard"><span class="tag">ДУРКЕР</span><h2>Впервые за столом?</h2>
       <p>Это дурак, где отбиваются <b>покерными комбинациями</b>. Три коротких урока — и ты в игре. Около двух минут.</p>
       <div class="row"><button class="btn blue" type="button" id="tutStart">Начать обучение</button><button class="btn grey" type="button" id="tutNo">Пропустить</button></div></div>`);
     $('tutStart').onclick = () => { $('page').hidden = true; start(0); };

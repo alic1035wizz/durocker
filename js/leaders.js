@@ -1,4 +1,4 @@
-/* Дурокер — таблица лидеров.
+/* ДурКер — таблица лидеров.
    Свой счёт копится локально, а для общей таблицы каждый игрок держит одно «закреплённое» (retained) сообщение
    на публичном MQTT-брокере: durocker/lb1/p/<id>. Таблица — это все такие сообщения, собранные за пару секунд.
    Своего сервера нет; в сборке для Claude (без mqtt) показываем только свою статистику. */
@@ -217,11 +217,11 @@ const LB = (() => {
   }
   function share(place, kind, btn) {
     const what = kind === 'daily' ? `в сегодняшней раздаче` : kind === 'career' ? 'в карьере' : `в рейтинге (${local().r} очков)`;
-    const text = `Я на ${place} месте ${what} в Дурокере! Сможешь обогнать?`;
+    const text = `Я на ${place} месте ${what} в ДурКере! Сможешь обогнать?`;
     const url = 'https://t.me/durocker_bot';
     const tga = typeof TGA !== 'undefined' && TGA;
     if (tga && tga.openTelegramLink) { tga.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text)); return; }
-    if (navigator.share) { navigator.share({ title: 'Дурокер', text, url }).catch(() => {}); return; }
+    if (navigator.share) { navigator.share({ title: 'ДурКер', text, url }).catch(() => {}); return; }
     const t = text + ' ' + url;
     if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { btn.textContent = 'Скопировано'; }, () => {});
   }

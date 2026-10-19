@@ -1,4 +1,4 @@
-/* Дурокер — «Компания» онлайн: хозяин ведёт партию (движок M4), гостям шлёт только их руку и стол.
+/* ДурКер — «Компания» онлайн: хозяин ведёт партию (движок M4), гостям шлёт только их руку и стол.
    До 3 гостей; пустые места занимают боты. Обновил страницу — вернулся на своё место (и гость, и хозяин). */
 'use strict';
 
@@ -21,11 +21,11 @@ const NET4 = (() => {
     const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('mt', code); return u.toString();
   }
   function share4(code, btn) {
-    const link = link4(code), text = `Го в Дурокер компанией! Стол ${code.toUpperCase()}`;
+    const link = link4(code), text = `Го в ДурКер компанией! Стол ${code.toUpperCase()}`;
     try {
       if (typeof TGA !== 'undefined' && TGA && TGA.openTelegramLink) { TGA.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text)); return; }
     } catch (e) {}
-    if (navigator.share) { navigator.share({ title: 'Дурокер', text, url: link }).catch(() => {}); return; }
+    if (navigator.share) { navigator.share({ title: 'ДурКер', text, url: link }).catch(() => {}); return; }
     try { copyText(link, btn); } catch (e) {}
   }
   const seatOf = pid => N.seats.findIndex(s => s.pid === pid);
