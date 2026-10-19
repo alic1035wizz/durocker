@@ -156,24 +156,28 @@ function handCombos(h, n) {
   if (!v) { const L = plainCards(h).length; v = L >= n && capSizes(L, [n]).length ? combos(h, [n]) : []; CC.set(key, v); }
   return v;
 }
-/* самое дешёвое покрытие e из руки h (или null) */
-function cheapestCover(h, e) {
+/* рука как «база минус убранные карты»: комбинации считаем один раз для базы и отсеиваем убранное */
+const R = (base, gone) => ({ base, gone: gone ? new Set(gone.map(c => c.id)) : null });
+const rCards = r => (r.gone ? r.base.filter(c => !r.gone.has(c.id)) : r.base);
+const rCombos = (r, n) => { const l = handCombos(r.base, n); return r.gone ? l.filter(x => !x.cards.some(c => r.gone.has(c.id))) : l; };
+/* самое дешёвое покрытие e (или null) */
+function cheapestCover(r, e) {
   const sizes = e.n === 1 ? [1] : [2, 3, 4, 5].filter(n => n >= e.n);
   let best = null, bc = 1e9;
-  for (const n of sizes) for (const d of handCombos(h, n)) { if (!beats(d, e)) continue; const c = powSum(d.cards); if (c < bc) { bc = c; best = d; } }
+  for (const n of sizes) for (const d of rCombos(r, n)) { if (!beats(d, e)) continue; const c = powSum(d.cards); if (c < bc) { bc = c; best = d; } }
   return best;
 }
-/* что можно подкинуть из руки h на стол с номиналами ranks (упрощённо: по номиналу) */
-function throwables(h, ranks, room) {
+/* что можно подкинуть на стол с номиналами ranks (упрощённо: по номиналу) */
+function throwables(r, ranks, room) {
   const out = [];
-  for (let n = 2; n <= Math.min(5, room); n++) for (const t of handCombos(h, n)) if (t.cards.some(c => ranks.has(c.r))) out.push(t);
+  for (let n = 2; n <= Math.min(5, room); n++) for (const t of rCombos(r, n)) if (t.cards.some(c => ranks.has(c.r))) out.push(t);
   return out;
 }
 const rankSet = cs => new Set(cs.filter(c => !c.joker && !c.action).map(c => c.r));
 /* докинуть вдогонку берущему: самые дешёвые карты с нужными номиналами */
-function dumpFor(h, ranks, room) {
+function dumpFor(r, ranks, room) {
   let best = null, bv = 0.15;
-  for (const t of throwables(h, ranks, room)) { const v = t.n * 0.6 - powSum(t.cards) * (1 - lateness()) * 0.8 + t.n * lateness(); if (v > bv) { bv = v; best = t; } }
+  for (const t of throwables(r, ranks, room)) { const v = t.n * 0.6 - powSum(t.cards) * (1 - lateness()) * 0.8 + t.n * lateness(); if (v > bv) { bv = v; best = t; } }
   return best ? best.cards : [];
 }
 /* атака/подкидывание e: соперник кроет самым дешёвым или берёт; если покрыл — пробуем добить подкидыванием, которое ему нечем крыть */
@@ -184,7 +188,7 @@ function evalAttack(bot, samples, e, onTable) {
   for (const s of samples) {
     const d = oppAnswer(s, e);
     if (!d) {
-      const dump = dumpFor(B1, new Set([...rankSet(e.cards), ...rankSet(onTable)]), Math.min(room0, 5));
+      const dump = dumpFor(R(G.B, e.cards), new Set([...rankSet(e.cards), ...rankSet(onTable)]), Math.min(room0, 5));
       sum += handQ(minus(B1, dump), hoard) - handQ(s.cards.concat(onTable, e.cards, dump)) + tempo();
       continue;
     }
@@ -192,8 +196,8 @@ function evalAttack(bot, samples, e, onTable) {
     let v = handQ(B1, hoard) - handQ(P1) - tempo();
     if (room0 >= 2 && P1.length) {
       const ranks = new Set([...rankSet(onTable), ...rankSet(e.cards), ...rankSet(d.cards)]);
-      for (const t of throwables(B1, ranks, Math.min(room0, P1.length))) {
-        if (cheapestCover(P1, t)) continue;
+      for (const t of throwables(R(G.B, e.cards), ranks, Math.min(room0, P1.length))) {
+        if (cheapestCover(R(s.cards, d.cards), t)) continue;
         const w = handQ(minus(B1, t.cards), hoard) - handQ(s.cards.concat(onTable, e.cards, t.cards)) + tempo();
         if (w > v) v = w;
       }
@@ -238,7 +242,7 @@ function searchDefense(bot, cover, transfer) {
   /* взять: соперник ещё и докинет вдогонку */
   let take = 0;
   for (const s of samples) {
-    const dump = dumpFor(s.cards, rankSet(table), Math.min(room, 5));
+    const dump = dumpFor(R(s.cards), rankSet(table), Math.min(room, 5));
     take += handQ(G.B.concat(table, dump), hoard) - handQ(minus(s.cards, dump)) - tempo();
   }
   take /= samples.length;
@@ -246,12 +250,17 @@ function searchDefense(bot, cover, transfer) {
   for (const d of cover.slice(0, 6)) {
     if (Date.now() > end && best) break;
     const B1 = minus(G.B, d.cards), ranks = new Set([...rankSet(table), ...rankSet(d.cards)]);
+    /* остальные открытые атаки тоже надо покрыть; не выйдет — всё равно брать */
+    const ob = openB(), others = G.table.filter(b => !b.d && b !== ob).map(b => b.a);
+    let restH = B1, restOk = true;
+    for (const a of others) { const c = cheapestCover(R(restH), a); if (!c) { restOk = false; break; } restH = minus(restH, c.cards); }
+    if (!restOk) continue;
     let sum = 0;
     for (const s of samples) {
       let v = handQ(B1, hoard) - sQ(s) + (openLeft <= 1 ? tempo() : 0);
       if (openLeft <= 1 && room >= 2) {
-        for (const t of throwables(s.cards, ranks, Math.min(room, B1.length))) {
-          if (cheapestCover(B1, t)) continue;
+        for (const t of throwables(R(s.cards), ranks, Math.min(room, B1.length))) {
+          if (cheapestCover(R(G.B, d.cards), t)) continue;
           const w = handQ(G.B.concat(table, d.cards.filter(() => false), t.cards).filter(c => !d.cards.includes(c)).concat(d.cards), hoard) - handQ(minus(s.cards, t.cards)) - tempo();
           if (w < v) v = w;
         }
@@ -267,7 +276,7 @@ function searchDefense(bot, cover, transfer) {
     let sum = 0;
     for (const s of samples) {
       let rest = s.cards, ok = true;
-      for (const a of atks) { const d = cheapestCover(rest, a); if (!d) { ok = false; break; } rest = minus(rest, d.cards); }
+      for (const a of atks) { const d = cheapestCover(R(rest), a); if (!d) { ok = false; break; } rest = minus(rest, d.cards); }
       sum += ok ? bq - handQ(rest) - tempo() : bq - handQ(s.cards.concat(table, t.cards)) + tempo();
     }
     const v = sum / samples.length;
@@ -309,13 +318,18 @@ function botAttackPick(bot) {
   return st.search ? searchAttack(bot, list, 'attack') : list[0];
 }
 function botThrowPick(bot, forTake) {
+  CC = new Map();
   const room = Math.min(5, G.limit - atkCount(), forTake ? 99 : G.P.length);
   if (room < 1) return null;
   const st = styleOf(bot), late = !G.deck.length;
   if (bot.ai === 'student' && Math.random() < 0.5) return null;
   if (st.patient && !late && !forTake && Math.random() < 0.7) return null;
   const rs = tableRanks();
-  const raw = combos(G.B, capSizes(plainCards(G.B).length, sizesUpTo(room).filter(n => n >= 2)));
+  /* дешёвый отсев до проверки правилами: номинал со стола или такой же тип комбинации уже сложился на столе */
+  const tc = tblCards(), types = new Set();
+  if (tc.length <= 16) for (let n = 2; n <= Math.min(5, tc.length); n++) for (const x of handCombos(tc, n)) types.add(n + ':' + x.t);
+  const raw = combos(G.B, capSizes(plainCards(G.B).length, sizesUpTo(room).filter(n => n >= 2)))
+    .filter(e => e.cards.some(c => rs.has(c.r)) || types.has(e.n + ':' + e.t));
   /* сначала комбинации с номиналом со стола — их проверка дешёвая */
   const pre = e => heur(e, 0.01) + (e.cards.some(c => rs.has(c.r)) ? 5 : 0);
   if (st.search) {
@@ -338,7 +352,7 @@ function botDefense(bot) {
     return { type: 'play', e: cover[Math.floor(Math.random() * cover.length)] };
   }
   if (st.transfer === 'always' && transfer.length) return { type: 'transfer', e: transfer[0] };
-  if (st.search) return searchDefense(bot, cover, transfer);
+  if (st.search || st.defSearch) return searchDefense(bot, cover, transfer);
   const c = cover[0], t = transfer[0];
   const pricey = c && (c.tr > 0 || c.jk > 0);
   /* Торгаш не тратит козыри на мелочь: мелкую атаку лучше забрать, пока колода толстая */
@@ -371,8 +385,9 @@ function botUpgradePick(bot) {
     const pAns = e => samples.filter(s => oppAnswer(s, e)).length / samples.length;
     const p0 = pAns(b.a);
     let best = null, bs = 0.12;
-    for (const o of opts.slice(0, 30)) {
-      const gain = (p0 - pAns(o.e)) * (2 + 2 * lateness()) - powSum(o.cs) * 0.35 * (1 - lateness()) + o.cs.length * 0.3 * lateness();
+    /* джокеры и козыри на апгрейд не тратим, пока колода толстая */
+    for (const o of opts.filter(o => late || o.cs.every(c => !c.joker && c.s !== G.T)).slice(0, 30)) {
+      const gain = (p0 - pAns(o.e)) * (1 + 0.3 * b.a.n + 2 * lateness()) - powSum(o.cs) * (1 - lateness()) + o.cs.length * 0.3 * lateness();
       if (gain > bs) { bs = gain; best = o.cs; }
     }
     return best;
