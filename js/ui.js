@@ -187,6 +187,55 @@ function render() {
   renderCombo(); renderActions(); renderOffer(); layout();
 }
 
+/* можно сделать апгрейд: ты атакуешь, соперник думает над защитой */
+function upPhase() {
+  return !!(G && !G.over && !G.pending && !G.busy && G.attacker === 'p' && G.phase.kind === 'defend' && G.phase.who === 'b' && !G.upgraded && openB());
+}
+
+/* ================= подбор: одна кнопка листает все ходы, которые сейчас можно сделать ================= */
+function pickOptions() {
+  const p = uiPhase(), hand = G.P.filter(c => !c.action);
+  const sig = p + (upPhase() ? 'u' : '') + '|' + G.P.map(c => c.id).join() + '|' + G.T + '|' + G.table.map(b => b.a.cards.map(c => c.id).join('.') + (b.d ? 'd' : '')).join('/');
+  if (G.pick && G.pick.sig === sig) return G.pick;
+  let list = [];
+  if (p === 'p_defend') {
+    const o = defenseOptions('p');
+    list = [...o.cover, ...o.transfer].map(e => e.cards);
+  } else if (p === 'p_attack' || p === 'p_throw' || p === 'p_addtake') {
+    list = combos(hand, [1, 2, 3, 4, 5]).filter(e => checkMove('p', e.cards).ok)
+      .sort((x, y) => cost(x.cards) / x.n - cost(y.cards) / y.n || y.n - x.n).map(e => e.cards);
+  } else if (upPhase()) {
+    const a = openB().a, max = Math.min(5 - a.n, 4), L = hand.length, pick = [];
+    const rec = (st, d, k) => {
+      if (d === k) { const cs = pick.slice(0, k); if (checkUpgrade('p', cs).ok) list.push(cs); return; }
+      for (let i = st; i <= L - (k - d); i++) { pick[d] = hand[i]; rec(i + 1, d + 1, k); }
+    };
+    for (let k = 1; k <= max; k++) rec(0, 0, k);
+    list.sort((x, y) => cost(x) - cost(y));
+  }
+  const seen = new Set();
+  list = list.filter(cs => { const k = cs.map(c => c.id).sort().join(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
+  G.pick = { sig, list, i: -1 };
+  return G.pick;
+}
+function nextPick() {
+  if (!G || (!uiPhase().startsWith('p_') && !upPhase())) return;
+  const pk = pickOptions();
+  if (!pk.list.length) { toast('Нечего выбрать — ' + (uiPhase() === 'p_defend' ? 'бери' : uiPhase() === 'p_throw' ? 'жми «Бито»' : 'ход только картой-действием')); return; }
+  pk.i = (pk.i + 1) % pk.list.length;
+  G.sel = new Set(pk.list[pk.i].map(c => c.id));
+  AU.play('select');
+  update();
+}
+function renderPickBtn() {
+  const b = $('pickBtn');
+  if (!b) return;
+  const on = G && (uiPhase().startsWith('p_') && uiPhase() !== 'p_over' || upPhase());
+  b.disabled = !on;
+  const pk = on && G.pick && G.pick.i >= 0 ? G.pick : null;
+  b.textContent = pk && pk.list.length ? `⟳ ${pk.i + 1}/${pk.list.length}` : '⟳ Подбор';
+}
+
 /* ================= подсказка при защите ================= */
 function defenseHint() {
   const ob = openB();
@@ -244,10 +293,14 @@ function renderCombo() {
     const label = n ? (r.why || '') : { p_attack: 'твой ход', p_throw: 'подкинь или «Бито»', p_addtake: 'вдогонку или «Хватит»' }[p];
     const name = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : n ? 'НЕ КОМБО' : 'ВЫБЕРИ КАРТЫ';
     html = plate(n ? 'mine wide' : 'idle wide', label, name) + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '·'}</div>`;
-    if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = 'Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт.';
-    if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = 'Подкидывают только комбинацией, в которой есть номинал со стола.';
+    if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = 'Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт или перекрывает старшей комбинацией из большего. Не знаешь, чем ходить, — жми «⟳ Подбор».';
+    if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = 'Подкидывают комбинацией с номиналом со стола — или любой, если такая комбинация уже сложилась из карт стола (две десятки на столе — подкидывай любую пару).';
   } else if (p === 'over') {
     html = plate('idle wide', 'партия', 'ОКОНЧЕНА');
+  } else if (upPhase() && selected().length) {
+    const u = checkUpgrade('p', selected());
+    html = plate('his', 'ты атакуешь', ob.a.name.toUpperCase()) + `<div class="vs ${u.ok ? 'ok' : 'no'}">${u.ok ? '✓' : '✗'}</div>`
+      + plate('mine', u.why || 'не подходит', u.ok ? u.e.name.toUpperCase() : 'АПГРЕЙД');
   } else {
     html = ob && G.phase.who === 'b' && G.attacker === 'p'
       ? plate('his', 'ты атакуешь', ob.a.name.toUpperCase()) + '<div class="vs">…</div>' + plate('idle', 'он думает', esc(oppName()))
@@ -278,6 +331,7 @@ function renderActions() {
     const tr = selected().length && checkTransfer('p', selected()).ok;
     main = tr ? B('gold', 'transfer', 'Перевести') : B('blue', 'play', 'Покрыть', ok);
   } else if (p === 'over') main = host ? B('blue', 'new', SERIES.done ? 'Новая серия' : 'Ещё партия') : B('green', 'rematch', 'Реванш');
+  else if (upPhase() && selected().length) main = B('gold', 'upgrade', 'Апгрейд', checkUpgrade('p', selected()).ok);
   else main = B('ghost', 'none', G && G.pending ? 'Отправляем…' : 'Ждём…', false);
   if (p === 'p_defend') alt = B('red', 'take', 'Беру');
   else if (p === 'p_throw') alt = B('orange', 'bito', 'Бито');
@@ -285,6 +339,7 @@ function renderActions() {
   else if (p === 'over') alt = B('grey', 'menu', 'Меню');
   else alt = B('ghost', 'none', p === 'p_attack' ? '—' : 'Ход соперника', false);
   $('actMain').innerHTML = main; $('actAlt').innerHTML = alt;
+  renderPickBtn();
 }
 
 /* ================= выбор действия за заряд ================= */
@@ -638,7 +693,7 @@ function renderSound() {
 
 /* ================= управление ================= */
 function toggleCard(id) {
-  if (!uiPhase().startsWith('p_')) return;
+  if (!uiPhase().startsWith('p_') && !upPhase()) return;
   if (G.sel.has(id)) G.sel.delete(id); else if (G.sel.size < 5) G.sel.add(id);
   AU.play('select');
   document.querySelectorAll('#hand .slot').forEach(s => s.classList.toggle('sel', G.sel.has(s.firstElementChild.dataset.id)));
@@ -669,6 +724,7 @@ function bindUI() {
   $('actMain').addEventListener('click', onAct); $('actAlt').addEventListener('click', onAct);
   $('sortR').onclick = () => { G.sort = 'r'; update(); };
   $('sortS').onclick = () => { G.sort = 's'; update(); };
+  $('pickBtn').onclick = nextPick;
   $('menuBtn').onclick = openMenu;
   $('oppBtn').onclick = () => { if (!NET && MODE.kind === 'free') openBots(); };
   $('reactBtn').onclick = openReacts;

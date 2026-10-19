@@ -171,6 +171,34 @@ function tableRanks() {
   G.table.forEach(b => { b.a.cards.forEach(c => s.add(c.r)); if (b.d) b.d.cards.forEach(c => s.add(c.r)); });
   return s;
 }
+/* карты стола (атаки и защиты вместе) складываются в комбинацию того же типа — тогда её можно подкинуть любым номиналом */
+function tableCards() {
+  const out = [];
+  G.table.forEach(b => { out.push(...b.a.cards); if (b.d && !b.d.shield) out.push(...b.d.cards); });
+  return out.filter(c => !c.action);
+}
+function tableHasType(e) {
+  if (!e || e.n < 2) return false;
+  const cs = tableCards();
+  if (cs.length < e.n) return false;
+  return combos(cs, [e.n]).some(x => x.t === e.t);
+}
+/* апгрейд: атакующий докладывает карты к своей непокрытой атаке, пока защитник думает (раз за ход) */
+function checkUpgrade(seat, cs) {
+  const no = why => ({ ok: false, why });
+  if (!cs.length || G.over || G.busy || G.attacker !== seat || G.phase.kind !== 'defend' || G.phase.who !== other(seat)) return no(null);
+  if (G.upgraded) return no('Апгрейд — один раз за ход');
+  if (cs.some(c => c.action)) return no(null);
+  const b = openB();
+  if (!b) return no(null);
+  const e = ev([...b.a.cards, ...cs]);
+  if (!e || cmpE2(e, b.a) <= 0) return no('Так атака не станет старше');
+  if (atkCount() + cs.length > G.limit) return no('Стол полон');
+  if (atkCount() + cs.length > H(other(seat)).length) return no('У соперника не хватит карт');
+  return { ok: true, e, why: `Апгрейд: ${b.a.name.toLowerCase()} → ${e.name.toLowerCase()}` };
+}
+/* сравнение комбинаций разного размера: по типу, при равном — как обычно */
+function cmpE2(a, b) { return a.t !== b.t ? a.t - b.t : cmpE(a, b); }
 function removeFrom(h, cs) { const ids = new Set(cs.map(c => c.id)); for (let i = h.length - 1; i >= 0; i--) if (ids.has(h[i].id)) h.splice(i, 1); }
 function refill(s) { const h = H(s); while (h.length < HAND && G.deck.length) h.push(G.deck.pop()); }
 
@@ -187,7 +215,8 @@ function checkMove(seat, cs) {
     return beats(e, a) ? { ok: true, e, why: 'Бьёт!' } : { ok: false, e, why: 'Не бьёт' };
   }
   if (k !== 'attack' && e.n === 1) return { ok: false, e, why: 'Одиночкой не подкидывают — только комбинацией' };
-  if (k !== 'attack' && !e.cards.some(c => tableRanks().has(c.r))) return { ok: false, e, why: 'Номинала нет на столе' };
+  if (k !== 'attack' && !e.cards.some(c => tableRanks().has(c.r)) && !tableHasType(e))
+    return { ok: false, e, why: 'Нет на столе ни номинала, ни такой комбинации' };
   const room = G.limit - atkCount();
   if (e.n > room) return { ok: false, e, why: room ? `Влезет ещё ${room} ${plural(room)}` : 'Стол полон' };
   const oh = H(other(seat)).length;

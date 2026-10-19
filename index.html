@@ -55,7 +55,7 @@
     <div class="bubble" id="bubble"></div>
     <section class="felt" id="felt">
       <svg class="print" viewBox="0 0 400 120" aria-hidden="true"><path id="arc" d="M30,20 Q200,110 370,20" fill="none"/>
-        <text><textPath href="#arc" startOffset="50%" text-anchor="middle">КРОЙ ТЕМ ЖЕ ЧИСЛОМ КАРТ</textPath></text></svg>
+        <text><textPath href="#arc" startOffset="50%" text-anchor="middle">КРОЙ КОМБИНАЦИЕЙ СТАРШЕ</textPath></text></svg>
       <div class="battles" id="battles"></div>
       <div class="gravecol" id="gravecol"></div>
       <div class="deckcol" id="deckcol"></div>
@@ -72,7 +72,7 @@
     <section class="hand" id="hand" aria-label="Твоя рука"></section>
     <div class="controls">
       <div class="ctl" id="actAlt"></div>
-      <div class="sorter"><span>Сортировать</span><div><button type="button" id="sortR" class="on">Ранг</button><button type="button" id="sortS">Масть</button></div></div>
+      <div class="sorter"><button type="button" id="pickBtn" class="pickbtn" aria-label="Подобрать комбинацию">⟳ Подбор</button><div><button type="button" id="sortR" class="on">Ранг</button><button type="button" id="sortS">Масть</button></div></div>
       <div class="ctl" id="actMain"></div>
     </div>
   </main>
@@ -95,7 +95,10 @@
   <ul>
     <li>Атакуешь одиночкой, парой, тройкой, двумя парами, каре или пятью картами.</li>
     <li>Кроют <b>тем же числом карт</b> и комбинацией старше. Одиночку бьют как в обычном дураке: старшей той же масти или козырем.</li>
-    <li>Отбился — атакующий может подкинуть <b>комбинацию</b> с номиналом со стола (одиночкой не подкидывают). Отбился от всего — «Бито».</li>
+    <li><b>Перекрытие:</b> на атаку из 2+ карт можно лечь старшей комбинацией из большего числа карт (стрит на две пары). Атакующий получает +1 заряда.</li>
+    <li>Отбился — атакующий может подкинуть <b>комбинацию</b> с номиналом со стола (одиночкой не подкидывают). Если карты стола уже сложились в комбинацию (две десятки — пара), подкидывай такую же любым номиналом. Отбился от всего — «Бито».</li>
+    <li><b>Апгрейд:</b> пока соперник думает, можно один раз за ход доложить карты к своей непокрытой атаке, чтобы она стала старше (к 10♠ — 10♦, и крыть надо уже пару).</li>
+    <li>Кнопка <b>⟳ Подбор</b> листает все ходы, которые можно сделать прямо сейчас.</li>
     <li>Не можешь — «Беру». Атакующий подкидывает вдогонку и ходит снова.</li>
     <li>В атаке за ход не больше карт, чем было у защитника, и не больше 8.</li>
     <li>Первым ходит тот, у кого младший козырь. Колода кончилась — кто первым скинул всё, тот не дурак.</li>

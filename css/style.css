@@ -172,6 +172,8 @@ kbd{font-family:var(--f-pix);font-size:12px;background:rgba(255,255,255,.1);bord
 .sorter div{display:flex;gap:4px}
 .sorter button{background:var(--orange);color:#3a2004;border:none;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:800;box-shadow:0 2px 0 rgba(0,0,0,.4);opacity:.55}
 .sorter button.on{opacity:1}
+.sorter .pickbtn{width:100%;background:var(--green,#2e9d5b);color:#fff;opacity:1;font-size:13px;padding:6px 8px;white-space:nowrap}
+.sorter .pickbtn:disabled{opacity:.35}
 .btn{border:none;border-radius:10px;padding:13px 8px;font-weight:800;font-size:17px;color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.45);text-shadow:1px 1px 0 rgba(0,0,0,.35);transition:transform .06s}
 .btn:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.45)}
 .btn.blue{background:var(--blue)}.btn.red{background:var(--red)}.btn.orange{background:var(--orange);color:#3a2004;text-shadow:none}

@@ -80,7 +80,7 @@ function botThrowPick(bot, forTake) {
   if (bot.ai === 'student' && Math.random() < 0.5) return null;
   const rs = tableRanks(), late = !G.deck.length;
   const list = combos(G.B, sizesUpTo(room).filter(n => n >= 2)).filter(e =>
-    e.cards.some(c => rs.has(c.r)) && (late || (e.tr === 0 && !e.jk && e.cards.every(c => c.r <= 11))));
+    (e.cards.some(c => rs.has(c.r)) || tableHasType(e)) && (late || (e.tr === 0 && !e.jk && e.cards.every(c => c.r <= 11))));
   const by = bot.ai === 'sharper' && !forTake ? playerAnswers() : null;
   const r = pickMax(list, e => heur(e) + (by ? (canBeat(by, e) ? -14 : late ? 12 : 0) : 0));
   if (!r || (!late && r.h <= 0)) return null;

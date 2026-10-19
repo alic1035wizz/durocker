@@ -83,7 +83,7 @@ function newGame() {
 }
 
 function startTurn(who) {
-  G.attacker = who; G.table = []; G.turnCovers = 0; G.chained = false;
+  G.attacker = who; G.table = []; G.turnCovers = 0; G.chained = false; G.upgraded = false;
   G.turnNo++; G.stats.turns++;
   G.limit = Math.min(HAND, H(other(who)).length);
   /* Бабка у подъезда: каждый третий ход меняет козырь */
@@ -127,6 +127,7 @@ function hype(key, actor) { fx({ what: 'hype', key, actor }); }
 /* единственная точка изменения партии: seat делает ход type с картами cards */
 function act(seat, type, cards) {
   if (type === 'pick') return !G.over && pickAction(seat, cards);
+  if (type === 'upgrade') return upgradeAttack(seat, cards || []);
   if (G.busy || G.over || G.phase.who !== seat) return false;
   const k = G.phase.kind, hand = H(seat);
   cards = cards || [];
@@ -205,6 +206,18 @@ function judgeCover(seat, e, a) {
     hype('chain', seat);
     addCharge(seat, 1);
   }
+}
+
+function upgradeAttack(seat, cards) {
+  const r = checkUpgrade(seat, cards);
+  if (!r.ok) return false;
+  removeFrom(H(seat), cards); forget(cards); noteSuit(seat, cards);
+  const b = openB();
+  b.a = r.e; G.upgraded = true;
+  if (r.e.t > G.stats.best[seat]) G.stats.best[seat] = r.e.t;
+  fx({ what: 'throw', actor: seat, big: 'АПГРЕЙД: ' + r.e.name, t: r.e.t });
+  hype('upgrade', seat);
+  commit(); return true;
 }
 
 function afterCover(seat) {
