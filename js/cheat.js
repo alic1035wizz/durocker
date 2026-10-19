@@ -59,11 +59,11 @@ const CHEAT = (() => {
     if (typeof NET !== 'undefined' && NET) return;
     if (!G || G.over || typeof document === 'undefined') return;
     close();
-    open = { info, tok: TOK, at: Date.now() };
     flick('botHand', 'dk-flick');
     if (info) flick('deckcol', 'dk-twitch');
     const left = CALLS - (G.calls || 0);
     if (left <= 0) return;   /* обвинения кончились — мерцание видно, но поймать уже нечем */
+    open = { info, tok: TOK, at: Date.now() };
     const b = button(); place(b);
     b.innerHTML = `🕵️ ШУЛЕР! <small style="font-size:.55em;opacity:.8">×${left}</small><i></i>`;
     b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');

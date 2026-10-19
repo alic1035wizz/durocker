@@ -97,6 +97,18 @@ const WEEKLY = (() => {
 .wknote{font-size:12px;opacity:.7;text-align:center;margin:0}
 .wkchamp{color:var(--gold,#eab54b);font-weight:800}
 .mi.wk b{color:var(--gold,#eab54b)}
+#pageIn .lbtabs{display:grid;gap:6px}
+#pageIn .lbtabs button{background:rgba(255,255,255,.06);border:1px solid var(--line,rgba(255,255,255,.15));border-radius:8px;padding:8px 4px;font-weight:800;font-size:13px;color:inherit;min-width:0}
+#pageIn .lbtabs button.on{background:var(--gold,#eab54b);color:#3a2306;border-color:transparent}
+#pageIn .lblist{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
+#pageIn .lbrow{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px;background:rgba(0,0,0,.28);border-radius:8px;padding:7px 10px;font-size:14px}
+#pageIn .lbrow .pl{font-family:var(--f-hard,monospace);font-size:11px;color:var(--gold,#eab54b);text-align:center}
+#pageIn .lbrow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+#pageIn .lbrow .nm small{display:block;font-weight:500;font-size:11px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pageIn .lbrow .sc{font-family:var(--f-hard,monospace);font-size:12px;text-align:right;white-space:nowrap}
+#pageIn .lbrow.me{background:rgba(234,181,75,.22);outline:2px solid var(--gold,#eab54b)}
+#pageIn .lbsep{text-align:center;opacity:.5;font-size:12px;margin:2px 0}
+#pageIn .lbstatus{font-size:13px;opacity:.8;text-align:center}
 `;
     document.head.appendChild(st);
   }
@@ -271,8 +283,6 @@ const WEEKLY = (() => {
   }
   function open(t) {
     looks();
-    try { if (typeof LB !== 'undefined') LB.open && 0; } catch (e) {}
-    if (!document.getElementById('lbcss')) { /* стили списков берём у таблицы лидеров, если она ещё не открывалась */ try { LB.open; } catch (e) {} }
     openNow = true; tab = t || tab;
     if (typeof sheet === 'function') sheet('page', ''); else { const p = document.getElementById('page'); if (p) p.hidden = false; }
     render();
