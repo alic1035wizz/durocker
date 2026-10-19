@@ -146,6 +146,7 @@ function renderHUD() {
     if (f) chips.push(`против ${esc(NET.oppNick)}: ${f.w}–${f.l}`);
   } else if (MODE.kind === 'career') chips.push(`${esc(CAREER[bot.district].name)} · ${bot.slot + 1}/3`);
   else if (MODE.kind === 'daily') chips.push(`Ежедневная #${dailyNumber(MODE.day)}`);
+  if (G && G.rules && G.rules.set === 'classic' && (NET || MODE.kind === 'free')) chips.push('Классика');
   if ((G && G.rules && G.rules.blitz) || (!NET && blitzOn() && MODE.kind === 'free')) chips.push('Блиц');
   if (!NET && bot.boss && MODE.kind === 'career') chips.push(`<span class="boss">${esc(bossRule(bot.boss))}</span>`);
   $('modeBox').innerHTML = chips.map(c => c.startsWith('<span') ? c : `<span>${c}</span>`).join('');
@@ -183,6 +184,8 @@ function render() {
   const mine = G.offer && G.offer.p ? 3 : (G.charge ? G.charge.p : 0);
   $('myCharge').innerHTML = `${pipsHTML(mine).replace(/<i/g, '<i')}<em>заряд</em>`;
   $('myCharge').querySelectorAll('i').forEach((i, k) => i.classList.toggle('on', k < mine));
+  /* без заряда в наборе правил — полоски заряда не показываем вовсе */
+  $('myCharge').hidden = !rule('charge'); $('oppPips').hidden = !rule('charge');
   $('handInfo').textContent = `на руке ${G.P.length}`;
   $('reactBtn').hidden = !NET;
   $('sortR').classList.toggle('on', G.sort === 'r'); $('sortS').classList.toggle('on', G.sort === 's');
@@ -317,8 +320,10 @@ function renderCombo() {
     const name = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : fix ? fix.e.name.toUpperCase() : n ? 'НЕ КОМБО' : 'ВЫБЕРИ КАРТЫ';
     if (fix) r = { ...r, why: 'убери ' + fix.drop.map(cardName).join(' ') + ' →' };
     html = plate(n ? mineCls(r) + ' wide' : 'idle wide', label, name) + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '·'}</div>`;
-    if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = 'Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт или перекрывает старшей комбинацией из большего. Не знаешь, чем ходить, — жми «⟳ Подбор».';
-    if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = 'Подкидывают комбинацией с номиналом со стола — или любой, если такая комбинация уже сложилась из карт стола (две десятки на столе — подкидывай любую пару).';
+    if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = 'Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт'
+      + (rule('over') ? ' или перекрывает старшей комбинацией на одну карту больше' : '') + '. Не знаешь, чем ходить, — жми «⟳ Подбор».';
+    if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = 'Подкидывают комбинацией с номиналом со стола'
+      + (rule('typeThrow') ? ' — или любой, если такая комбинация уже сложилась из карт стола (две десятки на столе — подкидывай любую пару).' : '.');
   } else if (p === 'over') {
     html = plate('idle wide', 'партия', 'ОКОНЧЕНА');
   } else if (upPhase() && selected().length) {
@@ -404,6 +409,8 @@ function showOver() {
   const opp = esc(oppName()), pen = G.penalty || 0, lim = NET ? 11 : seriesTo();
   let h, s;
   if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно.'; }
+  else if (G.overWhy === 'time' && G.over === 'p') { h = 'ВРЕМЯ ВЫШЛО!'; s = `У ${opp} кончились часы: +${pen} штрафа ему.`; }
+  else if (G.overWhy === 'time') { h = 'ВРЕМЯ ВЫШЛО!'; s = `Твои часы кончились: +${pen} штрафа.`; }
   else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp} остался с ${pen} ${plural(pen)}: +${pen} штрафа ему.`; }
   else { h = 'ДУРАК!'; s = `У тебя осталось ${pen} ${plural(pen)}: +${pen} штрафа.`; }
   let extra = '', btns = '';
@@ -454,7 +461,26 @@ function tickTimer() {
     $('timerTxt').textContent = sec + ' с · ' + (G.phase.who === 'p' ? 'твой ход' : 'ход соперника');
     if (sec <= 5 && G.phase.who === 'p' && tickTimer.last !== sec) { tickTimer.last = sec; AU.play('tick'); }
   } else el.hidden = true;
+  renderClocks();
   requestAnimationFrame(tickTimer);
+}
+
+/* шахматные часы Блица: свои — у руки, соперника — в шапке */
+const fmtClock = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function renderClocks() {
+  const me = $('clkMe'), op = $('clkOpp');
+  if (!me || !op) return;
+  const c = G && G.clock;
+  me.hidden = op.hidden = !c;
+  if (!c) return;
+  [[me, 'p'], [op, 'b']].forEach(([el, s]) => {
+    const left = clockLeft(s), run = c.run === s && !G.over;
+    const txt = (s === 'p' ? '⏱ ' : '') + fmtClock(left);
+    if (el.textContent !== txt) el.textContent = txt;
+    el.classList.toggle('run', run); el.classList.toggle('low', run && left < 20000);
+  });
+  const l = clockLeft('p'), sec = Math.ceil(l / 1000);
+  if (c.run === 'p' && !G.over && sec <= 10 && renderClocks.last !== sec) { renderClocks.last = sec; AU.play('tick'); }
 }
 
 /* ================= веер и анимации ================= */
@@ -524,7 +550,7 @@ async function flyToGrave() {
 
 /* ================= листы ================= */
 function sheet(id, html) { $(id + 'In').innerHTML = html; $(id).hidden = false; }
-function closeSheets() { ['menu', 'bots', 'page'].forEach(id => { $(id).hidden = true; }); if (!NET) $('lobby').hidden = true; }
+function closeSheets() { ['menu', 'bots', 'page'].forEach(id => { $(id).hidden = true; }); if (!NET) $('lobby').hidden = true; if (!G && !NET) newGame(); }
 const head = t => `<div class="sheethead"><h2>${t}</h2><button type="button" class="close" data-close>×</button></div>`;
 
 function openMenu() {
@@ -550,7 +576,7 @@ function menuGo(k) {
   else if (k === 'online') { renderLobby(); $('lobby').hidden = false; }
   else if (k === 'coll') openCollection();
   else if (k === 'settings') openSettings();
-  else if (k === 'rules') sheet('page', head('Правила') + $('rulesTpl').innerHTML);
+  else if (k === 'rules') openRules();
   else if (k === 'leave') leaveTable();
   else if (k === 'restart') { newSeries(); newGame(); }
 }
@@ -558,7 +584,32 @@ function setMode(m) {
   if (NET) { TR.close(); NET = null; }
   MODE = m;
   if (m.kind !== 'daily') store('durocker-mode', JSON.stringify(m));
-  G = null; loadSeries(); newGame();
+  G = null; loadSeries();
+  if (!maybeRuleCard(newGame)) newGame();
+}
+
+/* карточка «Новое правило» перед первой партией в районе карьеры (один раз на район) */
+const RULE_CARDS = [
+  { tag: 'РАЙОН 1 · ПОДЪЕЗД', title: 'Дурак с комбинациями', text: 'Ходи одиночкой, парой, сетом, двумя парами, каре или пятёркой. Кроют тем же числом карт, но старше. Подкидывают комбинацией с номиналом со стола.',
+    ex: 'Тебе зашли парой <b>7♠ 7♥</b> — кроешь парой <b>9♣ 9♦</b>. На столе две семёрки и две девятки — можно подкинуть любую пару: она уже сложилась на столе.' },
+  { tag: 'РАЙОН 2 · ДВОР', title: 'Новое правило: перевод', text: 'Пока на атаку никто не ответил, положи комбинацию того же типа и старшинства — и атака улетает обратно.',
+    ex: 'Тебе зашли парой <b>8♠ 8♥</b> — кладёшь свою <b>8♣ 8♦</b>, жмёшь «Перевести», и крыть теперь соседу.' },
+  { tag: 'РАЙОН 3 · РЫНОК', title: 'Новые правила: «могнул» и заряд', text: 'Покрыл комбинацией старшего типа — «МОГНУЛ»: сопернику сразу +1 штраф. За мастерство копится заряд: три деления — выбираешь карту-действие.',
+    ex: 'На мини-флеш <b>4♥ 7♥ 9♥</b> кладёшь сет <b>5♣ 5♦ 5♠</b> — ТЕБЯ МОГНУЛИ! Карты-действия: Щит, Разворот, +2 и Смена козыря.' },
+  { tag: 'РАЙОН 4 · ВОКЗАЛ', title: 'Новые правила: перекрытие и апгрейд', text: 'На атаку из 2+ карт можно лечь старшим типом ровно на одну карту больше. А пока соперник думает, раз за ход можно доложить карты к своей атаке.',
+    ex: 'На две пары <b>A A 4 4</b> — стрит <b>5 6 7 8 9</b>. Ты сходил <b>10♠</b>, сосед думает — докладываешь <b>10♦</b>, и крыть ему уже пару.' },
+  { tag: 'РАЙОН 5 · КАЗИНО', title: 'Все правила сразу', text: 'Здесь работает всё, что ты выучил по дороге. Финальный босс — Шулер. Он видит твою руку в конце колоды.', ex: 'Подсказка: копи заряд к концу колоды — Щит или Разворот спасают последний круг.' },
+];
+function maybeRuleCard(then) {
+  if (NET || MODE.kind !== 'career') return false;
+  const d = Math.min(careerDistrict(), RULE_CARDS.length - 1), k = 'durocker-rulecard-' + d;
+  if (d < 0 || load(k)) return false;
+  store(k, '1');
+  const c = RULE_CARDS[d];
+  sheet('page', `<div class="rulecard"><span class="tag">${c.tag}</span><h2>${esc(c.title)}</h2><p>${esc(c.text)}</p>
+    <div class="ex">${c.ex}</div><button class="btn blue" type="button" id="ruleGo">Играть</button></div>`);
+  $('ruleGo').onclick = () => { $('page').hidden = true; then(); };
+  return true;
 }
 
 /* карьера */
@@ -587,8 +638,12 @@ function openBots() {
     <div class="bots">${BOTS.map(b => `<button type="button" class="botcard ${b.id === cur && MODE.kind === 'free' ? 'on' : ''}" data-bot="${b.id}">
       <span class="ava" style="background:${b.color}">${b.face}</span>
       <span class="bt"><b>${b.name}</b><em>${b.level}</em><span>${b.desc}</span></span></button>`).join('')}</div>
-    ${toggleHTML('trBot', 'Переводной: можно перевести атаку тем же старшинством', tableRules().transfer)}
-    ${toggleHTML('blzBot', 'Блиц: серия до 11', blitzOn())}`);
+    <h3>Правила</h3>
+    ${ruleSegHTML('rsBot', ruleSetName())}
+    <p class="small">${RULESET_NOTE}</p>
+    ${toggleHTML('trBot', 'Переводной: можно перевести атаку тем же старшинством', load('durocker-transfer') !== '0')}
+    ${toggleHTML('blzBot', 'Блиц: 2,5 минуты на партию', blitzOn())}`);
+  $('rsBot').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); $('rsBot').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
 }
 function toggleHTML(id, label, on) { return `<label class="toggle"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><span></span>${label}</label>`; }
 function pickBot(id) {
@@ -638,6 +693,23 @@ function backPreview(id) {
 }
 
 /* настройки */
+/* правила: то, чего нет в текущем наборе, помечаем — где оно включается */
+const RULE_WHERE = { transfer: 'Двор', mognul: 'Рынок', charge: 'Рынок', over: 'Вокзал', upgrade: 'Вокзал', typeThrow: 'Подъезд' };
+function openRules() {
+  sheet('page', head('Правила') + $('rulesTpl').innerHTML);
+  const r = (G && G.rules) || tableRules(), car = r.set === 'career';
+  const setName = car ? `карьера, район «${CAREER[Math.max(0, careerDistrict())].name}»` : r.set === 'classic' ? '«Классика»' : '«Полные правила»';
+  $('pageIn').querySelector('h2:not(.sheethead h2)')?.insertAdjacentHTML('afterend', `<p class="small">Сейчас: ${setName}. Серым — то, что в этой партии выключено.</p>`);
+  $('pageIn').querySelectorAll('[data-rule]').forEach(el => {
+    const k = el.dataset.rule;
+    if (r[k] !== false) return;
+    el.classList.add('locked');
+    el.insertAdjacentHTML('beforeend', ` <em class="where">${car ? 'откроется: ' + RULE_WHERE[k] : r.set === 'classic' ? 'в «Полных правилах»' : 'выключено за этим столом'}</em>`);
+  });
+}
+const ruleSegHTML = (id, cur) => `<div class="seg" id="${id}">${[['classic', 'Классика'], ['full', 'Полные правила']].map(([k, n]) => `<button type="button" data-rs="${k}" class="${cur === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+const RULESET_NOTE = '«Классика» — комбинации, подкидывание и перевод. «Полные» — плюс «могнул», заряд и карты-действия, перекрытие и апгрейд.';
+
 function openSettings() {
   const hl = load('durocker-hints') || 'auto';
   sheet('page', `${head('Настройки')}
@@ -649,14 +721,17 @@ function openSettings() {
     <h3>Подсказки</h3>
     <div class="seg" id="stHints">${[['auto', 'Сами по опыту'], ['novice', 'Новичок'], ['player', 'Игрок'], ['pro', 'Профи']].map(([k, n]) => `<button type="button" data-h="${k}" class="${hl === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <p class="small">Новичок — подсветка, «чем крыть», шпаргалка. Игрок — только подсветка. Профи — только название комбинации. Сейчас: ${({ novice: 'новичок', player: 'игрок', pro: 'профи' })[hintLevel()]}.</p>
-    <h3>Игра с ботом</h3>
-    ${toggleHTML('stBlitz', 'Блиц: серия до 11, онлайн 20 секунд на ход', blitzOn())}
-    ${toggleHTML('stTransfer', 'Переводной', tableRules().transfer)}`);
+    <h3>Игра с ботом и онлайн</h3>
+    ${ruleSegHTML('stRules', ruleSetName())}
+    <p class="small">${RULESET_NOTE} В карьере правила открываются по районам.</p>
+    ${toggleHTML('stBlitz', 'Блиц: 2,5 минуты на партию', blitzOn())}
+    ${toggleHTML('stTransfer', 'Переводной', load('durocker-transfer') !== '0')}`);
   $('stMusic').onchange = e => { AU.unlock(); AU.setMusic(e.target.checked); renderSound(); };
   $('stSfx').onchange = e => { AU.unlock(); AU.setSfx(e.target.checked); renderSound(); };
   $('stRude').onchange = e => store('durocker-rude', e.target.checked ? '1' : '0');
   $('stBlitz').onchange = e => { store('durocker-blitz', e.target.checked ? '1' : '0'); };
   $('stTransfer').onchange = e => store('durocker-transfer', e.target.checked ? '1' : '0');
+  $('stRules').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); openSettings(); toast('Правила сменятся со следующей партии'); };
   $('stHints').onclick = e => { const b = e.target.closest('[data-h]'); if (!b) return; store('durocker-hints', b.dataset.h); openSettings(); if (G) update(); };
 }
 
@@ -685,8 +760,11 @@ function renderLobby() {
   }
   L.innerHTML = `${head('Игра с другом')}
     <label class="field">Твоё имя за столом<input id="nickIn" maxlength="16" value="${esc(myNick())}" autocomplete="off"></label>
-    ${toggleHTML('trNet', 'Переводной', tableRules().transfer)}
-    ${toggleHTML('blzNet', 'Блиц: 20 секунд на ход', blitzOn())}
+    <div class="small">Правила стола</div>
+    ${ruleSegHTML('rsNet', ruleSetName())}
+    <p class="small">${RULESET_NOTE}</p>
+    ${toggleHTML('trNet', 'Переводной', load('durocker-transfer') !== '0')}
+    ${toggleHTML('blzNet', 'Блиц: 2,5 минуты на партию', blitzOn())}
     <button class="btn blue" type="button" id="hostBtn">Создать стол</button>
     <div class="or">или войди к другу</div>
     <div class="joinrow"><input id="codeIn" maxlength="4" placeholder="КОД" autocomplete="off" aria-label="Код стола"><button class="btn orange" type="button" id="joinBtn">Войти</button></div>
@@ -694,6 +772,7 @@ function renderLobby() {
     <p class="small">Правила стола выбирает тот, кто его создаёт. Подсказки в онлайне выключены у обоих.</p>`;
   const saveNick = () => store('durocker-nick', ($('nickIn').value.trim() || 'Игрок').slice(0, 16));
   $('hostBtn').onclick = () => { saveNick(); store('durocker-transfer', $('trNet').checked ? '1' : '0'); store('durocker-blitz', $('blzNet').checked ? '1' : '0'); hostTable(); };
+  $('rsNet').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); $('rsNet').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
   $('joinBtn').onclick = () => { saveNick(); joinTable(); };
   $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') { saveNick(); joinTable(); } });
 }

@@ -13,7 +13,7 @@ tgStart(() => {
   const sp = new URLSearchParams(location.search), hostCode = sp.get('h'), code = startCode();
   const back = hostCode && loadHost(hostCode);
   if (back) { hostTable(back); return; }
-  newGame();
+  if (!maybeRuleCard(newGame)) newGame();
   if (code) {
     /* пришёл по ссылке друга — сразу за его стол */
     store('durocker-seen', '1');
@@ -24,6 +24,6 @@ tgStart(() => {
   }
   setUrl(null);
   /* первый визит — сразу меню, чтобы было видно карьеру и режимы */
-  if (!load('durocker-seen')) { store('durocker-seen', '1'); openMenu(); }
+  if (!load('durocker-seen')) { store('durocker-seen', '1'); TUT.offer(); }
 });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});

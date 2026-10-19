@@ -8,11 +8,41 @@ function seriesTo() {
   if (NET) return 11;
   if (MODE.kind === 'daily') return 1;
   if (MODE.kind === 'career') return currentBot().boss ? 21 : 11;
-  return blitzOn() ? 11 : 21;
+  return 21;
 }
 function turnMs(seat) {
   if (!NET && currentBot().boss === 'taxi' && seat === 'p') return 10000;
-  return blitzOn() ? 20000 : 30000;
+  return 30000;
+}
+/* Блиц — шахматные часы: у каждого 2,5 минуты на всю партию, тикают только в свой ход */
+const BLITZ_MS = 150000;
+const blitzHere = () => blitzOn() && (!!NET || MODE.kind === 'free');
+/* остаток времени seat на часах прямо сейчас */
+function clockLeft(seat) {
+  const c = G && G.clock;
+  if (!c) return 0;
+  return Math.max(0, c[seat] - (c.run === seat ? Date.now() - c.since : 0));
+}
+let clockTimer = null;
+function clockSync() {
+  const c = G && G.clock;
+  if (!c || G.guest) return;
+  const now = Date.now();
+  if (c.run) { c[c.run] = Math.max(0, c[c.run] - (now - c.since)); }
+  const who = !G.over && !G.busy && G.phase.who ? G.phase.who : null;
+  c.run = who; c.since = now;
+  clearTimeout(clockTimer);
+  if (who) {
+    const t = TOK;
+    clockTimer = setTimeout(() => { if (t === TOK && G.clock && G.clock.run === who && clockLeft(who) <= 0) flagFall(who); }, c[who] + 30);
+  }
+}
+/* флажок упал: время вышло — партия проиграна, штраф по картам, но не меньше 3 */
+function flagFall(seat) {
+  if (!G || G.over) return;
+  clockSync();
+  G.clock[seat] = 0; G.clock.run = null;
+  finishGame(other(seat), Math.max(3, Math.min(10, H(seat).length)), 'time');
 }
 
 /* серия: штрафные очки = карты, оставшиеся у проигравшего; кто набрал лимит — проиграл серию */
@@ -33,12 +63,34 @@ function loadSeries() {
 function saveSeries() { const k = seriesKey(); if (k) store(k, JSON.stringify(SERIES)); }
 function newSeries() { SERIES = MODE.kind === 'daily' ? { ...emptySeries(), mode: 'daily' } : emptySeries(); if (NET) NET.series = SERIES; saveSeries(); }
 
+/* наборы правил: «Классика» — комбинации, подкидывание и перевод; «Полные» — всё.
+   В карьере правила открываются по районам: Подъезд — классика без перевода, Двор — +перевод,
+   Рынок — +могнул и заряд, Вокзал — +перекрытие и апгрейд, Казино — всё. */
+const RULESETS = {
+  classic: { transfer: true, mognul: false, charge: false, over: false, upgrade: false, typeThrow: true },
+  full:    { transfer: true, mognul: true,  charge: true,  over: true,  upgrade: true,  typeThrow: true },
+};
+const DISTRICT_RULES = [
+  { ...RULESETS.classic, transfer: false },
+  { ...RULESETS.classic },
+  { ...RULESETS.classic, mognul: true, charge: true },
+  { ...RULESETS.full },
+  { ...RULESETS.full },
+];
+/* «Классика» или «Полные» для своей игры и онлайн-стола (выбирает хозяин) */
+const ruleSetName = () => (load('durocker-ruleset') === 'classic' ? 'classic' : 'full');
+const careerDistrict = () => (MODE.kind === 'career' ? Math.floor((MODE.stage || 0) / 3) : -1);
 function tableRules() {
+  let base, set;
+  if (!NET && MODE.kind === 'career') { set = 'career'; base = DISTRICT_RULES[Math.min(careerDistrict(), DISTRICT_RULES.length - 1)]; }
+  else if (!NET && MODE.kind === 'daily') { set = 'full'; base = RULESETS.full; }
+  else { set = ruleSetName(); base = RULESETS[set]; }
   const t = load('durocker-transfer');
-  const transfer = t == null ? true : t === '1';
-  const vahter = !NET && currentBot().boss === 'vahter';
+  const transferOn = MODE.kind === 'career' && !NET ? true : (t == null ? true : t === '1');
+  const r = { ...base, set, transfer: base.transfer && transferOn, blitz: blitzHere() };
   /* Вахтёр: «всё по-старому» — без переводов и без перекрытия */
-  return { transfer: vahter ? false : transfer, over: !vahter, blitz: blitzOn() };
+  if (!NET && currentBot().boss === 'vahter') { r.transfer = false; r.over = false; }
+  return r;
 }
 
 /* детерминированный генератор для ежедневной раздачи */
@@ -62,6 +114,7 @@ function newGame() {
     deck, T: deck[0].s, trump: deck[0], P: [], B: [], table: [], grave: 0, attacker: 'p', phase: { who: null },
     limit: HAND, sel: new Set(), sort: G ? G.sort : 'r', over: null, busy: true, fx: null, fxList: [], online: !!NET,
     rules: tableRules(), known: new Set(), deadline: 0, extra: { p: 0, b: 0 },
+    clock: blitzHere() ? { p: BLITZ_MS, b: BLITZ_MS, run: null, since: Date.now() } : null,
     charge: { p: 0, b: 0 }, offer: { p: null, b: null }, lastSuit: { p: deck[0].s, b: deck[0].s },
     turnNo: 0, turnCovers: 0, chained: false, actSerial: 0,
     stats: { mognul: { p: 0, b: 0 }, transfer: { p: 0, b: 0 }, chain: { p: 0, b: 0 }, best: { p: -1, b: -1 }, turns: 0 },
@@ -84,6 +137,7 @@ function newGame() {
 }
 
 function startTurn(who) {
+  if (G.over) return;
   G.attacker = who; G.table = []; G.turnCovers = 0; G.chained = false; G.upgraded = false;
   G.turnNo++; G.stats.turns++;
   G.limit = Math.min(HAND, H(other(who)).length);
@@ -101,11 +155,12 @@ function startTurn(who) {
 /* ---------- заряд: копится за мастерство, полная шкала — выбор действия ---------- */
 const CHARGE_MAX = 3;
 function addCharge(seat, n) {
-  if (G.offer[seat]) return;
+  if (!rule('charge') || G.offer[seat]) return;
   G.charge[seat] += n;
   if (G.charge[seat] >= CHARGE_MAX) makeOffer(seat);
 }
 function makeOffer(seat) {
+  if (!rule('charge')) return;
   G.charge[seat] = 0;
   const ks = ACT_KEYS.slice().sort(() => Math.random() - 0.5).slice(0, 2);
   G.offer[seat] = { kinds: ks, s: G.lastSuit[seat] };
@@ -193,7 +248,7 @@ function judgeCover(seat, e, a) {
     G.stats.over = (G.stats.over || 0) + 1;
     hype('over', seat);
     addCharge(att, 1);
-  } else if (e.n >= 2 && e.t > a.t) {
+  } else if (e.n >= 2 && e.t > a.t && rule('mognul')) {
     G.stats.mognul[seat]++;
     SERIES[att] += 1;
     saveSeries();
@@ -299,6 +354,7 @@ async function endTurn(defended) {
     G.table = []; commit();
   }
   await wait(450);
+  if (G.over) return;
   refill(att); refill(def);
   update(true); sync();
   await wait(reduced ? 100 : 750);
@@ -310,15 +366,21 @@ function checkOver() {
   if (G.deck.length) return false;
   const p0 = !G.P.length, b0 = !G.B.length;
   if (!p0 && !b0) return false;
-  G.over = p0 && b0 ? 'draw' : p0 ? 'p' : 'b';
-  G.phase = { who: null };
+  const win = p0 && b0 ? 'draw' : p0 ? 'p' : 'b';
+  /* больше 10 штрафных за партию не дают, чтобы одна неудачная раздача не убивала серию */
+  finishGame(win, win === 'draw' ? 0 : Math.min(10, H(other(win)).length));
+  return true;
+}
+function finishGame(win, pen, why) {
+  if (G.clock) clockSync();
+  G.over = win; G.overWhy = why || null;
+  G.phase = { who: null }; G.busy = false;
   G.penalty = 0;
-  if (G.over !== 'draw') {
-    const loser = other(G.over);
-    /* больше 10 штрафных за партию не дают, чтобы одна неудачная раздача не убивала серию */
-    G.penalty = Math.min(10, H(loser).length);
+  if (win !== 'draw') {
+    const loser = other(win);
+    G.penalty = pen;
     SERIES[loser] += G.penalty;
-    hype(G.penalty >= 8 ? 'dry' : 'gg', G.over);
+    hype(why === 'time' ? 'gg' : G.penalty >= 8 ? 'dry' : 'gg', win);
   }
   SERIES.p += G.extra.p; SERIES.b += G.extra.b;
   SERIES.games++;
@@ -327,15 +389,16 @@ function checkOver() {
   saveSeries();
   if (typeof onGameOver === 'function') onGameOver();
   commit();
-  return true;
 }
 
 /* ---------- таймер хода: онлайн (ведёт хозяин) и у босса Таксиста ---------- */
 let turnTimer = null;
 function armTimer() {
   const online = NET && NET.role === 'host' && NET.connected;
+  if (G && G.clock) clockSync();
   const taxi = !NET && G && currentBot().boss === 'taxi' && G.phase.who === 'p';
-  const live = (online || taxi) && G && !G.busy && !G.over && G.phase.who;
+  /* в Блице ход не ограничен — тикают шахматные часы */
+  const live = ((online && !(G && G.clock)) || taxi) && G && !G.busy && !G.over && G.phase.who;
   if (!live) { clearTimeout(turnTimer); if (G) { G.deadline = 0; G.timerKey = null; } return; }
   const key = G.phase.who + G.phase.kind + G.table.length + ':' + G.table.filter(b => b.d).length;
   if (key === G.timerKey) return;
