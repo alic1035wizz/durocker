@@ -22,7 +22,7 @@ function turnMs(seat) {
 }
 /* Блиц — шахматные часы: у каждого 2,5 минуты на всю партию, тикают только в свой ход */
 const BLITZ_MS = 150000;
-const blitzHere = () => blitzOn() && (!!NET || MODE.kind === 'free');
+const blitzHere = () => blitzOn() && !(NET && NET.quick) && (!!NET || MODE.kind === 'free');
 /* остаток времени seat на часах прямо сейчас */
 function clockLeft(seat) {
   const c = G && G.clock;

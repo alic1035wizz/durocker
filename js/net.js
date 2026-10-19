@@ -107,8 +107,8 @@ function onAct(d) {
 }
 
 /* ---------- гость ---------- */
-function joinTable() {
-  const code = $('codeIn').value.trim().toLowerCase();
+function joinTable(codeArg) {
+  const code = String(codeArg || ($('codeIn') ? $('codeIn').value : '')).trim().toLowerCase();
   if (!/^[a-z0-9]{4}$/.test(code)) return lobbyStatus('Код — 4 символа, как у хозяина стола.', true);
   if (!TR.available()) return lobbyStatus(TR.unavailableText, true);
   TOK++;

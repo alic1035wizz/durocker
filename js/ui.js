@@ -148,7 +148,7 @@ function renderHUD() {
   /* режим и особые правила */
   const chips = [];
   if (NET) {
-    chips.push(`стол ${esc(NET.code.toUpperCase())}`);
+    chips.push(NET.quick ? '⚡ быстрая игра' : `стол ${esc(NET.code.toUpperCase())}`);
     const f = prog().friends[NET.oppNick];
     if (f) chips.push(`против ${esc(NET.oppNick)}: ${f.w}–${f.l}`);
   } else if (MODE.kind === 'career') chips.push(`${esc(CAREER[bot.district].name)} · ${bot.slot + 1}/3`);
