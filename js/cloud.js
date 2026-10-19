@@ -331,7 +331,7 @@ const CLOUD = (() => {
   }
   hook();
   return {
-    on, board, call, ensure, pid, me: () => me, lastBoard: () => lastBoard, open, tableCode,
+    on, board, call, ensure, pid, me: () => me, lastBoard: () => lastBoard, open, view, tableCode,
     setUrl(u) { url = String(u || ''); down = 0; },
     _flush: flush, _reportGame: reportGame, _reportMatch: reportMatch, _hostWithCode: hostWithCode,
   };
