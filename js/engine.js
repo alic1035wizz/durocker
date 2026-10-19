@@ -6,7 +6,7 @@ let MODE = { kind: 'free' };
 const blitzOn = () => load('durocker-blitz') === '1';
 function seriesTo() {
   if (NET) return 11;
-  if (MODE.kind === 'daily') return 1;
+  if (MODE.kind === 'daily' || MODE.kind === 'weekly') return 1;
   if (MODE.kind === 'career') return currentBot().boss ? 21 : 11;
   return 21;
 }
@@ -50,7 +50,7 @@ let SERIES = { p: 0, b: 0, games: 0, done: false };
 const emptySeries = () => ({ p: 0, b: 0, games: 0, done: false });
 function seriesKey() {
   if (NET) return null;
-  if (MODE.kind === 'daily') return null;
+  if (MODE.kind === 'daily' || MODE.kind === 'weekly') return null;
   if (MODE.kind === 'career') return 'durocker-series-career-' + MODE.stage;
   return 'durocker-series-' + currentBot().id + (blitzOn() ? '-blitz' : '');
 }
@@ -78,15 +78,27 @@ const DISTRICT_RULES = [
   { ...RULESETS.full },
 ];
 /* «Классика» или «Полные» для своей игры и онлайн-стола (выбирает хозяин) */
+/* босс недели: «Полные» правила плюс одно особое (номер правила — MODE.rule, оформление — в weekly.js) */
+const WEEKLY_RULES = [
+  { trumpEvery: true },
+  { noSingles: true },
+  { jokers: 4 },
+  { transfer: false, singleThrow: true },
+  { chargeCover: true },
+  { hand: 10 },
+  { overAny: true },
+  { noTrump: true },
+];
 const ruleSetName = () => (load('durocker-ruleset') === 'classic' ? 'classic' : 'full');
 const careerDistrict = () => (MODE.kind === 'career' ? Math.floor((MODE.stage || 0) / 3) : -1);
 function tableRules() {
   let base, set;
   if (!NET && MODE.kind === 'career') { set = 'career'; base = DISTRICT_RULES[Math.min(careerDistrict(), DISTRICT_RULES.length - 1)]; }
   else if (!NET && MODE.kind === 'daily') { set = 'full'; base = RULESETS.full; }
+  else if (!NET && MODE.kind === 'weekly') { set = 'weekly'; base = { ...RULESETS.full, ...(WEEKLY_RULES[MODE.rule] || {}) }; }
   else { set = ruleSetName(); base = RULESETS[set]; }
   const t = load('durocker-transfer');
-  const transferOn = MODE.kind === 'career' && !NET ? true : (t == null ? true : t === '1');
+  const transferOn = (MODE.kind === 'career' || MODE.kind === 'weekly') && !NET ? true : (t == null ? true : t === '1');
   const r = { ...base, set, transfer: base.transfer && transferOn, blitz: blitzHere() };
   /* Вахтёр: «всё по-старому» — без переводов и без перекрытия */
   if (!NET && currentBot().boss === 'vahter') { r.transfer = false; r.over = false; }
@@ -105,15 +117,19 @@ function newGame() {
   loadSeries();
   if (SERIES.done) newSeries();
   const rnd = MODE.kind === 'daily' ? seeded(MODE.seed) : Math.random;
+  const rules = tableRules();
+  HAND = rules.hand || 8;
   const deck = [];
-  for (let n = 0; n < DECK; n++) deck.push(mkCard(n));
+  /* джокеров обычно 2 (52 и 53); босс недели может положить 4 */
+  for (let n = 0; n < 52 + (rules.jokers || 2); n++) deck.push(mkCard(n));
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
   /* под колоду кладём обычную карту, а не джокера: по ней определяется козырь */
   if (deck[0].joker) { const k = deck.findIndex(c => !c.joker); [deck[0], deck[k]] = [deck[k], deck[0]]; }
   G = {
-    deck, T: deck[0].s, trump: deck[0], P: [], B: [], table: [], grave: 0, attacker: 'p', phase: { who: null },
+    /* «козырей нет»: козырем считается масть джокеров ★ — то есть козыри только джокеры */
+    deck, T: rules.noTrump ? 4 : deck[0].s, trump: deck[0], P: [], B: [], table: [], grave: 0, attacker: 'p', phase: { who: null },
     limit: HAND, sel: new Set(), sort: G ? G.sort : 'r', over: null, busy: true, fx: null, fxList: [], online: !!NET,
-    rules: tableRules(), known: new Set(), deadline: 0, extra: { p: 0, b: 0 },
+    rules, known: new Set(), deadline: 0, extra: { p: 0, b: 0 },
     clock: blitzHere() ? { p: BLITZ_MS, b: BLITZ_MS, run: null, since: Date.now() } : null,
     charge: { p: 0, b: 0 }, offer: { p: null, b: null }, lastSuit: { p: deck[0].s, b: deck[0].s },
     turnNo: 0, turnCovers: 0, chained: false, actSerial: 0,
@@ -148,6 +164,12 @@ function startTurn(who) {
     fx({ what: 'action', actor: 'b', act: 'trump', s, kind: 'gold' });
     hype('babka', 'b');
   }
+  /* босс недели «козырь меняется каждый ход» */
+  if (wrule('trumpEvery') && G.turnNo > 1) {
+    const s = [0, 1, 2, 3].filter(x => x !== G.T)[Math.floor(Math.random() * 3)];
+    G.T = s;
+    fx({ what: 'action', actor: 'b', act: 'trump', s, kind: 'gold' });
+  }
   G.phase = { who, kind: 'attack' }; G.busy = false;
   commit();
 }
@@ -162,7 +184,7 @@ function addCharge(seat, n) {
 function makeOffer(seat) {
   if (!rule('charge')) return;
   G.charge[seat] = 0;
-  const ks = ACT_KEYS.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+  const ks = ACT_KEYS.filter(k => !(k === 'trump' && wrule('noTrump'))).sort(() => Math.random() - 0.5).slice(0, 2);
   G.offer[seat] = { kinds: ks, s: G.lastSuit[seat] };
 }
 function pickAction(seat, kind) {
@@ -262,6 +284,8 @@ function judgeCover(seat, e, a) {
     hype('chain', seat);
     addCharge(seat, 1);
   }
+  /* босс недели: каждая отбитая атака даёт заряд */
+  if (wrule('chargeCover')) addCharge(seat, 1);
 }
 
 function upgradeAttack(seat, cards) {

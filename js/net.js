@@ -144,7 +144,7 @@ function applyView(st) {
       B: Array.from({ length: st.bn }, (_, i) => ({ id: 'x' + i, r: 2, s: -1, n: -1 })), table: [], grave: st.g,
       attacker: st.at, phase: st.ph ? { who: st.ph.w, kind: st.ph.k } : { who: null }, limit: st.lim, busy: st.busy,
       over: st.over, penalty: st.pen, sel: new Set([...keepSel].filter(id => st.P.some(n => 'c' + n === id))),
-      sort: (prev && prev.sort) || 'r', pending: false, fx: null, rules: st.ru ? { ...st.ru } : { transfer: !!st.rt, over: st.ro !== 0, blitz: !!st.bz },
+      sort: (prev && prev.sort) || 'r', pending: false, fx: null, rules: (HAND = (st.ru && st.ru.hand) || 8, st.ru ? { ...st.ru } : { transfer: !!st.rt, over: st.ro !== 0, blitz: !!st.bz }),
       upgraded: !!st.up, clock: st.ck ? { p: st.ck.p, b: st.ck.b, run: st.ck.run, since: Date.now() } : null, overWhy: st.ow || null, deadline: st.tl ? Date.now() + st.tl : 0, extra: st.ex || { p: 0, b: 0 }, turnMs: st.tm || 30000,
       charge: st.ch || { p: 0, b: 0 }, offer: { p: st.of || null, b: st.oof ? {} : null }, offerLater: prev && prev.offerLater,
     };
