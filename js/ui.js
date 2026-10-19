@@ -261,6 +261,17 @@ function useHint() {
 }
 
 /* ================= блок «его × твоя» ================= */
+/* выбранные карты не складываются: ищем самую сильную комбинацию внутри выбора и говорим, что убрать */
+function nearestCombo(cs) {
+  const real = cs.filter(c => !c.action);
+  let best = null;
+  for (let k = real.length; k >= 2 && !best; k--) {
+    combos(real, [k]).forEach(e => { if (!best || cmpE2(e, best) > 0) best = e; });
+  }
+  if (!best) return null;
+  const keep = new Set(best.cards.map(c => c.id));
+  return { e: best, drop: cs.filter(c => !keep.has(c.id)) };
+}
 function check() { if (G.guest && G.pending) return { ok: false, e: null }; return checkMove('p', selected()); }
 function plate(cls, label, name) { return `<div class="plate ${cls}"><small>${esc(label)}</small><b>${esc(name)}</b></div>`; }
 function renderCombo() {
@@ -278,8 +289,9 @@ function renderCombo() {
   } else if (p === 'p_defend' && ob) {
     const a = ob.a, n = selected().length;
     const his = plate('his', `его: ${shortCards(a.cards)}`, a.name.toUpperCase() + (a.jk ? ' ★' : ''));
-    const mineName = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : n ? 'НЕ КОМБО' : `${a.n} ${plural(a.n)}`;
-    const mineLbl = n ? (r.why || '') : 'твой ответ';
+    const fix = !r.e && n >= 2 ? nearestCombo(selected()) : null;
+    const mineName = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : fix ? fix.e.name.toUpperCase() : n ? 'НЕ КОМБО' : `${a.n} ${plural(a.n)}`;
+    const mineLbl = n ? (fix ? 'убери ' + fix.drop.map(cardName).join(' ') + ' →' : r.why || '') : 'твой ответ';
     html = his + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '×'}</div>` + plate(n ? 'mine' : 'idle', mineLbl, mineName);
     const hint = lv !== 'pro' ? defenseHint() : null;
     if (lv === 'novice') {
@@ -291,7 +303,9 @@ function renderCombo() {
   } else if (p.startsWith('p_')) {
     const n = selected().length;
     const label = n ? (r.why || '') : { p_attack: 'твой ход', p_throw: 'подкинь или «Бито»', p_addtake: 'вдогонку или «Хватит»' }[p];
-    const name = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : n ? 'НЕ КОМБО' : 'ВЫБЕРИ КАРТЫ';
+    const fix = !r.e && n >= 2 ? nearestCombo(selected()) : null;
+    const name = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : fix ? fix.e.name.toUpperCase() : n ? 'НЕ КОМБО' : 'ВЫБЕРИ КАРТЫ';
+    if (fix) r = { ...r, why: 'убери ' + fix.drop.map(cardName).join(' ') + ' →' };
     html = plate(n ? 'mine wide' : 'idle wide', label, name) + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '·'}</div>`;
     if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = 'Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт или перекрывает старшей комбинацией из большего. Не знаешь, чем ходить, — жми «⟳ Подбор».';
     if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = 'Подкидывают комбинацией с номиналом со стола — или любой, если такая комбинация уже сложилась из карт стола (две десятки на столе — подкидывай любую пару).';
