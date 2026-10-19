@@ -88,7 +88,7 @@ kbd{font-family:var(--f-pix);font-size:12px;background:rgba(255,255,255,.1);bord
 .battle .row .card+.card{margin-left:calc(var(--w)*-.48)}
 .battle .def{position:absolute;left:12px;top:24px;transform:rotate(5deg)}
 .battle.open .atk .card .front{box-shadow:0 0 0 2px var(--gold),0 0 14px 2px rgba(234,181,75,.7);animation:pulse 1s ease-in-out infinite}
-.battle .tag{position:absolute;left:0;top:-16px;font-size:10px;white-space:nowrap;color:var(--paper);background:rgba(0,0,0,.5);padding:0 5px;border-radius:3px}
+.battle .tag{position:absolute;z-index:6;left:0;top:-16px;font-size:10px;white-space:nowrap;color:var(--paper);background:rgba(0,0,0,.5);padding:0 5px;border-radius:3px}
 @keyframes pulse{50%{box-shadow:0 0 0 2px var(--gold),0 0 22px 6px rgba(234,181,75,.45)}}
 .empty-felt{color:rgba(243,236,216,.55);font-size:15px;text-align:center;max-width:220px;align-self:center;margin:auto}
 /* колода — справа внизу, бито — справа вверху */
@@ -398,6 +398,10 @@ html[data-skin="gold"] .felt::before{border-color:rgba(234,181,75,.5)}
   .actzoom .zcard{--w:84px}
   .hype{font-size:17px}
   .banner .big{font-size:15px;padding:8px 12px}.banner .sub{font-size:13px}
+  /* на низком экране баннер — компактная плашка у верхнего края стола, подпись в строку рядом */
+  .banner{top:6px;transform:translateX(-50%);display:flex;align-items:center;gap:8px}
+  .banner .big{font-size:12px;padding:5px 9px;box-shadow:0 3px 0 rgba(0,0,0,.45)}
+  .banner .sub{margin:0;font-size:12px}
 }
 
 /* ============ ПК: как Balatro — табло слева на всю высоту ============ */
@@ -452,3 +456,31 @@ html:not([data-hints="novice"]) .siderules{display:none!important}
 .rulecard h2{margin:6px 0 10px}
 .rulecard .ex{background:rgba(0,0,0,.35);border:2px dashed var(--line);border-radius:10px;padding:10px 12px;margin:12px 0;text-align:left;font-size:14px;line-height:1.45}
 .rulecard ul{text-align:left}
+
+/* ============ волна 3: подсчёт штрафа, 4 цвета, открытка, щелбаны ============ */
+.pencount{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(0,0,0,.4);border:2px solid var(--line);border-radius:14px;padding:6px 22px 8px;min-width:120px}
+.pencount span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.pencount b{font-family:var(--f-hard);font-size:34px;line-height:1.2;color:#ff6b5e;text-shadow:3px 3px 0 #000;font-variant-numeric:tabular-nums}
+.pencount.good b{color:var(--gold)}
+.pencount b.bang{animation:penbang .45s cubic-bezier(.2,1.8,.4,1)}
+@keyframes penbang{0%{transform:scale(1)}35%{transform:scale(1.7) rotate(-6deg)}100%{transform:scale(1)}}
+.series b.roll{animation:penbang .4s ease}
+.penfly{position:fixed;z-index:80;pointer-events:none;width:var(--w,46px)}
+.shelb{font-weight:800;font-size:14px;color:var(--paper);background:rgba(0,0,0,.35);border-radius:10px;padding:6px 12px}
+.shelb b{color:var(--gold)}
+.snapbtn{position:absolute;z-index:23;left:50%;bottom:6%;transform:translateX(-50%);background:var(--gold);color:#3a2306;border:none;border-radius:999px;padding:7px 14px;font-weight:800;font-size:13px;box-shadow:0 3px 0 rgba(0,0,0,.45);animation:snapin .3s ease}
+@keyframes snapin{from{transform:translateX(-50%) scale(.6);opacity:0}}
+.postcard{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(3,14,10,.88);padding:16px}
+.postcard img{width:min(88vw,62vh);height:auto;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.postcard p{margin:0;font-size:13px;color:var(--muted);text-align:center}
+.postcard .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+/* колода из 4 цветов: бубны синие, трефы зелёные */
+html[data-four="1"] .front.s2:not(.red-act){color:#2f6fe0}
+html[data-four="1"] .front.s3{color:#15924a}
+html[data-four="1"] .card.act .front.s2{color:#7fb0ff}
+html[data-four="1"] .card.act .front.s3{color:#6fe0a0}
+html[data-four="1"] .trumpbox b.s2{color:#6ea4ff}
+html[data-four="1"] .trumpbox b.s3{color:#4fd08a}
+html[data-four="1"] .su2{color:#8ab8ff}
+html[data-four="1"] .su3{color:#7fe3a8}
+@media (prefers-reduced-motion:reduce){.pencount b.bang,.series b.roll,.snapbtn{animation:none}}

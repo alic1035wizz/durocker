@@ -4,12 +4,18 @@
 /* ---------- режим игры: своя игра, карьера, ежедневная раздача ---------- */
 let MODE = { kind: 'free' };
 const blitzOn = () => load('durocker-blitz') === '1';
-function seriesTo() {
-  if (NET) return 11;
-  if (MODE.kind === 'daily') return 1;
-  if (MODE.kind === 'career') return currentBot().boss ? 21 : 11;
-  return 21;
+/* матч — до N побед в партиях: bo1 (1 победа), bo3 (2), bo5 (3).
+   Карьера: соседи bo3, боссы bo5; своя игра и онлайн — выбор игрока (по умолчанию bo3); дейли и босс недели — bo1. */
+const boWins = v => (v === 1 ? 1 : v === 5 ? 3 : 2);
+const boOf = to => to * 2 - 1;
+function matchTo() {
+  if (NET) return boWins(NET.bo || +load('durocker-bo-net') || 3);
+  if (MODE.kind === 'daily' || MODE.kind === 'weekly' || MODE.kind === 'tutorial') return 1;
+  if (MODE.kind === 'career') return currentBot().boss ? 3 : 2;
+  return boWins(+load('durocker-bo') || 3);
 }
+/* сколько побед нужно в текущем матче (фиксируется при начале матча) */
+function seriesTo() { return (SERIES && SERIES.to) || matchTo(); }
 function turnMs(seat) {
   if (!NET && currentBot().boss === 'taxi' && seat === 'p') return 10000;
   return 30000;
@@ -45,20 +51,26 @@ function flagFall(seat) {
   finishGame(other(seat), Math.max(3, Math.min(10, H(seat).length)), 'time');
 }
 
-/* серия: штрафные очки = карты, оставшиеся у проигравшего; кто набрал лимит — проиграл серию */
-let SERIES = { p: 0, b: 0, games: 0, done: false };
-const emptySeries = () => ({ p: 0, b: 0, games: 0, done: false });
+/* матч: SERIES.w — победы в партиях, SERIES.to — сколько нужно; p/b — штрафные очки за матч
+   (карты на руке проигравшего, «могнул», шулер) — для щелбанов и статистики, исход матча они не решают */
+let SERIES = { p: 0, b: 0, w: { p: 0, b: 0 }, to: 2, games: 0, done: false };
+const emptySeries = () => ({ p: 0, b: 0, w: { p: 0, b: 0 }, to: matchTo(), games: 0, done: false });
+/* старый сохранённый формат (серия до 21 штрафа) — начинаем матч заново */
+function normSeries(s) {
+  if (!s || typeof s !== 'object' || !s.w || typeof s.w.p !== 'number' || !s.to) return emptySeries();
+  return s;
+}
 function seriesKey() {
   if (NET) return null;
-  if (MODE.kind === 'daily') return null;
+  if (MODE.kind === 'daily' || MODE.kind === 'weekly') return null;
   if (MODE.kind === 'career') return 'durocker-series-career-' + MODE.stage;
-  return 'durocker-series-' + currentBot().id + (blitzOn() ? '-blitz' : '');
+  return 'durocker-series-' + currentBot().id + '-bo' + boOf(matchTo()) + (blitzOn() ? '-blitz' : '');
 }
 function loadSeries() {
-  if (NET) { SERIES = NET.series || (NET.series = emptySeries()); return; }
+  if (NET) { SERIES = NET.series = normSeries(NET.series); return; }
   const k = seriesKey();
-  if (!k) { if (!SERIES || SERIES.mode !== 'daily') SERIES = { ...emptySeries(), mode: 'daily' }; return; }
-  try { SERIES = JSON.parse(load(k)) || emptySeries(); } catch (e) { SERIES = emptySeries(); }
+  if (!k) { if (!SERIES || SERIES.mode !== 'daily' || SERIES.done) SERIES = { ...emptySeries(), mode: 'daily' }; return; }
+  try { SERIES = normSeries(JSON.parse(load(k))); } catch (e) { SERIES = emptySeries(); }
 }
 function saveSeries() { const k = seriesKey(); if (k) store(k, JSON.stringify(SERIES)); }
 function newSeries() { SERIES = MODE.kind === 'daily' ? { ...emptySeries(), mode: 'daily' } : emptySeries(); if (NET) NET.series = SERIES; saveSeries(); }
@@ -78,15 +90,27 @@ const DISTRICT_RULES = [
   { ...RULESETS.full },
 ];
 /* «Классика» или «Полные» для своей игры и онлайн-стола (выбирает хозяин) */
+/* босс недели: «Полные» правила плюс одно особое (номер правила — MODE.rule, оформление — в weekly.js) */
+const WEEKLY_RULES = [
+  { trumpEvery: true },
+  { noSingles: true },
+  { jokers: 4 },
+  { transfer: false, singleThrow: true },
+  { chargeCover: true },
+  { hand: 10 },
+  { overAny: true },
+  { noTrump: true },
+];
 const ruleSetName = () => (load('durocker-ruleset') === 'classic' ? 'classic' : 'full');
 const careerDistrict = () => (MODE.kind === 'career' ? Math.floor((MODE.stage || 0) / 3) : -1);
 function tableRules() {
   let base, set;
   if (!NET && MODE.kind === 'career') { set = 'career'; base = DISTRICT_RULES[Math.min(careerDistrict(), DISTRICT_RULES.length - 1)]; }
   else if (!NET && MODE.kind === 'daily') { set = 'full'; base = RULESETS.full; }
+  else if (!NET && MODE.kind === 'weekly') { set = 'weekly'; base = { ...RULESETS.full, ...(WEEKLY_RULES[MODE.rule] || {}) }; }
   else { set = ruleSetName(); base = RULESETS[set]; }
   const t = load('durocker-transfer');
-  const transferOn = MODE.kind === 'career' && !NET ? true : (t == null ? true : t === '1');
+  const transferOn = (MODE.kind === 'career' || MODE.kind === 'weekly') && !NET ? true : (t == null ? true : t === '1');
   const r = { ...base, set, transfer: base.transfer && transferOn, blitz: blitzHere() };
   /* Вахтёр: «всё по-старому» — без переводов и без перекрытия */
   if (!NET && currentBot().boss === 'vahter') { r.transfer = false; r.over = false; }
@@ -105,15 +129,19 @@ function newGame() {
   loadSeries();
   if (SERIES.done) newSeries();
   const rnd = MODE.kind === 'daily' ? seeded(MODE.seed) : Math.random;
+  const rules = tableRules();
+  HAND = rules.hand || 8;
   const deck = [];
-  for (let n = 0; n < DECK; n++) deck.push(mkCard(n));
+  /* джокеров обычно 2 (52 и 53); босс недели может положить 4 */
+  for (let n = 0; n < 52 + (rules.jokers || 2); n++) deck.push(mkCard(n));
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
   /* под колоду кладём обычную карту, а не джокера: по ней определяется козырь */
   if (deck[0].joker) { const k = deck.findIndex(c => !c.joker); [deck[0], deck[k]] = [deck[k], deck[0]]; }
   G = {
-    deck, T: deck[0].s, trump: deck[0], P: [], B: [], table: [], grave: 0, attacker: 'p', phase: { who: null },
+    /* «козырей нет»: козырем считается масть джокеров ★ — то есть козыри только джокеры */
+    deck, T: rules.noTrump ? 4 : deck[0].s, trump: deck[0], P: [], B: [], table: [], grave: 0, attacker: 'p', phase: { who: null },
     limit: HAND, sel: new Set(), sort: G ? G.sort : 'r', over: null, busy: true, fx: null, fxList: [], online: !!NET,
-    rules: tableRules(), known: new Set(), deadline: 0, extra: { p: 0, b: 0 },
+    rules, known: new Set(), deadline: 0, extra: { p: 0, b: 0 },
     clock: blitzHere() ? { p: BLITZ_MS, b: BLITZ_MS, run: null, since: Date.now() } : null,
     charge: { p: 0, b: 0 }, offer: { p: null, b: null }, lastSuit: { p: deck[0].s, b: deck[0].s },
     turnNo: 0, turnCovers: 0, chained: false, actSerial: 0,
@@ -148,6 +176,12 @@ function startTurn(who) {
     fx({ what: 'action', actor: 'b', act: 'trump', s, kind: 'gold' });
     hype('babka', 'b');
   }
+  /* босс недели «козырь меняется каждый ход» */
+  if (wrule('trumpEvery') && G.turnNo > 1) {
+    const s = [0, 1, 2, 3].filter(x => x !== G.T)[Math.floor(Math.random() * 3)];
+    G.T = s;
+    fx({ what: 'action', actor: 'b', act: 'trump', s, kind: 'gold' });
+  }
   G.phase = { who, kind: 'attack' }; G.busy = false;
   commit();
 }
@@ -162,7 +196,7 @@ function addCharge(seat, n) {
 function makeOffer(seat) {
   if (!rule('charge')) return;
   G.charge[seat] = 0;
-  const ks = ACT_KEYS.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+  const ks = ACT_KEYS.filter(k => !(k === 'trump' && wrule('noTrump'))).sort(() => Math.random() - 0.5).slice(0, 2);
   G.offer[seat] = { kinds: ks, s: G.lastSuit[seat] };
 }
 function pickAction(seat, kind) {
@@ -262,6 +296,8 @@ function judgeCover(seat, e, a) {
     hype('chain', seat);
     addCharge(seat, 1);
   }
+  /* босс недели: каждая отбитая атака даёт заряд */
+  if (wrule('chargeCover')) addCharge(seat, 1);
 }
 
 function upgradeAttack(seat, cards) {
@@ -384,8 +420,9 @@ function finishGame(win, pen, why) {
   }
   SERIES.p += G.extra.p; SERIES.b += G.extra.b;
   SERIES.games++;
-  const lim = seriesTo();
-  if (SERIES.p >= lim || SERIES.b >= lim) SERIES.done = true;
+  /* ничья партии в матче не засчитывается */
+  if (win !== 'draw') { SERIES.w = SERIES.w || { p: 0, b: 0 }; SERIES.w[win]++; }
+  if (SERIES.w && (SERIES.w.p >= seriesTo() || SERIES.w.b >= seriesTo())) SERIES.done = true;
   saveSeries();
   if (typeof onGameOver === 'function') onGameOver();
   commit();

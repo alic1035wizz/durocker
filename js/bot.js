@@ -433,7 +433,9 @@ function botDefenseAction(bot, d) {
 
 /* Шулер «подтасовывает»: раз за ход может незаметно сменить свою худшую карту на лучшую из верха колоды */
 function cheatSwap(bot) {
-  if (!bot.cheat || G.deck.length < 3 || G.cheated === G.turnNo || Math.random() > bot.cheat) return;
+  if (!bot.cheat || G.deck.length < 3 || G.cheated === G.turnNo) return;
+  /* «вхолостую»: иногда Шулер только делает вид — игроку есть что угадывать (см. js/cheat.js) */
+  if (Math.random() > bot.cheat) { if (G.faked !== G.turnNo && typeof cheatSeen === 'function') { G.faked = G.turnNo; if (Math.random() < 0.6) cheatSeen(null); } return; }
   G.cheated = G.turnNo;
   const mine = plainCards(G.B).filter(c => !c.joker);
   if (!mine.length) return;
@@ -445,6 +447,7 @@ function cheatSwap(bot) {
   const got = G.deck[bi];
   G.deck[bi] = worst;
   G.B[G.B.indexOf(worst)] = got;
+  if (typeof cheatSeen === 'function') cheatSeen({ got, worst });
 }
 
 /* решение бота: что сделать сейчас. Возвращает [действие, карты, реплика] */

@@ -11,6 +11,10 @@ function fx(o) {
 function showFx(o) {
   const me = o.actor === 'p', opp = oppName();
   sfxFor(o);
+  if (o.what === 'defend' && me && G && G.table) {
+    const b = G.table.filter(x => x.d && !x.d.shield).pop();
+    if (b) G.lastMoment = { name: b.d.name, cards: b.d.cards.map(c => c.n), vs: b.a.cards.map(c => c.n), vsName: b.a.name };
+  }
   if (o.what === 'hype') return showHype(o.key, me);
   if (o.what === 'charged') {
     if (!me) say('Зарядился!');
@@ -64,6 +68,7 @@ function showHype(key, mine) {
     void el.offsetWidth; el.classList.add('on');
     if (mine) VFX.burstFelt(9); else shake(9);
     buzz(mine ? 'big' : 'bad');
+    if (mine && key === 'mognul' && G && G.lastMoment && MODE.kind !== 'tutorial') snapButton(txt);
     setTimeout(() => { el.hidden = true; }, 1800);
     res();
   }, 450)));
@@ -108,12 +113,12 @@ function cardHTML(c, down) {
   if (down) return `<div class="card down" data-id="${c.id}"><div class="back"></div></div>`;
   if (c.action) {
     const red = c.s === 1 || c.s === 2, a = ACTS[c.action];
-    return `<div class="card act act-${c.action} ${c.s === G.T ? 'trump' : ''}" data-id="${c.id}"><div class="front ${red ? 'red' : ''}"><span class="ix tl">${SU[c.s]}</span><span class="pip"><span class="ai">${a.icon}</span><small>${a.name}</small></span><span class="ix br">${SU[c.s]}</span></div><div class="back"></div></div>`;
+    return `<div class="card act act-${c.action} ${c.s === G.T ? 'trump' : ''}" data-id="${c.id}"><div class="front s${c.s} ${red ? 'red' : ''}"><span class="ix tl">${SU[c.s]}</span><span class="pip"><span class="ai">${a.icon}</span><small>${a.name}</small></span><span class="ix br">${SU[c.s]}</span></div><div class="back"></div></div>`;
   }
   if (c.joker) return `<div class="card joker" data-id="${c.id}"><div class="front"><span class="ix tl">★<i>JK</i></span><span class="pip"><span class="jk">★<small>джокер</small></span></span><span class="ix br">★<i>JK</i></span></div><div class="back"></div></div>`;
   const red = c.s === 1 || c.s === 2, tr = c.s === G.T, rk = rn(c.r);
   const center = c.r > 10 && c.r < 14 ? `<span class="fc">${rk}<small>${SU[c.s]}</small></span>` : SU[c.s];
-  return `<div class="card ${tr ? 'trump' : ''}" data-id="${c.id}"><div class="front ${red ? 'red' : ''}"><span class="ix tl">${rk}<i>${SU[c.s]}</i></span><span class="pip">${center}</span><span class="ix br">${rk}<i>${SU[c.s]}</i></span></div><div class="back"></div></div>`;
+  return `<div class="card ${tr ? 'trump' : ''}" data-id="${c.id}"><div class="front s${c.s} ${red ? 'red' : ''}"><span class="ix tl">${rk}<i>${SU[c.s]}</i></span><span class="pip">${center}</span><span class="ix br">${rk}<i>${SU[c.s]}</i></span></div><div class="back"></div></div>`;
 }
 function sortHand(h) {
   return h.slice().sort(G.sort === 'r' ? (a, b) => (!!a.action - !!b.action) || a.r - b.r || a.s - b.s
@@ -133,11 +138,13 @@ function renderHUD() {
   $('oppBtn').disabled = live || MODE.kind !== 'free';
   const ch = G && G.charge ? G.charge.b : 0, full = G && G.offer && G.offer.b;
   const op = $('oppPips'); op.innerHTML = pipsHTML(full ? 3 : ch); op.classList.toggle('full', !!full);
-  const lim = NET ? 11 : seriesTo();
-  $('scP').textContent = SERIES.p; $('scB').textContent = SERIES.b;
-  $('scP').classList.toggle('hot', SERIES.p >= lim - 4); $('scB').classList.toggle('hot', SERIES.b >= lim - 4);
+  /* табло матча: победы в партиях, мелко — штрафные очки за матч */
+  const to = seriesTo(), w = SERIES.w || { p: 0, b: 0 };
+  $('scP').textContent = w.p; $('scB').textContent = w.b;
+  $('scP').classList.toggle('hot', to > 1 && w.p === to - 1); $('scB').classList.toggle('hot', to > 1 && w.b === to - 1);
   $('scOpp').textContent = oppName().split(' ').pop();
-  $('scTo').textContent = MODE.kind === 'daily' ? 'одна партия' : `штраф до ${lim}`;
+  $('scTo').textContent = to === 1 ? `одна партия${SERIES.p || SERIES.b ? ` · штраф ${SERIES.p}:${SERIES.b}` : ''}` : `до ${to} побед · штраф ${SERIES.p}:${SERIES.b}`;
+  $('scTo').hidden = MODE.kind === 'tutorial';
   /* режим и особые правила */
   const chips = [];
   if (NET) {
@@ -152,7 +159,7 @@ function renderHUD() {
   $('modeBox').innerHTML = chips.map(c => c.startsWith('<span') ? c : `<span>${c}</span>`).join('');
   if (G && G.T != null) {
     const red = G.T === 1 || G.T === 2;
-    $('trumpBox').innerHTML = `<b class="${red ? 'red' : ''}">${SU[G.T]}</b><span>козырь<br>в колоде ${G.deck.length}${G.deck.length ? '' : ' — последний круг'}</span>`;
+    $('trumpBox').innerHTML = `<b class="s${G.T} ${red ? 'red' : ''}">${SU[G.T]}</b><span>козырь<br>в колоде ${G.deck.length}${G.deck.length ? '' : ' — последний круг'}</span>`;
   }
   renderSound();
 }
@@ -171,7 +178,7 @@ function render() {
   AU.setLevel(last ? 2 : 1);
   $('botHand').innerHTML = G.B.map(c => `<div class="slot">${cardHTML(c, true)}</div>`).join('');
   $('deckcol').innerHTML = `<div class="deck">${G.deck.length > 1 ? '<div class="stack"></div>' : ''}${G.deck.length ? `<div class="trumpcard">${cardHTML(G.trump, false)}</div>` : ''}${G.deck.length > 1 ? `<div class="cnt">${G.deck.length}</div>` : ''}</div>
-    <div class="lbl"><b>${SU[G.T]}</b>${G.deck.length}/${DECK}</div>`;
+    <div class="lbl"><b>${SU[G.T]}</b>${G.deck.length}/${52 + ((G.rules && G.rules.jokers) || 2)}</div>`;
   $('gravecol').innerHTML = `<div class="grave ${G.grave ? '' : 'empty'}" id="grave">${G.grave ? '<i></i>' : ''}</div><div class="lbl">бито ${G.grave}</div>`;
   const ob = openB(), p = uiPhase();
   $('battles').innerHTML = G.table.length ? G.table.map(b => `<div class="battle ${b === ob ? 'open' : ''}"><span class="tag">${b.a.name}${b.a.jk ? ' ★' : ''}</span>
@@ -359,7 +366,7 @@ function renderActions() {
   else if (p === 'p_defend') {
     const tr = selected().length && checkTransfer('p', selected()).ok;
     main = tr ? B('gold', 'transfer', 'Перевести') : B('blue', 'play', 'Покрыть', ok);
-  } else if (p === 'over') main = host ? B('blue', 'new', SERIES.done ? 'Новая серия' : 'Ещё партия') : B('green', 'rematch', 'Реванш');
+  } else if (p === 'over') main = host ? B('blue', 'new', SERIES.done ? (seriesTo() > 1 ? 'Новый матч' : 'Ещё раз') : 'Следующая партия') : B('green', 'rematch', 'Реванш');
   else if (upPhase() && selected().length) main = B('gold', 'upgrade', 'Апгрейд', checkUpgrade('p', selected()).ok);
   else main = B('ghost', 'none', G && G.pending ? 'Отправляем…' : 'Ждём…', false);
   if (p === 'p_defend') alt = B('red', 'take', 'Беру');
@@ -405,37 +412,193 @@ function showOver() {
     $('leaveBtn').onclick = leaveTable; return;
   }
   if (!G.over) { o.hidden = true; return; }
-  if (G.overFx !== G.over) { G.overFx = G.over; if (G.over === 'p') { AU.play('win'); VFX.confetti(); } else if (G.over === 'b') AU.play('lose'); }
-  const opp = esc(oppName()), pen = G.penalty || 0, lim = NET ? 11 : seriesTo();
+  const fresh = G.overFx !== G.over;
+  if (fresh) { G.overFx = G.over; if (G.over === 'p') { AU.play('win'); VFX.confetti(); } else if (G.over === 'b') AU.play('lose'); }
+  const opp = esc(oppName()), pen = G.penalty || 0, lim = seriesTo(), mw = SERIES.w || { p: 0, b: 0 };
   let h, s;
   if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно.'; }
   else if (G.overWhy === 'time' && G.over === 'p') { h = 'ВРЕМЯ ВЫШЛО!'; s = `У ${opp} кончились часы: +${pen} штрафа ему.`; }
   else if (G.overWhy === 'time') { h = 'ВРЕМЯ ВЫШЛО!'; s = `Твои часы кончились: +${pen} штрафа.`; }
-  else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp} остался с ${pen} ${plural(pen)}: +${pen} штрафа ему.`; }
-  else { h = 'ДУРАК!'; s = `У тебя осталось ${pen} ${plural(pen)}: +${pen} штрафа.`; }
+  else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp}: на руке ${pen} ${plural(pen)} — +${pen} штрафа.`; }
+  else { h = 'ДУРАК!'; s = `У тебя на руке ${pen} ${plural(pen)} — +${pen} штрафа.`; }
   let extra = '', btns = '';
   const host = !NET || NET.role === 'host';
   if (MODE.kind === 'daily' && !NET) {
     extra = `<div class="sharecard" id="shareTxt">${esc(dailyCard(MODE.day))}</div>`;
     btns = `<button class="btn gold" type="button" id="shareBtn">Скопировать результат</button><button class="btn grey" type="button" id="overMenu">Меню</button>`;
   } else {
-    if (SERIES.done) {
-      const lost = SERIES.p >= lim && SERIES.p >= SERIES.b;
-      h = lost ? 'СЕРИЯ ПРОИГРАНА' : 'СЕРИЯ ТВОЯ!';
-      s = lost ? `Ты набрал ${SERIES.p} штрафных.` : `${opp} набрал ${SERIES.b} штрафных.`;
-      if (!lost && MODE.kind === 'career') s += ' Следующий соперник открыт в карьере.';
+    if (SERIES.done && lim > 1) {
+      const lost = mw.b >= lim;
+      h = lost ? `МАТЧ ПРОИГРАН ${mw.p}:${mw.b}` : `МАТЧ ТВОЙ ${mw.p}:${mw.b}`;
+      s = (G.over === 'p' ? 'Партия за тобой — и весь матч.' : `${opp} забрал партию и матч.`) + (pen ? ` Штраф за партию +${pen}.` : '');
+      if (!lost && !NET && MODE.kind === 'career') s += ' Следующий соперник открыт в карьере.';
+    } else if (!SERIES.done && lim > 1) {
+      s += mw.p === lim - 1 && mw.b === lim - 1 ? ` Счёт ${mw.p}:${mw.b} — решающая!` : G.over === 'draw' ? ' Ничья в матче не засчитывается.' : ` Матч ${mw.p}:${mw.b}, до ${lim} побед.`;
     }
-    extra = `<div class="series"><div><span>Ты</span><b>${SERIES.p}</b></div><div class="to">до ${lim}</div><div><span>${opp}</span><b>${SERIES.b}</b></div></div>`;
-    btns = host ? `<button class="btn blue" type="button" id="again">${SERIES.done ? (MODE.kind === 'career' ? 'Дальше' : 'Новая серия') : 'Ещё партия'}</button><button class="btn grey" type="button" id="overMenu">Меню</button>`
+    extra = `<div class="series"><div><span>Ты</span><b>${mw.p}</b></div><div class="to">${lim > 1 ? `матч до ${lim} побед` : 'одна партия'}</div><div><span>${opp}</span><b>${mw.b}</b></div></div>
+      <div class="small" style="text-align:center;opacity:.75;margin-top:-4px">штраф за матч: <b id="serP">${SERIES.p}</b> : <b id="serB">${SERIES.b}</b></div>`;
+    btns = host ? `<button class="btn blue" type="button" id="again">${SERIES.done ? (!NET && MODE.kind === 'career' ? 'Дальше' : lim > 1 ? 'Новый матч' : 'Ещё раз') : mw.p === lim - 1 && mw.b === lim - 1 ? 'Решающая партия' : 'Следующая партия'}</button><button class="btn grey" type="button" id="overMenu">Меню</button>`
       : `<button class="btn green" type="button" id="rematchBtn">Реванш</button>`;
   }
+  const loser = G.over === 'p' ? 'b' : G.over === 'b' ? 'p' : null;
+  const penBox = loser && pen > 0 ? `<div class="pencount ${loser === 'b' ? 'good' : ''}"><span>${loser === 'b' ? 'штраф ' + opp : 'твой штраф'}</span><b id="penNum">+${pen}</b></div>` : '';
+  const sh = shelbLine();
+  if (G.over === 'p' && MODE.kind !== 'tutorial') btns += `<button class="btn gold" type="button" id="snapOver">📸 Открытка</button>`;
   o.hidden = false;
-  o.innerHTML = `<h2>${h}</h2><p>${s}</p>${extra}<div class="row">${btns}</div>`;
+  o.innerHTML = `<h2>${h}</h2><p>${s}</p>${penBox}${extra}${sh ? `<div class="shelb">${sh}</div>` : ''}<div class="row">${btns}</div>`;
+  const so = $('snapOver'); if (so) so.onclick = () => openPostcard({ title: 'ТЫ НЕ ДУРАК!', phrase: `${oppName()}: на руке ${pen} ${plural(pen)}`, m: G.lastMoment });
+  /* у гостя G пересоздаётся на каждое состояние — подсчёт показываем один раз на партию */
+  const ck = NET ? `${NET.code}:${SERIES.games}:${G.over}` : G;
+  if (penBox && ck !== countedKey) { countedKey = ck; countUp(pen, loser); }
   const ag = $('again'); if (ag) ag.onclick = nextGame;
   const om = $('overMenu'); if (om) om.onclick = openMenu;
   const rb = $('rematchBtn'); if (rb) rb.onclick = askRematch;
   const sb = $('shareBtn'); if (sb) sb.onclick = () => copyText(dailyCard(MODE.day), sb, $('shareTxt'));
 }
+/* ================= подсчёт штрафа как в Balatro ================= */
+let countTok = 0, countedKey = null;
+function countUp(pen, loser) {
+  const num = $('penNum'), over = $('over');
+  if (!num) return;
+  const tok = ++countTok;
+  const serEl = $(loser === 'p' ? 'serP' : 'serB'), serTo = SERIES[loser] || 0, serFrom = Math.max(0, serTo - pen);
+  const finish = () => {
+    if (tok !== countTok) return;
+    countTok++;
+    num.textContent = '+' + pen;
+    if (serEl) serEl.textContent = serTo;
+  };
+  if (reduced) return;
+  num.textContent = '+0';
+  if (serEl) serEl.textContent = serFrom;
+  /* можно пропустить касанием по итогу */
+  over.addEventListener('pointerdown', finish, { once: true });
+  const src = [...document.querySelectorAll(loser === 'p' ? '#hand .card' : '#botHand .card')];
+  const nr = num.getBoundingClientRect(), tx = nr.left + nr.width / 2, ty = nr.top + nr.height / 2;
+  const step = Math.min(110, 900 / pen);
+  for (let k = 0; k < pen; k++) {
+    setTimeout(() => {
+      if (tok !== countTok) return;
+      const el = src[k % Math.max(1, src.length)];
+      if (el) {
+        const r = el.getBoundingClientRect(), f = el.cloneNode(true);
+        f.className += ' penfly'; f.style.cssText = `left:${r.left}px;top:${r.top}px;--w:${r.width}px;width:${r.width}px`;
+        document.body.appendChild(f);
+        f.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${tx - r.left - r.width / 2}px,${ty - r.top - r.height / 2}px) rotate(${k % 2 ? 160 : -160}deg) scale(.35)`, opacity: 0.2 }],
+          { duration: 360, easing: 'cubic-bezier(.5,0,.7,.4)' }).finished.catch(() => {}).then(() => f.remove());
+      }
+      setTimeout(() => {
+        if (tok !== countTok) return;
+        num.textContent = '+' + (k + 1);
+        AU.play('count', k);
+        over.animate([{ transform: 'none' }, { transform: `translate(${k % 2 ? 2 : -2}px,1px)` }, { transform: 'none' }], { duration: 90 });
+        if (k === pen - 1) {
+          num.classList.remove('bang'); void num.offsetWidth; num.classList.add('bang');
+          AU.play('bang'); shake(9); buzz(loser === 'p' ? 'bad' : 'big');
+          /* затем перекатывается штраф за матч */
+          if (serEl) for (let v = serFrom + 1; v <= serTo; v++) setTimeout(() => { if (tok !== countTok) return; serEl.textContent = v; serEl.classList.remove('roll'); void serEl.offsetWidth; serEl.classList.add('roll'); }, 220 + (v - serFrom) * 45);
+          setTimeout(() => { if (tok === countTok) countTok++; }, 220 + pen * 45 + 100);
+        }
+      }, 330);
+    }, k * step);
+  }
+}
+
+/* ================= на щелбаны: счёт с другом за всё время ================= */
+/* щелбаны: у гостя — как решил хозяин стола */
+const shelbOn = () => (NET && NET.role === 'guest' && NET.shelb != null ? NET.shelb : load('durocker-shelb') !== '0');
+const shelbWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? 'щелбанов' : d === 1 ? 'щелбан' : d >= 2 && d <= 4 ? 'щелбана' : 'щелбанов'; };
+function shelbLine() {
+  if (!NET || !shelbOn() || !NET.oppNick || !G || (G.over !== 'p' && G.over !== 'b')) return '';
+  const p = prog(), nick = NET.oppNick, f = p.friends[nick] || (p.friends[nick] = { w: 0, l: 0 });
+  /* один раз на партию: у гостя G пересоздаётся на каждое обновление, поэтому ключ — в sessionStorage */
+  const key = `durocker-shk:${NET.code}:${SERIES.games}:${G.over}:${G.penalty || 0}`;
+  let done = false;
+  try { done = !!sessionStorage.getItem(key); if (!done) sessionStorage.setItem(key, '1'); } catch (e) {}
+  if (!done) { f.sh = (f.sh || 0) + (G.over === 'p' ? 1 : -1) * (G.penalty || 0); saveProg(); }
+  const sh = f.sh || 0, n = esc(nick);
+  return sh > 0 ? `👊 ${n} должен тебе <b>${sh}</b> ${shelbWord(sh)}` : sh < 0 ? `👊 Ты должен ${n} <b>${-sh}</b> ${shelbWord(sh)}` : `👊 По щелбанам с ${n} — квиты`;
+}
+
+/* ================= клип момента: открытка 1080×1080 ================= */
+function snapButton(phrase) {
+  const felt = $('felt');
+  const old = felt.querySelector('.snapbtn'); if (old) old.remove();
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'snapbtn'; b.textContent = '📸 Поделиться';
+  const m = G.lastMoment;
+  b.onclick = e => { e.stopPropagation(); b.remove(); openPostcard({ title: 'МОГНУЛ!', phrase, m }); };
+  felt.appendChild(b);
+  setTimeout(() => b.remove(), 5000);
+}
+function drawCardOn(x, cx, cy, w, n, rot) {
+  const c = mkCard(n), h = w * 1.4;
+  x.save(); x.translate(cx, cy); x.rotate(rot || 0);
+  x.fillStyle = 'rgba(0,0,0,.35)'; roundRect(x, -w / 2 + 6, -h / 2 + 10, w, h, w * 0.1); x.fill();
+  x.fillStyle = c.joker ? '#3a1f6b' : '#f8f1df'; roundRect(x, -w / 2, -h / 2, w, h, w * 0.1); x.fill();
+  x.lineWidth = w * 0.035; x.strokeStyle = c.s === G.T && !c.joker ? '#eab54b' : 'rgba(0,0,0,.25)'; x.stroke();
+  const four = document.documentElement.dataset.four === '1';
+  const col = c.joker ? '#ffd84a' : c.s === 1 ? '#d9362f' : c.s === 2 ? (four ? '#2f6fe0' : '#d9362f') : c.s === 3 && four ? '#15924a' : '#1d1a22';
+  x.fillStyle = col; x.textAlign = 'center'; x.textBaseline = 'middle';
+  if (c.joker) { x.font = `bold ${w * 0.55}px Arial, sans-serif`; x.fillText('★', 0, -h * 0.05); x.font = `bold ${w * 0.14}px Arial, sans-serif`; x.fillText('ДЖОКЕР', 0, h * 0.3); }
+  else {
+    x.font = `900 ${w * 0.26}px "Arial Black", Arial, sans-serif`; x.fillText(rn(c.r), -w * 0.3, -h * 0.36);
+    x.font = `${w * 0.2}px Arial, sans-serif`; x.fillText(SU[c.s], -w * 0.3, -h * 0.2);
+    x.font = `${w * 0.62}px Arial, sans-serif`; x.fillText(SU[c.s], 0, h * 0.1);
+  }
+  x.restore();
+}
+function roundRect(x, l, t, w, h, r) { x.beginPath(); x.moveTo(l + r, t); x.arcTo(l + w, t, l + w, t + h, r); x.arcTo(l + w, t + h, l, t + h, r); x.arcTo(l, t + h, l, t, r); x.arcTo(l, t, l + w, t, r); x.closePath(); }
+function fitText(x, t, max, size, font) { let s = size; do { x.font = `${font} ${s}px "Arial Black", Arial, sans-serif`; s -= 4; } while (x.measureText(t).width > max && s > 20); }
+function postcardCanvas({ title, phrase, m }) {
+  const S = 1080, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const x = cv.getContext('2d');
+  const g = x.createRadialGradient(S / 2, S * 0.42, 60, S / 2, S / 2, S * 0.75);
+  g.addColorStop(0, '#2a8a5f'); g.addColorStop(1, '#0b3324'); x.fillStyle = g; x.fillRect(0, 0, S, S);
+  x.lineWidth = 26; x.strokeStyle = '#6b3d1c'; roundRect(x, 24, 24, S - 48, S - 48, 60); x.stroke();
+  x.lineWidth = 4; x.setLineDash([18, 14]); x.strokeStyle = 'rgba(255,255,255,.18)'; roundRect(x, 64, 64, S - 128, S - 128, 40); x.stroke(); x.setLineDash([]);
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  fitText(x, title, S - 200, 120, '900');
+  x.lineWidth = 16; x.lineJoin = 'round'; x.strokeStyle = '#000'; x.strokeText(title, S / 2, 190);
+  x.fillStyle = '#b3202a'; x.fillText(title, S / 2 + 8, 198); x.fillStyle = '#ffe14a'; x.fillText(title, S / 2, 190);
+  if (m && m.vs && m.vs.length) {
+    x.font = '600 34px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.8)'; x.fillText(`на ${String(m.vsName || '').toLowerCase()}`, S / 2, 300);
+    const w = 96, gap = 12, tot = m.vs.length * (w + gap) - gap;
+    m.vs.forEach((n, i) => drawCardOn(x, S / 2 - tot / 2 + w / 2 + i * (w + gap), 400, w, n, (i - (m.vs.length - 1) / 2) * 0.05));
+  }
+  if (m && m.cards && m.cards.length) {
+    const w = m.cards.length > 3 ? 150 : 190, gap = 16, tot = m.cards.length * (w + gap) - gap;
+    m.cards.forEach((n, i) => drawCardOn(x, S / 2 - tot / 2 + w / 2 + i * (w + gap), 640, w, n, (i - (m.cards.length - 1) / 2) * 0.07));
+    x.font = '900 46px "Arial Black", Arial, sans-serif'; x.fillStyle = '#ffe14a'; x.fillText(String(m.name || '').toUpperCase(), S / 2, 820);
+  }
+  if (phrase) { fitText(x, phrase, S - 220, 46, '800'); x.fillStyle = '#f8f1df'; x.fillText(phrase, S / 2, m && m.cards ? 885 : 560); }
+  x.font = '700 34px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.9)'; x.fillText(myNick(), S / 2, 950);
+  x.font = '600 28px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('Дурокер · t.me/durocker_bot', S / 2, 996);
+  return cv;
+}
+function openPostcard(o) {
+  AU.play('snap');
+  const cv = postcardCanvas(o), text = `${o.title} ${o.phrase || ''} — играю в Дурокер: https://t.me/durocker_bot`;
+  const box = document.createElement('div'); box.className = 'postcard';
+  const url = cv.toDataURL('image/png');
+  box.innerHTML = `<img alt="Открытка" src="${url}"><p>Долгое нажатие на картинку — сохранить</p><div class="row">
+    <button class="btn gold" type="button" data-pc="share">Поделиться</button>
+    <a class="btn blue" download="durocker.png" href="${url}" data-pc="save">Сохранить</a>
+    <button class="btn grey" type="button" data-pc="close">Закрыть</button></div>`;
+  document.body.appendChild(box);
+  box.onclick = e => {
+    const k = e.target.closest('[data-pc]'); if (!k) { if (e.target === box) box.remove(); return; }
+    if (k.dataset.pc === 'close') box.remove();
+    if (k.dataset.pc === 'share') cv.toBlob(b => {
+      const file = new File([b], 'durocker.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], text }).catch(() => {});
+      else if (navigator.share) navigator.share({ text }).catch(() => {});
+      else { copyText(text, k); toast('Текст скопирован — картинку сохрани долгим нажатием'); }
+    }, 'image/png');
+  };
+}
+window.postcardCanvas = postcardCanvas;
+
 function nextGame() {
   if (NET) { newGame(); return; }
   if (SERIES.done && MODE.kind === 'career') { openCareer(); return; }
@@ -565,7 +728,7 @@ function openMenu() {
       <button type="button" class="mi" data-go="settings"><b>Настройки</b><small>Звук, мат, подсказки, Блиц</small></button>
       <button type="button" class="mi" data-go="rules"><b>Правила</b><small>Чем крыть, заряд, «могнул»</small></button>
       ${NET ? '<button type="button" class="mi" data-go="leave"><b>Выйти из-за стола</b><small>Закончить онлайн</small></button>'
-            : '<button type="button" class="mi" data-go="restart"><b>Новая серия</b><small>Сбросить штрафы с этим соперником</small></button>'}
+            : '<button type="button" class="mi" data-go="restart"><b>Новый матч</b><small>Сбросить счёт матча с этим соперником</small></button>'}
     </div>`);
 }
 function menuGo(k) {
@@ -615,7 +778,7 @@ function maybeRuleCard(then) {
 /* карьера */
 function openCareer() {
   const p = prog();
-  sheet('page', `${head('Карьера')}<p class="small">Соседи — серия до 11, босс района — до 21. Победил босса — открыл награду района.</p>
+  sheet('page', `${head('Карьера')}<p class="small">Соседи — матч до 2 побед, босс района — до 3 побед. Победил босса — открыл награду района.</p>
     ${CAREER.map((d, di) => `<div class="district"><h3><span>${di + 1}. ${esc(d.name)}</span><span>${rewardName(d.reward)}</span></h3>
       <div class="bots">${d.ops.map(o => { const i = CAREER_OPS.findIndex(x => x.id === o.id), done = i < p.career, cur = i === p.career, locked = i > p.career;
         return `<button type="button" class="botcard ${cur ? 'on' : ''}" data-stage="${i}" ${locked ? 'disabled' : ''}>
@@ -642,7 +805,10 @@ function openBots() {
     ${ruleSegHTML('rsBot', ruleSetName())}
     <p class="small">${RULESET_NOTE}</p>
     ${toggleHTML('trBot', 'Переводной: можно перевести атаку тем же старшинством', load('durocker-transfer') !== '0')}
-    ${toggleHTML('blzBot', 'Блиц: 2,5 минуты на партию', blitzOn())}`);
+    ${toggleHTML('blzBot', 'Блиц: 2,5 минуты на партию', blitzOn())}
+    <h3>Матч</h3>
+    ${boSegHTML('boBot', +load('durocker-bo') || 3)}`);
+  $('boBot').onclick = e => { const b = e.target.closest('[data-bo]'); if (!b) return; store('durocker-bo', b.dataset.bo); $('boBot').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
   $('rsBot').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); $('rsBot').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
 }
 function toggleHTML(id, label, on) { return `<label class="toggle"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><span></span>${label}</label>`; }
@@ -682,7 +848,7 @@ function openCollection() {
     <h3>Столы</h3><div class="skins">${tables}</div>
     <h3>Музыка</h3><div class="seg">${tracks}</div>
     <h3>Достижения</h3><div class="achs">${achs}</div>
-    ${friends.length ? `<h3>Против друзей</h3><div class="achs">${friends.map(([n, f]) => `<div class="ach got"><i>🤝</i><div><b>${esc(n)}</b><small>побед ${f.w} · поражений ${f.l}</small></div></div>`).join('')}</div>` : ''}`);
+    ${friends.length ? `<h3>Против друзей</h3><div class="achs">${friends.map(([n, f]) => `<div class="ach got"><i>🤝</i><div><b>${esc(n)}</b><small>побед ${f.w} · поражений ${f.l}${f.sh ? ` · ${f.sh > 0 ? `должен тебе ${f.sh}` : `ты должен ${-f.sh}`} ${shelbWord(f.sh)}` : ''}</small></div></div>`).join('')}</div>` : ''}`);
 }
 function backPreview(id) {
   const prev = document.documentElement.dataset.back;
@@ -707,6 +873,8 @@ function openRules() {
     el.insertAdjacentHTML('beforeend', ` <em class="where">${car ? 'откроется: ' + RULE_WHERE[k] : r.set === 'classic' ? 'в «Полных правилах»' : 'выключено за этим столом'}</em>`);
   });
 }
+/* формат матча: до 1, 2 или 3 побед */
+const boSegHTML = (id, cur) => `<div class="seg" id="${id}">${[[1, 'Одна партия'], [3, 'До 2 побед'], [5, 'До 3 побед']].map(([k, n]) => `<button type="button" data-bo="${k}" class="${cur === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
 const ruleSegHTML = (id, cur) => `<div class="seg" id="${id}">${[['classic', 'Классика'], ['full', 'Полные правила']].map(([k, n]) => `<button type="button" data-rs="${k}" class="${cur === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
 const RULESET_NOTE = '«Классика» — комбинации, подкидывание и перевод. «Полные» — плюс «могнул», заряд и карты-действия, перекрытие и апгрейд.';
 
@@ -718,6 +886,8 @@ function openSettings() {
     ${toggleHTML('stSfx', 'Звуки карт и эффектов', AU.sfx)}
     <h3>Фразы</h3>
     ${toggleHTML('stRude', 'Мат в хайп-фразах (под звёздочками)', rudeOn())}
+    <h3>Карты</h3>
+    ${toggleHTML('stFour', 'Колода из 4 цветов: ♦ синие, ♣ зелёные', load('durocker-four') === '1')}
     <h3>Подсказки</h3>
     <div class="seg" id="stHints">${[['auto', 'Сами по опыту'], ['novice', 'Новичок'], ['player', 'Игрок'], ['pro', 'Профи']].map(([k, n]) => `<button type="button" data-h="${k}" class="${hl === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <p class="small">Новичок — подсветка, «чем крыть», шпаргалка. Игрок — только подсветка. Профи — только название комбинации. Сейчас: ${({ novice: 'новичок', player: 'игрок', pro: 'профи' })[hintLevel()]}.</p>
@@ -729,6 +899,7 @@ function openSettings() {
   $('stMusic').onchange = e => { AU.unlock(); AU.setMusic(e.target.checked); renderSound(); };
   $('stSfx').onchange = e => { AU.unlock(); AU.setSfx(e.target.checked); renderSound(); };
   $('stRude').onchange = e => store('durocker-rude', e.target.checked ? '1' : '0');
+  $('stFour').onchange = e => { store('durocker-four', e.target.checked ? '1' : '0'); applyFour(); if (G) update(); };
   $('stBlitz').onchange = e => { store('durocker-blitz', e.target.checked ? '1' : '0'); };
   $('stTransfer').onchange = e => store('durocker-transfer', e.target.checked ? '1' : '0');
   $('stRules').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); openSettings(); toast('Правила сменятся со следующей партии'); };
@@ -765,6 +936,8 @@ function renderLobby() {
     <p class="small">${RULESET_NOTE}</p>
     ${toggleHTML('trNet', 'Переводной', load('durocker-transfer') !== '0')}
     ${toggleHTML('blzNet', 'Блиц: 2,5 минуты на партию', blitzOn())}
+    ${toggleHTML('shNet', 'На щелбаны: проигравший должен столько, сколько набрал штрафа', shelbOn())}
+    ${boSegHTML('boNet', +load('durocker-bo-net') || 3)}
     <button class="btn blue" type="button" id="hostBtn">Создать стол</button>
     <div class="or">или войди к другу</div>
     <div class="joinrow"><input id="codeIn" maxlength="4" placeholder="КОД" autocomplete="off" aria-label="Код стола"><button class="btn orange" type="button" id="joinBtn">Войти</button></div>
@@ -773,6 +946,8 @@ function renderLobby() {
   const saveNick = () => store('durocker-nick', ($('nickIn').value.trim() || 'Игрок').slice(0, 16));
   $('hostBtn').onclick = () => { saveNick(); store('durocker-transfer', $('trNet').checked ? '1' : '0'); store('durocker-blitz', $('blzNet').checked ? '1' : '0'); hostTable(); };
   $('rsNet').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); $('rsNet').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
+  $('shNet').onchange = e => store('durocker-shelb', e.target.checked ? '1' : '0');
+  $('boNet').onclick = e => { const b = e.target.closest('[data-bo]'); if (!b) return; store('durocker-bo-net', b.dataset.bo); $('boNet').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
   $('joinBtn').onclick = () => { saveNick(); joinTable(); };
   $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') { saveNick(); joinTable(); } });
 }
@@ -804,7 +979,9 @@ function toggleCard(id) {
   document.querySelectorAll('#hand .slot').forEach(s => s.classList.toggle('sel', G.sel.has(s.firstElementChild.dataset.id)));
   layout(); renderCombo(); renderActions();
 }
+function applyFour() { document.documentElement.dataset.four = load('durocker-four') === '1' ? '1' : '0'; }
 function bindUI() {
+  applyFour();
   /* звук можно включить только из «настоящего» жеста: на iPhone это касание (touchend) или клик, не pointerdown */
   ['touchend', 'click', 'keydown'].forEach(ev => addEventListener(ev, () => AU.unlock(), { capture: true, passive: true }));
   document.addEventListener('click', e => {

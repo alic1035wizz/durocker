@@ -58,10 +58,10 @@ const ACHS = [
   { id: 'pingpong', name: 'Пинг-понг', desc: '3 перевода за партию', reward: null },
   { id: 'wall', name: 'Стена', desc: 'Отбить 3 атаки за один ход', reward: { track: 'garage' } },
   { id: 'jewel', name: 'Ювелир', desc: 'Сыграть стрит-флеш', reward: null },
-  { id: 'sharper', name: 'Шулера не обманешь', desc: 'Выиграть серию у Шулера', reward: { back: 'gold' } },
+  { id: 'sharper', name: 'Шулера не обманешь', desc: 'Выиграть матч у Шулера', reward: { back: 'gold' } },
   { id: 'regular', name: 'Завсегдатай', desc: 'Сыграть ежедневную раздачу 3 дня', reward: { back: 'neonb' } },
   { id: 'career', name: 'С подъезда в казино', desc: 'Пройти карьеру', reward: { table: 'gold' } },
-  { id: 'blitz', name: 'Молния', desc: 'Выиграть серию в Блице', reward: null },
+  { id: 'blitz', name: 'Молния', desc: 'Выиграть матч в Блице', reward: null },
 ];
 function grant(id) {
   const p = prog();
@@ -93,8 +93,8 @@ function onGameOver() {
     p.daily[MODE.day] = { won, mognul: G.stats.mognul.p, turns: G.stats.turns, left: G.P.length, penalty: G.penalty || 0 };
     if (Object.keys(p.daily).length >= 3) grant('regular');
   }
-  if (SERIES.done && SERIES.b >= seriesTo() && SERIES.p < SERIES.b) {
-    /* игрок выиграл серию: соперник набрал лимит */
+  if (SERIES.done && SERIES.w && SERIES.w.p >= seriesTo()) {
+    /* игрок выиграл матч */
     const bot = currentBot();
     if (!NET && bot.ai === 'sharper' && (bot.boss === 'sharper' || bot.id === 'sharper')) grant('sharper');
     if (!NET && blitzOn() && MODE.kind === 'free') grant('blitz');

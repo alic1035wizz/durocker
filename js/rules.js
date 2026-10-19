@@ -19,7 +19,8 @@ const TYPES = [
   { name: 'Стрит-флеш', n: 5 },
 ];
 const TN = TYPES.map(t => t.name);
-const HAND = 8;
+/* карт на руке; босс недели может сделать 10 — значение выставляет newGame из G.rules.hand */
+let HAND = 8;
 const DECK = 54;          // 52 карты + 2 джокера
 /* карты-действия не лежат в колоде: их получают за полный заряд.
    4 вида × 4 масти, как цветные карты в УНО; масть решает, когда карта срабатывает, козырная версия сильнее */
@@ -32,7 +33,6 @@ const ACTS = {
 const ACT_KEYS = ['shield', 'reverse', 'plus', 'trump'];
 const JOKER_R = 15;
 const TURN_MS = 30000;    // ход онлайн
-const SERIES_TO = 21;     // штрафных очков до проигрыша серии
 
 const $ = id => document.getElementById(id);
 const rn = r => (r === JOKER_R ? '★' : ({ 11: 'J', 12: 'Q', 13: 'K', 14: 'A' })[r] || String(r));
@@ -57,7 +57,7 @@ function wait(ms) { const t = TOK; return new Promise((res, rej) => setTimeout((
 function run(f) { f().catch(e => { if (e !== 'stale') console.error(e); }); }
 
 /* версия игры: в онлайне хозяин и гость сверяют её, чтобы играть по одним правилам */
-const VERSION = '2026.10.19-w2b';
+const VERSION = '2026.10.19-w3';
 const myNick = () => (load('durocker-nick') || 'Игрок').slice(0, 16);
 
 /* ---------- оценка комбинаций ---------- */
@@ -146,9 +146,11 @@ function singleVal(e) { const c = e.cards[0]; return c.joker ? { r: 13.5, s: G.T
 /* перекрытие: на атаку из 2+ карт можно лечь старшей комбинацией из большего числа карт */
 /* правило включено? (флаги — в G.rules, см. tableRules) */
 const rule = k => !G || !G.rules || G.rules[k] !== false;
+/* особые правила босса недели: по умолчанию выключены */
+const wrule = k => !!(G && G.rules && G.rules[k]);
 const overOn = () => rule('over');
 /* перекрытие — ровно на одну карту больше и старшим типом */
-const isOver = (d, a) => !!d && !!a && a.n >= 2 && d.n === a.n + 1 && d.t > a.t && overOn();
+const isOver = (d, a) => !!d && !!a && a.n >= 2 && (wrule('overAny') ? d.n > a.n : d.n === a.n + 1) && d.t > a.t && overOn();
 function beats(d, a) {
   if (!d || !a) return false;
   if (d.n !== a.n) return isOver(d, a);
@@ -221,14 +223,19 @@ function checkMove(seat, cs) {
   if (!e) return { ok: false, e, why: 'Не комбинация' };
   if (k === 'defend') {
     const a = openB().a;
-    if (e.n !== a.n && (a.n === 1 || e.n < a.n || !overOn() || e.n > a.n + 1))
+    if (e.n !== a.n && (a.n === 1 || e.n < a.n || !overOn() || (e.n > a.n + 1 && !wrule('overAny'))))
       return { ok: false, e, why: a.n === 1 ? 'Одиночку кроют одной картой'
         : overOn() && e.n > a.n + 1 ? `Перекрывают ровно на одну карту больше: ${a.n + 1} ${plural(a.n + 1)}, у тебя ${e.n}`
         : `Кроют ${overOn() && e.n < a.n ? 'не меньше чем' : 'тем же числом:'} ${a.n} ${plural(a.n)}, у тебя ${e.n}` };
     if (e.n > a.n) return beats(e, a) ? { ok: true, e, why: 'Перекрытие!' } : { ok: false, e, why: 'Для перекрытия нужна комбинация старшего типа' };
     return beats(e, a) ? { ok: true, e, why: 'Бьёт!' } : { ok: false, e, why: 'Не бьёт' };
   }
-  if (k !== 'attack' && e.n === 1) return { ok: false, e, why: 'Одиночкой не подкидывают — только комбинацией' };
+  if (k !== 'attack' && e.n === 1 && !wrule('singleThrow')) return { ok: false, e, why: 'Одиночкой не подкидывают — только комбинацией' };
+  /* босс недели «только пары и крупнее»: одиночкой можно, только если ни одной комбинации не сыграть */
+  if (k === 'attack' && e.n === 1 && wrule('noSingles')) {
+    const room = Math.min(G.limit - atkCount(), H(other(seat)).length);
+    if (room >= 2 && combos(H(seat), [2, 3]).length) return { ok: false, e, why: 'На этой неделе одиночками не ходят — только пары и крупнее' };
+  }
   if (k !== 'attack' && !e.cards.some(c => tableRanks().has(c.r)) && !tableHasType(e))
     return { ok: false, e, why: 'Нет на столе ни номинала, ни такой комбинации' };
   const room = G.limit - atkCount();
@@ -285,7 +292,7 @@ function defenseOptions(seat) {
   if (!b) return { cover: [], transfer: [], acts: [] };
   const hand = H(seat), a = b.a;
   /* сначала обычная защита тем же числом, перекрытие — в конце списка */
-  const sizes = a.n >= 2 && a.n < 5 && overOn() ? [a.n, a.n + 1] : [a.n];
+  const sizes = a.n >= 2 && a.n < 5 && overOn() ? (wrule('overAny') ? [2, 3, 4, 5].filter(n => n >= a.n) : [a.n, a.n + 1]) : [a.n];
   const cover = combos(hand, sizes).filter(e => beats(e, a)).sort((x, y) => (x.n - y.n) || cost(x.cards) - cost(y.cards));
   let transfer = [];
   if (G.rules && G.rules.transfer && noneDefended()) {
@@ -322,6 +329,6 @@ function coverRule(a) {
   let s = `${a.n} ${plural(a.n)}: ${a.name.toLowerCase()} старше`;
   if (a.tr < a.n) s += ' или с козырем';
   if (higher.length) s += `, либо ${higher.join(', ')}`;
-  if (overOn() && a.n >= 2 && a.n < 5) s += `. Или перекрой комбинацией старшего типа из ${a.n + 1} ${plural(a.n + 1)}`;
+  if (overOn() && a.n >= 2 && a.n < 5) s += wrule('overAny') ? '. Или перекрой комбинацией старшего типа из большего числа карт' : `. Или перекрой комбинацией старшего типа из ${a.n + 1} ${plural(a.n + 1)}`;
   return s + '.';
 }

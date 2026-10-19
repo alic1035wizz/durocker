@@ -15,7 +15,8 @@ function viewFor() {
     lim: G.limit, busy: !!G.busy, over: G.over ? (G.over === 'draw' ? 'draw' : f(G.over)) : null, pen: G.penalty || 0,
     fx: G.fx ? { ...G.fx, actor: f(G.fx.actor) } : null, fxl: (G.fxList || []).map(o => ({ ...o, actor: f(o.actor) })), nick: myNick(),
     ch: { p: G.charge.b, b: G.charge.p }, of: G.offer.b, oof: G.offer.p ? 1 : 0, tm: G.turnMs || 30000,
-    se: { p: SERIES.b, b: SERIES.p, games: SERIES.games, done: SERIES.done },
+    se: { p: SERIES.b, b: SERIES.p, w: { p: (SERIES.w || {}).b || 0, b: (SERIES.w || {}).p || 0 }, to: seriesTo(), games: SERIES.games, done: SERIES.done },
+    sh: typeof shelbOn === 'function' && shelbOn() ? 1 : 0,
     rt: G.rules.transfer ? 1 : 0, ro: G.rules.over === false ? 0 : 1, ru: G.rules, up: G.upgraded ? 1 : 0, bz: G.rules.blitz ? 1 : 0, ex: { p: G.extra.b, b: G.extra.p }, ck: G.clock ? { p: clockLeft('b'), b: clockLeft('p'), run: G.clock.run ? f(G.clock.run) : null } : null, ow: G.overWhy || null, tl: G.deadline ? Math.max(0, G.deadline - Date.now()) : 0,
   };
 }
@@ -68,8 +69,8 @@ function checkVersion(v) {
 function hostTable(restore) {
   if (!TR.available()) return lobbyStatus(TR.unavailableText, true);
   const code = restore ? restore.code : randCode();
-  NET = { role: 'host', code, oppNick: restore ? restore.nick : '', connected: false, started: !!restore, ready: false, series: { p: 0, b: 0, games: 0, done: false } };
-  if (restore) { G = restore.G; SERIES = restore.S; G.busy = false; G.sel = new Set(); G.pending = false; }
+  NET = { role: 'host', code, oppNick: restore ? restore.nick : '', connected: false, started: !!restore, ready: false, bo: +load('durocker-bo-net') || 3, series: null };
+  if (restore) { G = restore.G; SERIES = normSeries(restore.S); NET.series = SERIES; G.busy = false; G.sel = new Set(); G.pending = false; }
   setUrl(TR.linkable ? { h: code } : null);
   renderLobby(); renderNet();
   if (restore) { $('lobby').hidden = true; update(true); showOver(); }
@@ -111,7 +112,7 @@ function joinTable() {
   if (!/^[a-z0-9]{4}$/.test(code)) return lobbyStatus('Код — 4 символа, как у хозяина стола.', true);
   if (!TR.available()) return lobbyStatus(TR.unavailableText, true);
   TOK++;
-  NET = { role: 'guest', code, oppNick: '', lastFx: null, got: false, connected: false, series: { p: 0, b: 0, games: 0, done: false } };
+  NET = { role: 'guest', code, oppNick: '', lastFx: null, got: false, connected: false, series: null };
   setUrl(TR.linkable ? { t: code } : null);
   renderLobby();
   TR.join(code, myNick(), {
@@ -144,13 +145,14 @@ function applyView(st) {
       B: Array.from({ length: st.bn }, (_, i) => ({ id: 'x' + i, r: 2, s: -1, n: -1 })), table: [], grave: st.g,
       attacker: st.at, phase: st.ph ? { who: st.ph.w, kind: st.ph.k } : { who: null }, limit: st.lim, busy: st.busy,
       over: st.over, penalty: st.pen, sel: new Set([...keepSel].filter(id => st.P.some(n => 'c' + n === id))),
-      sort: (prev && prev.sort) || 'r', pending: false, fx: null, rules: st.ru ? { ...st.ru } : { transfer: !!st.rt, over: st.ro !== 0, blitz: !!st.bz },
+      sort: (prev && prev.sort) || 'r', pending: false, fx: null, rules: (HAND = (st.ru && st.ru.hand) || 8, st.ru ? { ...st.ru } : { transfer: !!st.rt, over: st.ro !== 0, blitz: !!st.bz }),
       upgraded: !!st.up, clock: st.ck ? { p: st.ck.p, b: st.ck.b, run: st.ck.run, since: Date.now() } : null, overWhy: st.ow || null, deadline: st.tl ? Date.now() + st.tl : 0, extra: st.ex || { p: 0, b: 0 }, turnMs: st.tm || 30000,
       charge: st.ch || { p: 0, b: 0 }, offer: { p: st.of || null, b: st.oof ? {} : null }, offerLater: prev && prev.offerLater,
     };
     G.table = st.tb.map(([a, d]) => ({ a: ev(a.map(mkCard)), d: d ? ev(d.map(mkCard)) : null }));
     NET.oppNick = String(st.nick || 'Соперник').slice(0, 16);
-    if (st.se) { NET.series = st.se; SERIES = st.se; }
+    if (st.se) { NET.series = st.se; SERIES = st.se; if (!SERIES.w) SERIES.w = { p: 0, b: 0 }; NET.bo = boOf(SERIES.to || 2); }
+    NET.shelb = st.sh != null ? !!st.sh : null;
     update(!prev || !prev.guest || st.P.length > prev.P.length);
     const fl = st.fxl || (st.fx ? [st.fx] : []);
     if (fl.length && fl[fl.length - 1].id < (NET.lastFx || 0)) NET.lastFx = 0;
