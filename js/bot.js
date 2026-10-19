@@ -148,31 +148,71 @@ const sQ = s => (s.q == null ? (s.q = handQ(s.cards)) : s.q);
 
 /* ---------- просчёт ходов ---------- */
 function deadline() { return Date.now() + 90; }
-/* атака/подкидывание: что выгоднее отдать, если соперник ответит по-своему */
-function evalThrow(bot, samples, e, withTable) {
-  const hoard = styleOf(bot).hoard, B2 = minus(G.B, e.cards), bq = handQ(B2, hoard);
-  const extra = withTable ? tblCards() : [];
+/* комбинации руки по размеру — с кэшем на время одного решения */
+let CC = new Map();
+function handCombos(h, n) {
+  const key = n + '|' + h.map(c => c.n).join(',');
+  let v = CC.get(key);
+  if (!v) { const L = plainCards(h).length; v = L >= n && capSizes(L, [n]).length ? combos(h, [n]) : []; CC.set(key, v); }
+  return v;
+}
+/* самое дешёвое покрытие e из руки h (или null) */
+function cheapestCover(h, e) {
+  const sizes = e.n === 1 ? [1] : [2, 3, 4, 5].filter(n => n >= e.n);
+  let best = null, bc = 1e9;
+  for (const n of sizes) for (const d of handCombos(h, n)) { if (!beats(d, e)) continue; const c = powSum(d.cards); if (c < bc) { bc = c; best = d; } }
+  return best;
+}
+/* что можно подкинуть из руки h на стол с номиналами ranks (упрощённо: по номиналу) */
+function throwables(h, ranks, room) {
+  const out = [];
+  for (let n = 2; n <= Math.min(5, room); n++) for (const t of handCombos(h, n)) if (t.cards.some(c => ranks.has(c.r))) out.push(t);
+  return out;
+}
+const rankSet = cs => new Set(cs.filter(c => !c.joker && !c.action).map(c => c.r));
+/* докинуть вдогонку берущему: самые дешёвые карты с нужными номиналами */
+function dumpFor(h, ranks, room) {
+  let best = null, bv = 0.15;
+  for (const t of throwables(h, ranks, room)) { const v = t.n * 0.6 - powSum(t.cards) * (1 - lateness()) * 0.8 + t.n * lateness(); if (v > bv) { bv = v; best = t; } }
+  return best ? best.cards : [];
+}
+/* атака/подкидывание e: соперник кроет самым дешёвым или берёт; если покрыл — пробуем добить подкидыванием, которое ему нечем крыть */
+function evalAttack(bot, samples, e, onTable) {
+  const hoard = styleOf(bot).hoard, B1 = minus(G.B, e.cards);
+  const room0 = G.limit - atkCount() - e.n;
   let sum = 0;
   for (const s of samples) {
     const d = oppAnswer(s, e);
-    if (d) sum += bq - handQ(minus(s.cards, d.cards)) - tempo();
-    else sum += bq - handQ(s.cards.concat(extra, e.cards)) + tempo();
+    if (!d) {
+      const dump = dumpFor(B1, new Set([...rankSet(e.cards), ...rankSet(onTable)]), Math.min(room0, 5));
+      sum += handQ(minus(B1, dump), hoard) - handQ(s.cards.concat(onTable, e.cards, dump)) + tempo();
+      continue;
+    }
+    const P1 = minus(s.cards, d.cards);
+    let v = handQ(B1, hoard) - handQ(P1) - tempo();
+    if (room0 >= 2 && P1.length) {
+      const ranks = new Set([...rankSet(onTable), ...rankSet(e.cards), ...rankSet(d.cards)]);
+      for (const t of throwables(B1, ranks, Math.min(room0, P1.length))) {
+        if (cheapestCover(P1, t)) continue;
+        const w = handQ(minus(B1, t.cards), hoard) - handQ(s.cards.concat(onTable, e.cards, t.cards)) + tempo();
+        if (w > v) v = w;
+      }
+    }
+    sum += v;
   }
   return sum / samples.length;
 }
 function searchAttack(bot, list, kind) {
   const N = styleOf(bot).search, end = deadline();
+  CC = new Map();
   remember();
-  const samples = sampleHands(bot, N);
-  const cand = list.slice().sort((a, b) => heur(b, 0.01) - heur(a, 0.01)).slice(0, 9);
+  const samples = sampleHands(bot, N), onTable = kind === 'throw' ? tblCards() : [];
+  const cand = list.slice(0, 10);
   let best = null, bs = -1e9;
-  if (kind === 'throw') {
-    /* «Бито»: стол уходит, соперник ходит следующим */
-    bs = samples.reduce((a, s) => a + handQ(G.B, styleOf(bot).hoard) - sQ(s), 0) / samples.length - tempo();
-  }
+  if (kind === 'throw') bs = samples.reduce((a, s) => a + handQ(G.B, styleOf(bot).hoard) - sQ(s), 0) / samples.length - tempo();
   for (const e of cand) {
     if (Date.now() > end && best) break;
-    const v = evalThrow(bot, samples, e, kind === 'throw') + Math.random() * 0.02;
+    const v = evalAttack(bot, samples, e, onTable) + Math.random() * 0.02;
     if (v > bs) { bs = v; best = e; }
   }
   return best;
@@ -182,50 +222,91 @@ function searchAddTake(bot, list) {
   const hoard = styleOf(bot).hoard, base = handQ(G.B, hoard);
   let best = null, bs = 0.05;
   for (const e of list) {
-    const gain = handQ(minus(G.B, e.cards), hoard) - base + powSum(e.cards) * 0.6 * (1 - lateness()) * -1 + e.n * 0.6 * lateness();
+    const gain = handQ(minus(G.B, e.cards), hoard) - base - powSum(e.cards) * 0.6 * (1 - lateness()) + e.n * 0.6 * lateness();
     if (gain > bs) { bs = gain; best = e; }
   }
   return best;
 }
+/* защита: покрыть (с учётом, что соперник подкинет то, чем нам уже нечем крыть), перевести или взять */
 function searchDefense(bot, cover, transfer) {
   const st = styleOf(bot), hoard = st.hoard, end = deadline();
+  CC = new Map();
   remember();
-  const samples = transfer.length ? sampleHands(bot, Math.max(6, Math.floor((st.search || 6) / 2))) : [];
-  const openLeft = G.table.filter(b => !b.d).length;
-  const take = handQ(G.B.concat(tblCards()), hoard) - tempo() - 0.25 * lateness() * 2;
+  const samples = sampleHands(bot, Math.max(4, Math.floor((st.search || 8) / 3)));
+  const table = tblCards(), openLeft = G.table.filter(b => !b.d).length, room = G.limit - atkCount();
+  const sAvg = samples.reduce((a, s) => a + sQ(s), 0) / samples.length;
+  /* взять: соперник ещё и докинет вдогонку */
+  let take = 0;
+  for (const s of samples) {
+    const dump = dumpFor(s.cards, rankSet(table), Math.min(room, 5));
+    take += handQ(G.B.concat(table, dump), hoard) - handQ(minus(s.cards, dump)) - tempo();
+  }
+  take /= samples.length;
   let best = null, bs = take;
-  for (const d of cover.slice(0, 7)) {
-    const v = handQ(minus(G.B, d.cards), hoard) + (openLeft <= 1 ? tempo() : 0) - 0.15 * d.n * (1 - lateness());
+  for (const d of cover.slice(0, 6)) {
+    if (Date.now() > end && best) break;
+    const B1 = minus(G.B, d.cards), ranks = new Set([...rankSet(table), ...rankSet(d.cards)]);
+    let sum = 0;
+    for (const s of samples) {
+      let v = handQ(B1, hoard) - sQ(s) + (openLeft <= 1 ? tempo() : 0);
+      if (openLeft <= 1 && room >= 2) {
+        for (const t of throwables(s.cards, ranks, Math.min(room, B1.length))) {
+          if (cheapestCover(B1, t)) continue;
+          const w = handQ(G.B.concat(table, d.cards.filter(() => false), t.cards).filter(c => !d.cards.includes(c)).concat(d.cards), hoard) - handQ(minus(s.cards, t.cards)) - tempo();
+          if (w < v) v = w;
+        }
+      }
+      sum += v;
+    }
+    const v = sum / samples.length;
     if (v > bs) { bs = v; best = { type: 'play', e: d }; }
   }
   for (const t of transfer.slice(0, 2)) {
     if (Date.now() > end && best) break;
-    const atks = G.table.map(b => b.a).concat([t]), B2 = minus(G.B, t.cards), bq = handQ(B2, hoard);
+    const atks = G.table.map(b => b.a).concat([t]), bq = handQ(minus(G.B, t.cards), hoard);
     let sum = 0;
     for (const s of samples) {
       let rest = s.cards, ok = true;
-      for (const a of atks) { const d = oppAnswer(mkSample(rest), a); if (!d) { ok = false; break; } rest = minus(rest, d.cards); }
-      sum += ok ? bq - handQ(rest) - tempo() + sQ(s) : bq - handQ(s.cards.concat(tblCards(), t.cards)) + tempo() + sQ(s);
+      for (const a of atks) { const d = cheapestCover(rest, a); if (!d) { ok = false; break; } rest = minus(rest, d.cards); }
+      sum += ok ? bq - handQ(rest) - tempo() : bq - handQ(s.cards.concat(table, t.cards)) + tempo();
     }
-    const v = sum / Math.max(1, samples.length);
+    const v = sum / samples.length;
     if (v > bs) { bs = v; best = { type: 'transfer', e: t }; }
   }
   return best;
 }
 
 /* ---------- ходы по характерам ---------- */
-function attackList() {
+/* проверяем правилами только лучших кандидатов: checkMove на сотнях комбинаций дорог */
+function firstValid(list, score, k) {
+  const out = [];
+  for (const e of list.map(e => ({ e, v: score(e) })).sort((a, b) => b.v - a.v)) {
+    if (checkMove('b', e.e.cards).ok) { out.push(e.e); if (out.length >= k) break; }
+  }
+  return out;
+}
+function attackList(score, k) {
   const L = plainCards(G.B).length;
-  return combos(G.B, capSizes(L, sizesUpTo(Math.min(5, G.limit - atkCount(), G.P.length)))).filter(e => checkMove('b', e.cards).ok);
+  return firstValid(combos(G.B, capSizes(L, sizesUpTo(Math.min(5, G.limit - atkCount(), G.P.length)))), score, k || 10);
+}
+/* варианты защиты; на огромной руке не перебираем пятёрки (как в правилах, но дешевле) */
+function defenseList() {
+  if (plainCards(G.B).length <= 13) return defenseOptions('b');
+  const a = openB().a, L = plainCards(G.B).length;
+  const sizes = capSizes(L, a.n === 1 ? [1] : [2, 3, 4, 5].filter(n => n >= a.n));
+  const cover = combos(G.B, sizes).filter(e => beats(e, a)).sort((x, y) => (x.n - y.n) || cost(x.cards) - cost(y.cards));
+  let transfer = [];
+  if (G.rules && G.rules.transfer && noneDefended() && atkCount() + a.n <= Math.min(HAND, G.P.length))
+    transfer = combos(G.B, [a.n]).filter(e => checkTransfer('b', e.cards).ok);
+  return { cover, transfer };
 }
 function botAttackPick(bot) {
-  const list = attackList(), st = styleOf(bot);
+  const st = styleOf(bot);
+  const score = bot.ai === 'student' || bot.style === 'student' ? e => heur(e, 30) - e.n * 3
+    : st.aggro ? e => heur(e) + e.n * 6 : st.hoard ? e => heur(e) - (e.tr + e.jk) * 12 : e => heur(e);
+  const list = attackList(score, st.search ? 10 : 1);
   if (!list.length) return null;
-  if (bot.ai === 'student' || bot.style === 'student') return (pickMax(list, e => heur(e, 30) - e.n * 3) || {}).e;
-  if (st.search) return searchAttack(bot, list, 'attack');
-  if (st.aggro) return (pickMax(list, e => heur(e) + e.n * 6) || {}).e;
-  if (st.hoard) return (pickMax(list, e => heur(e) - (e.tr + e.jk) * 12) || {}).e;
-  return (pickMax(list, e => heur(e)) || {}).e;
+  return st.search ? searchAttack(bot, list, 'attack') : list[0];
 }
 function botThrowPick(bot, forTake) {
   const room = Math.min(5, G.limit - atkCount(), forTake ? 99 : G.P.length);
@@ -233,18 +314,25 @@ function botThrowPick(bot, forTake) {
   const st = styleOf(bot), late = !G.deck.length;
   if (bot.ai === 'student' && Math.random() < 0.5) return null;
   if (st.patient && !late && !forTake && Math.random() < 0.7) return null;
-  const all = combos(G.B, capSizes(plainCards(G.B).length, sizesUpTo(room).filter(n => n >= 2))).filter(e => checkMove('b', e.cards).ok);
-  if (!all.length) return null;
-  if (st.search) return forTake ? searchAddTake(bot, all) : searchAttack(bot, all, 'throw');
+  const rs = tableRanks();
+  const raw = combos(G.B, capSizes(plainCards(G.B).length, sizesUpTo(room).filter(n => n >= 2)));
+  /* сначала комбинации с номиналом со стола — их проверка дешёвая */
+  const pre = e => heur(e, 0.01) + (e.cards.some(c => rs.has(c.r)) ? 5 : 0);
+  if (st.search) {
+    const all = firstValid(raw, pre, 10);
+    if (!all.length) return null;
+    return forTake ? searchAddTake(bot, all) : searchAttack(bot, all, 'throw');
+  }
   const cheapOk = e => late || (st.aggro && G.deck.length < 10) || (e.tr === 0 && !e.jk && e.cards.every(c => c.r <= 11));
-  const list = all.filter(cheapOk);
-  const r = pickMax(list, e => heur(e) + (st.aggro ? e.n * 4 : 0));
-  if (!r || (!late && r.h <= 0)) return null;
-  return r.e;
+  const sc = e => heur(e) + (st.aggro ? e.n * 4 : 0);
+  const list = firstValid(raw.filter(cheapOk), sc, 1);
+  if (!list.length) return null;
+  if (!late && sc(list[0]) <= 0) return null;
+  return list[0];
 }
 /* ответ на открытую атаку: покрыть, перевести или взять */
 function botDefense(bot) {
-  const { cover, transfer } = defenseOptions('b'), st = styleOf(bot);
+  const { cover, transfer } = defenseList(), st = styleOf(bot);
   if (bot.ai === 'student' || bot.style === 'student') {
     if (!cover.length || Math.random() < 0.15) return null;
     return { type: 'play', e: cover[Math.floor(Math.random() * cover.length)] };
