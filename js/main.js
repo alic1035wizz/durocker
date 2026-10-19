@@ -13,7 +13,7 @@ tgStart(() => {
   const sp = new URLSearchParams(location.search), hostCode = sp.get('h'), code = startCode();
   const back = hostCode && loadHost(hostCode);
   if (back) { hostTable(back); return; }
-  newGame();
+  if (!maybeRuleCard(newGame)) newGame();
   if (code) {
     /* пришёл по ссылке друга — сразу за его стол */
     store('durocker-seen', '1');

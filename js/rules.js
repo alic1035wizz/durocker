@@ -57,7 +57,7 @@ function wait(ms) { const t = TOK; return new Promise((res, rej) => setTimeout((
 function run(f) { f().catch(e => { if (e !== 'stale') console.error(e); }); }
 
 /* версия игры: в онлайне хозяин и гость сверяют её, чтобы играть по одним правилам */
-const VERSION = '2026.10.19-w1';
+const VERSION = '2026.10.19-w2';
 const myNick = () => (load('durocker-nick') || 'Игрок').slice(0, 16);
 
 /* ---------- оценка комбинаций ---------- */
@@ -144,8 +144,11 @@ function ev(cs) {
 /* d кроет a? Одиночка — как в обычном дураке; одиночный джокер — старший козырь, его бьёт только козырной туз */
 function singleVal(e) { const c = e.cards[0]; return c.joker ? { r: 13.5, s: G.T } : { r: c.r, s: c.s }; }
 /* перекрытие: на атаку из 2+ карт можно лечь старшей комбинацией из большего числа карт */
-const overOn = () => !G.rules || G.rules.over !== false;
-const isOver = (d, a) => !!d && !!a && a.n >= 2 && d.n > a.n && d.t > a.t && overOn();
+/* правило включено? (флаги — в G.rules, см. tableRules) */
+const rule = k => !G || !G.rules || G.rules[k] !== false;
+const overOn = () => rule('over');
+/* перекрытие — ровно на одну карту больше и старшим типом */
+const isOver = (d, a) => !!d && !!a && a.n >= 2 && d.n === a.n + 1 && d.t > a.t && overOn();
 function beats(d, a) {
   if (!d || !a) return false;
   if (d.n !== a.n) return isOver(d, a);
@@ -180,7 +183,7 @@ function tableCards() {
   return out.filter(c => !c.action);
 }
 function tableHasType(e) {
-  if (!e || e.n < 2) return false;
+  if (!e || e.n < 2 || !rule('typeThrow')) return false;
   const cs = tableCards();
   if (cs.length < e.n) return false;
   return combos(cs, [e.n]).some(x => x.t === e.t);
@@ -189,6 +192,7 @@ function tableHasType(e) {
 function checkUpgrade(seat, cs) {
   const no = why => ({ ok: false, why });
   if (!cs.length || G.over || G.busy || G.attacker !== seat || G.phase.kind !== 'defend' || G.phase.who !== other(seat)) return no(null);
+  if (!rule('upgrade')) return no(null);
   if (G.upgraded) return no('Апгрейд — один раз за ход');
   if (cs.some(c => c.action)) return no(null);
   const b = openB();
@@ -211,8 +215,10 @@ function checkMove(seat, cs) {
   if (!e) return { ok: false, e, why: 'Не комбинация' };
   if (k === 'defend') {
     const a = openB().a;
-    if (e.n !== a.n && (a.n === 1 || e.n < a.n || !overOn()))
-      return { ok: false, e, why: a.n === 1 ? 'Одиночку кроют одной картой' : `Кроют ${overOn() && e.n < a.n ? 'не меньше чем' : 'тем же числом:'} ${a.n} ${plural(a.n)}, у тебя ${e.n}` };
+    if (e.n !== a.n && (a.n === 1 || e.n < a.n || !overOn() || e.n > a.n + 1))
+      return { ok: false, e, why: a.n === 1 ? 'Одиночку кроют одной картой'
+        : overOn() && e.n > a.n + 1 ? `Перекрывают ровно на одну карту больше: ${a.n + 1} ${plural(a.n + 1)}, у тебя ${e.n}`
+        : `Кроют ${overOn() && e.n < a.n ? 'не меньше чем' : 'тем же числом:'} ${a.n} ${plural(a.n)}, у тебя ${e.n}` };
     if (e.n > a.n) return beats(e, a) ? { ok: true, e, why: 'Перекрытие!' } : { ok: false, e, why: 'Для перекрытия нужна комбинация старшего типа' };
     return beats(e, a) ? { ok: true, e, why: 'Бьёт!' } : { ok: false, e, why: 'Не бьёт' };
   }
@@ -273,7 +279,7 @@ function defenseOptions(seat) {
   if (!b) return { cover: [], transfer: [], acts: [] };
   const hand = H(seat), a = b.a;
   /* сначала обычная защита тем же числом, перекрытие — в конце списка */
-  const sizes = a.n >= 2 && overOn() ? [2, 3, 4, 5].filter(n => n >= a.n) : [a.n];
+  const sizes = a.n >= 2 && a.n < 5 && overOn() ? [a.n, a.n + 1] : [a.n];
   const cover = combos(hand, sizes).filter(e => beats(e, a)).sort((x, y) => (x.n - y.n) || cost(x.cards) - cost(y.cards));
   let transfer = [];
   if (G.rules && G.rules.transfer && noneDefended()) {
@@ -310,6 +316,6 @@ function coverRule(a) {
   let s = `${a.n} ${plural(a.n)}: ${a.name.toLowerCase()} старше`;
   if (a.tr < a.n) s += ' или с козырем';
   if (higher.length) s += `, либо ${higher.join(', ')}`;
-  if (overOn() && a.n < 5) s += '. Или перекрой старшей комбинацией из большего числа карт';
+  if (overOn() && a.n >= 2 && a.n < 5) s += `. Или перекрой комбинацией старшего типа из ${a.n + 1} ${plural(a.n + 1)}`;
   return s + '.';
 }

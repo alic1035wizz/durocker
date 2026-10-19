@@ -33,12 +33,34 @@ function loadSeries() {
 function saveSeries() { const k = seriesKey(); if (k) store(k, JSON.stringify(SERIES)); }
 function newSeries() { SERIES = MODE.kind === 'daily' ? { ...emptySeries(), mode: 'daily' } : emptySeries(); if (NET) NET.series = SERIES; saveSeries(); }
 
+/* наборы правил: «Классика» — комбинации, подкидывание и перевод; «Полные» — всё.
+   В карьере правила открываются по районам: Подъезд — классика без перевода, Двор — +перевод,
+   Рынок — +могнул и заряд, Вокзал — +перекрытие и апгрейд, Казино — всё. */
+const RULESETS = {
+  classic: { transfer: true, mognul: false, charge: false, over: false, upgrade: false, typeThrow: true },
+  full:    { transfer: true, mognul: true,  charge: true,  over: true,  upgrade: true,  typeThrow: true },
+};
+const DISTRICT_RULES = [
+  { ...RULESETS.classic, transfer: false },
+  { ...RULESETS.classic },
+  { ...RULESETS.classic, mognul: true, charge: true },
+  { ...RULESETS.full },
+  { ...RULESETS.full },
+];
+/* «Классика» или «Полные» для своей игры и онлайн-стола (выбирает хозяин) */
+const ruleSetName = () => (load('durocker-ruleset') === 'classic' ? 'classic' : 'full');
+const careerDistrict = () => (MODE.kind === 'career' ? Math.floor((MODE.stage || 0) / 3) : -1);
 function tableRules() {
+  let base, set;
+  if (!NET && MODE.kind === 'career') { set = 'career'; base = DISTRICT_RULES[Math.min(careerDistrict(), DISTRICT_RULES.length - 1)]; }
+  else if (!NET && MODE.kind === 'daily') { set = 'full'; base = RULESETS.full; }
+  else { set = ruleSetName(); base = RULESETS[set]; }
   const t = load('durocker-transfer');
-  const transfer = t == null ? true : t === '1';
-  const vahter = !NET && currentBot().boss === 'vahter';
+  const transferOn = MODE.kind === 'career' && !NET ? true : (t == null ? true : t === '1');
+  const r = { ...base, set, transfer: base.transfer && transferOn, blitz: blitzOn() };
   /* Вахтёр: «всё по-старому» — без переводов и без перекрытия */
-  return { transfer: vahter ? false : transfer, over: !vahter, blitz: blitzOn() };
+  if (!NET && currentBot().boss === 'vahter') { r.transfer = false; r.over = false; }
+  return r;
 }
 
 /* детерминированный генератор для ежедневной раздачи */
@@ -101,11 +123,12 @@ function startTurn(who) {
 /* ---------- заряд: копится за мастерство, полная шкала — выбор действия ---------- */
 const CHARGE_MAX = 3;
 function addCharge(seat, n) {
-  if (G.offer[seat]) return;
+  if (!rule('charge') || G.offer[seat]) return;
   G.charge[seat] += n;
   if (G.charge[seat] >= CHARGE_MAX) makeOffer(seat);
 }
 function makeOffer(seat) {
+  if (!rule('charge')) return;
   G.charge[seat] = 0;
   const ks = ACT_KEYS.slice().sort(() => Math.random() - 0.5).slice(0, 2);
   G.offer[seat] = { kinds: ks, s: G.lastSuit[seat] };
@@ -193,7 +216,7 @@ function judgeCover(seat, e, a) {
     G.stats.over = (G.stats.over || 0) + 1;
     hype('over', seat);
     addCharge(att, 1);
-  } else if (e.n >= 2 && e.t > a.t) {
+  } else if (e.n >= 2 && e.t > a.t && rule('mognul')) {
     G.stats.mognul[seat]++;
     SERIES[att] += 1;
     saveSeries();
