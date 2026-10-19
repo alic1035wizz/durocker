@@ -1,4 +1,4 @@
-/* Дурокер — всё, ради чего хочется вернуться: хайп-фразы, прогресс, карьера, ежедневная раздача,
+/* ДурКер — всё, ради чего хочется вернуться: хайп-фразы, прогресс, карьера, ежедневная раздача,
    достижения и коллекция наград. Хранится на устройстве (localStorage). */
 'use strict';
 
@@ -138,7 +138,7 @@ function dailySeed(day) { let h = 2166136261; for (const ch of 'durocker' + day)
 function dailyCard(day) {
   const r = prog().daily[day];
   if (!r) return '';
-  return `Дурокер #${dailyNumber(day)} ${r.won ? '✅ не дурак' : '🃏 дурак'}\nмогнул ×${r.mognul} · ходов ${r.turns}${r.won ? '' : ` · осталось ${r.left}`}\nalic1035wizz.github.io/durocker`;
+  return `ДурКер #${dailyNumber(day)} ${r.won ? '✅ не дурак' : '🃏 дурак'}\nмогнул ×${r.mognul} · ходов ${r.turns}${r.won ? '' : ` · осталось ${r.left}`}\nalic1035wizz.github.io/durocker`;
 }
 
 /* ---------- всплывашка ---------- */

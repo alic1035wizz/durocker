@@ -1,6 +1,6 @@
 {
-  "name": "Дурокер",
-  "short_name": "Дурокер",
+  "name": "ДурКер",
+  "short_name": "ДурКер",
   "description": "Дурак на 52 карты, где отбиваются покерными комбинациями.",
   "start_url": "./",
   "display": "standalone",

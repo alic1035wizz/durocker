@@ -1,4 +1,4 @@
-/* Дурокер — канал онлайна для страницы внутри Claude: комната Claude (room capability).
+/* ДурКер — канал онлайна для страницы внутри Claude: комната Claude (room capability).
    Подключается вместо transport-peer.js при сборке страницы tools/build-artifact.py. */
 'use strict';
 

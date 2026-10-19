@@ -1,4 +1,4 @@
-/* Дурокер — офлайн: сначала сеть (чтобы обновления приходили сразу), без сети — из кэша */
+/* ДурКер — офлайн: сначала сеть (чтобы обновления приходили сразу), без сети — из кэша */
 const CACHE = 'durocker-w3m';
 const CORE = ['./', 'index.html', 'css/style.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-192.png',
   ...['rules', 'engine', 'bot', 'meta', 'net', 'transport-mqtt', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'leaders', 'tg', 'main'].map(f => `js/${f}.js`)];

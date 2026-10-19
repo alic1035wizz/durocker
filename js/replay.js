@@ -1,4 +1,4 @@
-/* Дурокер — «Повтор лучшего момента»: короткая анимация розыгрыша на canvas и видео для чата.
+/* ДурКер — «Повтор лучшего момента»: короткая анимация розыгрыша на canvas и видео для чата.
    Запоминаем розыгрыши партии (атака → защита), лучший — твой «могнул» старшим типом,
    иначе последнее твоё покрытие перед победой. Видео пишем MediaRecorder-ом прямо с canvas. */
 'use strict';
@@ -97,7 +97,7 @@ const REPLAY = (() => {
     }
     /* подпись */
     x.font = '700 22px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.9)'; x.fillText(`${m.me} vs ${m.opp}`, W / 2, 664);
-    x.font = '600 19px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('Дурокер · t.me/durocker_bot', W / 2, 692);
+    x.font = '600 19px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('ДурКер · t.me/durocker_bot', W / 2, 692);
     x.restore();
   }
   /* drawCardOn смотрит на G.T для козырной рамки — на время кадра подставляем козырь момента */
@@ -170,7 +170,7 @@ const REPLAY = (() => {
       const loop = () => { if (!alive) return; draw(x, m, (performance.now() - t0) % (DUR + 900)); raf = requestAnimationFrame(loop); };
       loop();
     }
-    const text = `${m.phrase || 'Мой лучший момент'} — играю в Дурокер: https://t.me/durocker_bot`;
+    const text = `${m.phrase || 'Мой лучший момент'} — играю в ДурКер: https://t.me/durocker_bot`;
     const ext = () => (blob && /mp4/.test(blob.type) ? 'mp4' : 'webm');
     makeVideo(m).then(b => {
       if (!alive) return;
