@@ -5,6 +5,7 @@
 let MODE = { kind: 'free' };
 const blitzOn = () => load('durocker-blitz') === '1';
 function seriesTo() {
+  if (NET) return 11;
   if (MODE.kind === 'daily') return 1;
   if (MODE.kind === 'career') return currentBot().boss ? 21 : 11;
   return blitzOn() ? 11 : 21;

@@ -123,10 +123,10 @@ function dailyCard(day) {
 
 /* ---------- всплывашка ---------- */
 let toastT;
-function toast(t) {
+function toast(t, ms) {
   const el = $('toast'); if (!el) return;
   el.textContent = t; el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
-  clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3200);
+  clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, ms || 3200);
 }
 
 /* ---------- применить выбранную рубашку и трек ---------- */

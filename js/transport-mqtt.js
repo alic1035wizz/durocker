@@ -12,7 +12,8 @@ const TR = (() => {
   ];
   const ROOT = 'durocker/v3/';
   const BEAT = 4000, LOST = 15000;
-  const me = Math.random().toString(36).slice(2, 10);
+  /* id вкладки живёт до её закрытия: после обновления страницы гость возвращается на своё место */
+  const me = (() => { try { let v = sessionStorage.getItem('durocker-me'); if (!v) { v = Math.random().toString(36).slice(2, 10); sessionStorage.setItem('durocker-me', v); } return v; } catch (e) { return Math.random().toString(36).slice(2, 10); } })();
   let cl = null, base = '', role = null, h = null, other = null, lastSeen = 0, lost = false, timers = [], nick = '', got = false;
 
   const now = () => Date.now();
@@ -54,6 +55,7 @@ const TR = (() => {
   const failText = 'Не удалось подключиться к серверу игры. Проверь интернет; если включён VPN — попробуй без него (или наоборот).';
 
   return {
+    linkable: true,
     unavailableText: 'Не загрузилась библиотека онлайна. Проверь интернет и обнови страницу.',
     available: () => typeof window.mqtt === 'object' || typeof window.mqtt === 'function',
     host(code, hh) {
@@ -67,6 +69,8 @@ const TR = (() => {
             h.msg('hi', m.d);
             return;
           }
+          /* хозяин вернулся после обновления страницы: гость шлёт только пульс — принимаем его как «привет» */
+          if (!other && m.t === 'ping') { other = m.f; lastSeen = now(); lost = false; h.msg('hi', m.d || { nick }); return; }
           if (m.f !== other) return;
           lastSeen = now();
           if (lost) { lost = false; h.msg('hi', { nick }); }
@@ -88,11 +92,11 @@ const TR = (() => {
           if (m.t === 'st') { if (!got) { got = true; h.open(); } h.msg('st', m.d); }
           else if (m.t !== 'hb') h.msg(m.t, m.d);
         });
-        const hi = () => pub('h', 'hi', { nick: nk });
+        const hi = () => pub('h', 'hi', { nick: nk, v: VERSION });
         hi();
         /* пока стол не ответил — стучимся; потом шлём пульс */
         timers.push(setInterval(() => { if (!got) hi(); }, 2000));
-        timers.push(setInterval(() => { if (got) pub('h', 'ping', null); }, BEAT));
+        timers.push(setInterval(() => { if (got) pub('h', 'ping', { nick: nk, v: VERSION }); }, BEAT));
         watch();
       }, () => h.error(failText));
     },

@@ -9,6 +9,21 @@ applyLooks();
 bindUI();
 startBackground();
 requestAnimationFrame(tickTimer);
-newGame();
-/* первый визит — сразу меню, чтобы было видно карьеру и режимы */
-if (!load('durocker-seen')) { store('durocker-seen', '1'); openMenu(); }
+tgStart(() => {
+  const sp = new URLSearchParams(location.search), hostCode = sp.get('h'), code = startCode();
+  const back = hostCode && loadHost(hostCode);
+  if (back) { hostTable(back); return; }
+  newGame();
+  if (code) {
+    /* пришёл по ссылке друга — сразу за его стол */
+    store('durocker-seen', '1');
+    $('lobby').hidden = false; renderLobby();
+    $('codeIn').value = code;
+    joinTable();
+    return;
+  }
+  setUrl(null);
+  /* первый визит — сразу меню, чтобы было видно карьеру и режимы */
+  if (!load('durocker-seen')) { store('durocker-seen', '1'); openMenu(); }
+});
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});

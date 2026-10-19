@@ -23,6 +23,7 @@ function showFx(o) {
   }
   if (o.what === 'bito') return banner('БИТО', '', 'gold');
   if (o.what === 'takes') {
+    if (me) buzz('bad');
     if (!me) say('Беру…');
     return banner(me ? 'БЕРУ' : 'БЕРЁТ!', me ? 'Соперник может подкинуть' : 'Можешь подкинуть вдогонку', 'take');
   }
@@ -62,6 +63,7 @@ function showHype(key, mine) {
     el.textContent = txt; el.className = 'hype' + (mine ? '' : ' bad'); el.hidden = false;
     void el.offsetWidth; el.classList.add('on');
     if (mine) VFX.burstFelt(9); else shake(9);
+    buzz(mine ? 'big' : 'bad');
     setTimeout(() => { el.hidden = true; }, 1800);
     res();
   }, 450)));
@@ -131,7 +133,7 @@ function renderHUD() {
   $('oppBtn').disabled = live || MODE.kind !== 'free';
   const ch = G && G.charge ? G.charge.b : 0, full = G && G.offer && G.offer.b;
   const op = $('oppPips'); op.innerHTML = pipsHTML(full ? 3 : ch); op.classList.toggle('full', !!full);
-  const lim = NET ? (G && G.rules && G.rules.blitz ? 11 : 21) : seriesTo();
+  const lim = NET ? 11 : seriesTo();
   $('scP').textContent = SERIES.p; $('scB').textContent = SERIES.b;
   $('scP').classList.toggle('hot', SERIES.p >= lim - 4); $('scB').classList.toggle('hot', SERIES.b >= lim - 4);
   $('scOpp').textContent = oppName().split(' ').pop();
@@ -198,12 +200,17 @@ function pickOptions() {
   const sig = p + (upPhase() ? 'u' : '') + '|' + G.P.map(c => c.id).join() + '|' + G.T + '|' + G.table.map(b => b.a.cards.map(c => c.id).join('.') + (b.d ? 'd' : '')).join('/');
   if (G.pick && G.pick.sig === sig) return G.pick;
   let list = [];
+  /* дорогие карты — джокеры и козыри — в конце списка */
+  const pricey = cs => cs.some(c => c.joker || c.s === G.T) ? 1 : 0;
   if (p === 'p_defend') {
-    const o = defenseOptions('p');
-    list = [...o.cover, ...o.transfer].map(e => e.cards);
+    const o = defenseOptions('p'), a = openB() ? openB().a : null;
+    const plain = o.cover.filter(e => !a || e.n === a.n), over = o.cover.filter(e => a && e.n > a.n);
+    plain.sort((x, y) => pricey(x.cards) - pricey(y.cards) || cost(x.cards) - cost(y.cards));
+    over.sort((x, y) => pricey(x.cards) - pricey(y.cards) || cost(x.cards) - cost(y.cards));
+    list = [...plain, ...over, ...o.transfer].map(e => e.cards);
   } else if (p === 'p_attack' || p === 'p_throw' || p === 'p_addtake') {
     list = combos(hand, [1, 2, 3, 4, 5]).filter(e => checkMove('p', e.cards).ok)
-      .sort((x, y) => cost(x.cards) / x.n - cost(y.cards) / y.n || y.n - x.n).map(e => e.cards);
+      .sort((x, y) => pricey(x.cards) - pricey(y.cards) || cost(x.cards) / x.n - cost(y.cards) / y.n || y.n - x.n).map(e => e.cards);
   } else if (upPhase()) {
     const a = openB().a, max = Math.min(5 - a.n, 4), L = hand.length, pick = [];
     const rec = (st, d, k) => {
@@ -273,12 +280,15 @@ function nearestCombo(cs) {
   return { e: best, drop: cs.filter(c => !keep.has(c.id)) };
 }
 function check() { if (G.guest && G.pending) return { ok: false, e: null }; return checkMove('p', selected()); }
+/* цвет плашки: зелёный — можно, красный — нельзя, золотой — особый ход */
+const mineCls = r => (!r || !r.ok ? 'mine no' : /перекрыт|перевест|апгрейд/i.test(r.why || '') ? 'mine gold' : 'mine ok');
 function plate(cls, label, name) { return `<div class="plate ${cls}"><small>${esc(label)}</small><b>${esc(name)}</b></div>`; }
 function renderCombo() {
   const p = uiPhase(), ob = openB(), el = $('combo'), rh = $('ruleHint'), lv = level();
   let r = check();
   const tr = p === 'p_defend' && selected().length ? checkTransfer('p', selected()) : { ok: false };
-  if (!r.ok && tr.ok) r = tr;
+  /* кнопка в этом случае — «Перевести», плашка говорит то же самое */
+  if (tr.ok) r = tr;
   const actSel = p.startsWith('p_') ? selectedAction() : null;
   let html = '', ruleTxt = '';
   if (actSel) {
@@ -292,7 +302,7 @@ function renderCombo() {
     const fix = !r.e && n >= 2 ? nearestCombo(selected()) : null;
     const mineName = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : fix ? fix.e.name.toUpperCase() : n ? 'НЕ КОМБО' : `${a.n} ${plural(a.n)}`;
     const mineLbl = n ? (fix ? 'убери ' + fix.drop.map(cardName).join(' ') + ' →' : r.why || '') : 'твой ответ';
-    html = his + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '×'}</div>` + plate(n ? 'mine' : 'idle', mineLbl, mineName);
+    html = his + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '×'}</div>` + plate(n ? mineCls(r) : 'idle', mineLbl, mineName);
     const hint = lv !== 'pro' ? defenseHint() : null;
     if (lv === 'novice') {
       ruleTxt = coverRule(a);
@@ -306,7 +316,7 @@ function renderCombo() {
     const fix = !r.e && n >= 2 ? nearestCombo(selected()) : null;
     const name = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : fix ? fix.e.name.toUpperCase() : n ? 'НЕ КОМБО' : 'ВЫБЕРИ КАРТЫ';
     if (fix) r = { ...r, why: 'убери ' + fix.drop.map(cardName).join(' ') + ' →' };
-    html = plate(n ? 'mine wide' : 'idle wide', label, name) + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '·'}</div>`;
+    html = plate(n ? mineCls(r) + ' wide' : 'idle wide', label, name) + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '·'}</div>`;
     if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = 'Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт или перекрывает старшей комбинацией из большего. Не знаешь, чем ходить, — жми «⟳ Подбор».';
     if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = 'Подкидывают комбинацией с номиналом со стола — или любой, если такая комбинация уже сложилась из карт стола (две десятки на столе — подкидывай любую пару).';
   } else if (p === 'over') {
@@ -314,7 +324,7 @@ function renderCombo() {
   } else if (upPhase() && selected().length) {
     const u = checkUpgrade('p', selected());
     html = plate('his', 'ты атакуешь', ob.a.name.toUpperCase()) + `<div class="vs ${u.ok ? 'ok' : 'no'}">${u.ok ? '✓' : '✗'}</div>`
-      + plate('mine', u.why || 'не подходит', u.ok ? u.e.name.toUpperCase() : 'АПГРЕЙД');
+      + plate(mineCls(u), u.why || 'не подходит', u.ok ? u.e.name.toUpperCase() : 'АПГРЕЙД');
   } else {
     html = ob && G.phase.who === 'b' && G.attacker === 'p'
       ? plate('his', 'ты атакуешь', ob.a.name.toUpperCase()) + '<div class="vs">…</div>' + plate('idle', 'он думает', esc(oppName()))
@@ -391,7 +401,7 @@ function showOver() {
   }
   if (!G.over) { o.hidden = true; return; }
   if (G.overFx !== G.over) { G.overFx = G.over; if (G.over === 'p') { AU.play('win'); VFX.confetti(); } else if (G.over === 'b') AU.play('lose'); }
-  const opp = esc(oppName()), pen = G.penalty || 0, lim = NET ? (G.rules.blitz ? 11 : 21) : seriesTo();
+  const opp = esc(oppName()), pen = G.penalty || 0, lim = NET ? 11 : seriesTo();
   let h, s;
   if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно.'; }
   else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp} остался с ${pen} ${plural(pen)}: +${pen} штрафа ему.`; }
@@ -657,11 +667,13 @@ function renderLobby() {
   if (NET && NET.role === 'host' && !NET.started) {
     L.innerHTML = `<h2>Стол открыт</h2>
       <div class="codebox"><div class="small">Код для друга</div><div class="code" id="codeShow">${NET.ready ? esc(NET.code.toUpperCase()) : '····'}</div>
+        ${TR.linkable ? `<button class="btn green" type="button" id="shareLink" ${NET.ready ? '' : 'disabled'}>Позвать друга ссылкой</button>` : ''}
         <button class="btn orange" type="button" id="copyCode" ${NET.ready ? '' : 'disabled'}>Скопировать код</button></div>
       <div class="status" id="lobbyStatus"><span class="wait">${NET.ready ? 'Ждём соперника…' : 'Открываем стол…'}</span></div>
-      <p class="small">Друг открывает этот же сайт, жмёт ☰ → «Онлайн» и вводит код. Партия начнётся сама.</p>
+      <p class="small">${TR.linkable ? 'Друг жмёт на ссылку и сразу садится за стол. Или открывает сайт, ☰ → «Онлайн» и вводит код.' : 'Друг открывает эту же страницу, жмёт ☰ → «Онлайн» и вводит код.'} Партия начнётся сама.</p>
       <button class="btn grey" type="button" id="cancelHost">Закрыть стол</button>`;
     $('copyCode').onclick = () => copyText(NET.code.toUpperCase(), $('copyCode'), $('codeShow'));
+    if ($('shareLink')) $('shareLink').onclick = () => shareInvite(NET.code, $('shareLink'));
     $('cancelHost').onclick = () => { $('lobby').hidden = true; leaveTable(); };
     return;
   }
@@ -674,7 +686,7 @@ function renderLobby() {
   L.innerHTML = `${head('Игра с другом')}
     <label class="field">Твоё имя за столом<input id="nickIn" maxlength="16" value="${esc(myNick())}" autocomplete="off"></label>
     ${toggleHTML('trNet', 'Переводной', tableRules().transfer)}
-    ${toggleHTML('blzNet', 'Блиц: до 11, 20 секунд на ход', blitzOn())}
+    ${toggleHTML('blzNet', 'Блиц: 20 секунд на ход', blitzOn())}
     <button class="btn blue" type="button" id="hostBtn">Создать стол</button>
     <div class="or">или войди к другу</div>
     <div class="joinrow"><input id="codeIn" maxlength="4" placeholder="КОД" autocomplete="off" aria-label="Код стола"><button class="btn orange" type="button" id="joinBtn">Войти</button></div>

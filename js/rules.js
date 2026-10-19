@@ -56,6 +56,8 @@ function load(k) { try { return localStorage.getItem(k); } catch (e) { return nu
 function wait(ms) { const t = TOK; return new Promise((res, rej) => setTimeout(() => (t === TOK ? res() : rej('stale')), ms)); }
 function run(f) { f().catch(e => { if (e !== 'stale') console.error(e); }); }
 
+/* версия игры: в онлайне хозяин и гость сверяют её, чтобы играть по одним правилам */
+const VERSION = '2026.10.19-w1';
 const myNick = () => (load('durocker-nick') || 'Игрок').slice(0, 16);
 
 /* ---------- оценка комбинаций ---------- */
