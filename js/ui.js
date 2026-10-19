@@ -221,7 +221,7 @@ function pickOptions() {
 function nextPick() {
   if (!G || (!uiPhase().startsWith('p_') && !upPhase())) return;
   const pk = pickOptions();
-  if (!pk.list.length) { toast('Нечего выбрать — ' + (uiPhase() === 'p_defend' ? 'бери' : uiPhase() === 'p_throw' ? 'жми «Бито»' : 'ход только картой-действием')); return; }
+  if (!pk.list.length) { G.sel.clear(); update(); toast('Нечего выбрать — ' + (uiPhase() === 'p_defend' ? 'бери' : uiPhase() === 'p_throw' ? 'жми «Бито»' : 'ход только картой-действием')); return; }
   pk.i = (pk.i + 1) % pk.list.length;
   G.sel = new Set(pk.list[pk.i].map(c => c.id));
   AU.play('select');
@@ -232,7 +232,7 @@ function renderPickBtn() {
   if (!b) return;
   const on = G && (uiPhase().startsWith('p_') && uiPhase() !== 'p_over' || upPhase());
   b.disabled = !on;
-  const pk = on && G.pick && G.pick.i >= 0 ? G.pick : null;
+  const pk = on && G.pick && G.pick.i >= 0 && G.pick.list.length && G.pick.list[G.pick.i].every(c => G.sel.has(c.id)) && G.sel.size === G.pick.list[G.pick.i].length ? G.pick : null;
   b.textContent = pk && pk.list.length ? `⟳ ${pk.i + 1}/${pk.list.length}` : '⟳ Подбор';
 }
 
