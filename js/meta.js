@@ -26,6 +26,12 @@ function prog() {
   try { PROG = JSON.parse(load(PROG_KEY)) || {}; } catch (e) { PROG = {}; }
   PROG = Object.assign({ games: 0, wins: 0, mognul: 0, ach: {}, career: 0, careerDone: false, daily: {}, friends: {},
     unlocked: { back: ['red'], table: ['felt'], track: ['lounge'] }, back: 'red', track: 'lounge' }, PROG);
+  /* награды пропуска: рамки аватара, титулы, наборы фраз «могнул» — у старых сохранений этих списков ещё нет */
+  ['frame', 'title'].forEach(k => { if (!Array.isArray(PROG.unlocked[k])) PROG.unlocked[k] = []; });
+  if (!Array.isArray(PROG.unlocked.mog)) PROG.unlocked.mog = ['std'];
+  if (PROG.frame === undefined) PROG.frame = '';
+  if (PROG.title === undefined) PROG.title = '';
+  if (!PROG.mog) PROG.mog = 'std';
   return PROG;
 }
 function saveProg() { store(PROG_KEY, JSON.stringify(PROG)); }
@@ -46,8 +52,22 @@ const BACKS = [
 const TRACKS = [{ id: 'lounge', name: 'Казино-лаунж' }, { id: 'night', name: 'Ночной рынок' }, { id: 'garage', name: 'Гараж' }];
 function unlock(kind, id) {
   const p = prog();
+  if (!Array.isArray(p.unlocked[kind])) p.unlocked[kind] = [];
   if (!p.unlocked[kind].includes(id)) { p.unlocked[kind].push(id); saveProg(); return true; }
   return false;
+}
+
+/* наборы фраз «могнул» (то, что кричит игра, когда могнул ТЫ); открываются в пропуске сезона */
+const MOGNUL_SETS = [
+  { id: 'std', name: 'Классика', rude: 'МОГНУЛ, Б**ТЬ!', clean: 'МОГНУЛ!' },
+  { id: 'pacan', name: 'Пацанский', rude: 'ПО ФАКТУ, Б**ТЬ!', clean: 'ПО ФАКТУ, БРАТ!' },
+  { id: 'intel', name: 'Интеллигент', rude: 'ПАРДОН, Б**ТЬ, ВЫ МОГНУТЫ', clean: 'ПАРДОН, ВЫ МОГНУТЫ' },
+  { id: 'kosmos', name: 'Космос', rude: 'ПОЕХАЛИ, С*КА! 🚀', clean: 'ПОЕХАЛИ! 🚀' },
+  { id: 'strim', name: 'Стример', rude: 'КЛИП, Б**ТЬ! КЛИП!', clean: 'КЛИП! ЭТО КЛИП!' },
+];
+function applyMognul() {
+  const m = MOGNUL_SETS.find(x => x.id === prog().mog) || MOGNUL_SETS[0];
+  HYPE.mognul.rude[0] = m.rude; HYPE.mognul.clean[0] = m.clean;
 }
 
 /* ---------- достижения ---------- */
@@ -133,5 +153,6 @@ function toast(t, ms) {
 function applyLooks() {
   const p = prog();
   document.documentElement.dataset.back = p.back;
+  applyMognul();
   if (typeof AU !== 'undefined' && AU.setTrack) AU.setTrack(p.track);
 }

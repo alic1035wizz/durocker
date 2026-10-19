@@ -58,6 +58,23 @@ const LB = (() => {
   /* ---------- связь ---------- */
   let cl = null, connecting = null, idleT = 0;
   const has = () => typeof window.mqtt === 'object' || typeof window.mqtt === 'function';
+  /* облако (js/cloud.js): если подключено — очки и таблицу считает сервер */
+  const cloud = () => typeof CLOUD !== 'undefined' && CLOUD.on();
+  const online = () => has() || cloud();
+  /* свои цифры: из облака, если сервер о нас знает, иначе локальные */
+  function stats() {
+    const d = local(), m = cloud() && CLOUD.me();
+    return m ? { r: m.r, w: m.w, g: m.g, o: m.o } : d;
+  }
+  function fromBoard(b) {
+    const daily = new Map((b.daily || []).map(x => [x.id, x]));
+    return (b.players || []).map(p => {
+      const e = { id: p.id, n: p.n, r: p.r, w: p.w, g: p.g, o: p.o, c: p.c, cd: !!p.cd, t: p.t, ttl: p.tc || p.ttl || '' };
+      const d = daily.get(p.id);
+      if (d) e.d = { k: b.day, res: d.res, pen: d.pen };
+      return e;
+    });
+  }
   function conn() {
     if (cl) return Promise.resolve(cl);
     if (!has()) return Promise.resolve(null);
@@ -162,7 +179,10 @@ const LB = (() => {
     try { const st = CAREER_OPS[Math.min(e.c, CAREER_OPS.length - 1)]; return `Район «${CAREER[st.district].name}» · этап ${e.c + 1}`; } catch (x) { return `Этап ${e.c + 1}`; }
   };
   function lists() {
-    const me = mine(), my = { ...me, id: pid() };
+    const me = mine(), s = stats(), my = { ...me, r: s.r, w: s.w, g: s.g, o: s.o, id: pid() };
+    const fromCloud = rows && rows.find(r => r.id === my.id);
+    if (fromCloud && fromCloud.d && !my.d) my.d = fromCloud.d;
+    if (fromCloud && fromCloud.ttl) my.ttl = fromCloud.ttl;
     const all = new Map((rows || []).map(r => [r.id, r]));
     all.set(my.id, my);
     const arr = [...all.values()];
@@ -177,7 +197,7 @@ const LB = (() => {
   function rowHTML(e, i, myId, kind) {
     const medal = ['🥇', '🥈', '🥉'][i] || String(i + 1);
     let sub = '', sc = '';
-    if (kind === 'rate') { sub = `побед ${e.w} из ${e.g}${e.o ? ` · онлайн ${e.o}` : ''}`; sc = `${e.r}`; }
+    if (kind === 'rate') { sub = `${e.ttl ? '👑 ' + e.ttl + ' · ' : ''}побед ${e.w} из ${e.g}${e.o ? ` · онлайн ${e.o}` : ''}`; sc = `${e.r}`; }
     else if (kind === 'daily') { sub = e.d.res === 'win' ? `выиграл · сопернику +${e.d.pen}` : `проиграл · себе +${e.d.pen}`; sc = e.d.res === 'win' ? '✓' : '✗'; }
     else { sub = titleCareer(e); sc = e.cd ? '🏆' : `${e.c + 1}`; }
     return `<li class="lbrow${e.id === myId ? ' me' : ''}${i < 3 ? ' top' + (i + 1) : ''}"><span class="pl">${medal}</span><span class="nm">${escH(e.n)}${e.id === myId ? ' (ты)' : ''}<small>${escH(sub)}</small></span><span class="sc">${sc}</span></li>`;
@@ -187,12 +207,12 @@ const LB = (() => {
     if (!openNow) return;
     const el = document.getElementById('pageIn');
     if (!el) return;
-    const L = lists(), d = local(), list = L[tab], myId = L.me.id;
+    const L = lists(), d = stats(), list = L[tab], myId = L.me.id;
     const top = list.slice(0, 50), place = placeOf(list, myId);
     const empty = { rate: 'Пока никого — выиграй партию и будь первым.', daily: 'Сегодняшнюю раздачу ещё никто не сыграл.', career: 'Пока никто не продвинулся по карьере.' }[tab];
     let body = top.length ? `<ol class="lblist">${top.map((e, i) => rowHTML(e, i, myId, tab)).join('')}</ol>` : `<p class="lbstatus">${empty}</p>`;
     if (place > 50) body += `<div class="lbsep">…</div><ol class="lblist">${rowHTML(list[place - 1], place - 1, myId, tab)}</ol>`;
-    const net = has();
+    const net = online();
     el.innerHTML = `<div class="sheethead"><h2>Лидеры 🏆</h2><button type="button" class="close" data-close>×</button></div>
       <div class="lbme"><div><b>${place || '—'}</b><span>место</span></div><div><b>${d.r}</b><span>очков</span></div><div><b>${d.w}</b><span>побед</span></div><div><b>${d.g}</b><span>партий</span></div></div>
       <div class="lbname"><input id="lbNick" maxlength="16" value="${escH(nick())}" aria-label="Твоё имя в таблице" autocomplete="off"><button type="button" id="lbNickOk">Сохранить</button></div>
@@ -200,7 +220,7 @@ const LB = (() => {
         <button type="button" data-lbtab="rate" class="${tab === 'rate' ? 'on' : ''}">Рейтинг</button>
         <button type="button" data-lbtab="daily" class="${tab === 'daily' ? 'on' : ''}">Дейли</button>
         <button type="button" data-lbtab="career" class="${tab === 'career' ? 'on' : ''}">Карьера</button></div>
-      ${net ? (status ? `<p class="lbstatus">${escH(status)}</p>` : '') : '<p class="lbstatus">Общая таблица доступна на сайте и в Telegram (@durocker_bot). Здесь — только твоя статистика.</p>'}
+      ${net ? (status ? `<p class="lbstatus">${escH(status)}</p>` : cloud() ? '<p class="lbstatus">✅ Очки считает сервер ДурКер — накрутить нельзя.</p>' : '') : '<p class="lbstatus">Общая таблица доступна на сайте и в Telegram (@durocker_bot). Здесь — только твоя статистика.</p>'}
       ${body}
       ${net && place ? `<button type="button" class="lbshare" id="lbShare">Поделиться местом</button>` : ''}
       <p class="lbstatus">Очки за победу: Студент 1 · Валера 2 · Шулер 4 · босс 5 · финальный Шулер 8 · дейли 3 · онлайн 5.</p>`;
@@ -209,6 +229,7 @@ const LB = (() => {
       const v = (document.getElementById('lbNick').value.trim() || 'Игрок').slice(0, 16);
       wr('durocker-nick', v);
       lastPub = 0; publish().then(() => render()); render();
+      if (cloud()) CLOUD.call('profile').then(() => render());
     };
     document.getElementById('lbNickOk').onclick = ok;
     document.getElementById('lbNick').onkeydown = e => { if (e.key === 'Enter') ok(); };
@@ -227,10 +248,17 @@ const LB = (() => {
   }
   async function open() {
     css();
-    openNow = true; status = has() ? 'Загружаем таблицу…' : '';
+    openNow = true; status = online() ? 'Загружаем таблицу…' : '';
     if (typeof sheet === 'function') sheet('page', ''); else { const p = document.getElementById('page'); if (p) p.hidden = false; }
     render();
-    if (!has()) return;
+    if (cloud()) {
+      await CLOUD.ensure();
+      const b = await CLOUD.board();
+      if (!openNow) return;
+      if (b) { rows = fromBoard(b); status = ''; render(); return; }
+      /* облако не ответило — дальше как раньше, через MQTT */
+    }
+    if (!has()) { status = ''; render(); return; }
     await publish();
     const got = await fetchAll(2500);
     if (!openNow) return;

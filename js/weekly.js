@@ -260,7 +260,7 @@ const WEEKLY = (() => {
       body = `<div class="wkmeta"><div><b>${MONTHS_N[+s.k.slice(5, 7) - 1]}</b><span>сезон · ещё ${left(endsIn)}</span></div>
           <div><b>${s.r} · ${place || '—'} место</b><span>твои очки</span></div></div>
         ${ch ? `<p class="wknote">👑 Чемпион ${monthGen(pk)}: <b class="wkchamp">${escH(ch.n)}</b> (${ch.v} очков)</p>` : ''}
-        ${has() ? (status ? `<p class="lbstatus">${escH(status)}</p>` : '') : '<p class="lbstatus">Общий сезон виден на сайте и в Telegram (@durocker_bot). Здесь — только твои очки.</p>'}
+        ${has() || (typeof CLOUD !== 'undefined' && CLOUD.on()) ? (status ? `<p class="lbstatus">${escH(status)}</p>` : '') : '<p class="lbstatus">Общий сезон виден на сайте и в Telegram (@durocker_bot). Здесь — только твои очки.</p>'}
         ${top.length ? `<ol class="lblist">${top.map(row).join('')}</ol>` : '<p class="lbstatus">В этом сезоне ещё никто не побеждал.</p>'}
         ${place > 50 ? `<div class="lbsep">…</div><ol class="lblist">${row(cur[place - 1], place - 1)}</ol>` : ''}
         <p class="wknote">Очки сезона — как в рейтинге, но с нуля каждый месяц. Лучший за месяц получает титул «Чемпион ${monthGen(s.k)}».</p>`;
@@ -273,6 +273,19 @@ const WEEKLY = (() => {
     if (go) go.onclick = fight;
   }
   async function loadSeason() {
+    if (typeof CLOUD !== 'undefined' && CLOUD.on()) {
+      status = 'Загружаем сезон…'; render();
+      const b = await CLOUD.board();
+      if (!openNow) return;
+      if (b) {
+        const ch = b.champion;
+        rows = b.players.filter(p => p.sk || p.spk).map(p => ({ id: p.id, n: p.n, k: p.sk, r: p.sr, w: p.sw, g: p.sg, pk: p.spk, pr: p.spr,
+          ttl: ch && ch.id === p.id ? ch.ttl : '', t: p.t }));
+        const m = rows.find(r => r.id === pid());
+        if (m) { const s = season(); if (s.k === m.k) { s.r = m.r; s.w = m.w; s.g = m.g; wr('durocker-season', JSON.stringify(s)); } }
+        status = ''; render(); return;
+      }
+    }
     if (!has()) return;
     status = 'Загружаем сезон…'; render();
     await publish();

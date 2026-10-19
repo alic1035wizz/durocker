@@ -34,7 +34,9 @@ const NET4 = (() => {
   function host(restore) {
     if (!T4.available()) { toast('Не загрузилась библиотека онлайна — обнови страницу'); return; }
     const code = restore ? restore.code : randCode4();
-    N = restore ? { ...restore.N, role: 'host', ready: false } : { role: 'host', code, seats: [{ pid: T4.me, nick: myNick(), kind: 'host', last: now() }], started: false, want: 4, ready: false };
+    const o = UI4.opts();
+    N = restore ? { ...restore.N, role: 'host', ready: false } : { role: 'host', code, seats: [{ pid: T4.me, nick: myNick(), kind: 'host', last: now() }], started: false, want: 4, ready: false, to: o.to, set: o.set };
+    try { UI4.pauseDuo(); } catch (e) {}
     setUrl4({ mh: code });
     if (!restore) lobby();
     T4.host(code, {
@@ -64,7 +66,7 @@ const NET4 = (() => {
     if (t === 'ping') return;
     if (t === 'act' && N.started && M4.M) {
       const ns = Array.isArray(d.c) ? d.c.slice(0, 5).map(Number) : [];
-      const r = M4.act(s, String(d.t), ns);
+      const r = M4.act(s, String(d.t), ns, d.k != null ? String(d.k) : undefined);
       if (!r.ok) sendView(s); else UI4.refresh();
     }
   }
@@ -80,25 +82,29 @@ const NET4 = (() => {
         ${host ? `<div class="codebox"><div class="small">Код для друзей</div><div class="code">${N.ready ? esc(N.code.toUpperCase()) : '····'}</div>
           <button class="btn green" type="button" id="m4share" ${N.ready ? '' : 'disabled'}>Позвать друзей ссылкой</button></div>
           <div class="m4pick"><button class="btn ${N.want === 3 ? 'gold' : 'grey'}" type="button" data-w="3">Втроём</button><button class="btn ${N.want === 4 ? 'gold' : 'grey'}" type="button" data-w="4">Вчетвером</button></div>
+          <div class="m4setup" id="m4netopt">${UI4.setupHTML({ to: N.to || 2, set: N.set || 'full' }, true)}</div>
           <button class="btn blue" type="button" id="m4start" ${N.ready && N.seats.length >= 2 ? '' : 'disabled'}>Начать${N.seats.length < N.want ? ' (пустые места — боты)' : ''}</button>
-          <p class="small" style="color:var(--muted)">Правила — «Классика». Партию ведёт твой телефон: не закрывай вкладку.</p>
+          <p class="small" style="color:var(--muted)">Партию ведёт твой телефон: не закрывай вкладку.</p>
           <button class="btn grey" type="button" id="m4close">Закрыть стол</button>`
-        : `<div class="status"><span class="wait">${N.got ? 'Ждём, пока хозяин начнёт…' : 'Подключаемся к столу…'}</span></div><button class="btn grey" type="button" id="m4close">Выйти</button>`}`);
+        : `${N.to ? `<p style="text-align:center"><b>${esc(UI4.FMT[N.to] || '')}</b> · ${N.set === 'full' ? 'полные правила' : 'классика'}</p>` : ''}<div class="status"><span class="wait">${N.got ? 'Ждём, пока хозяин начнёт…' : 'Подключаемся к столу…'}</span></div><button class="btn grey" type="button" id="m4close">Выйти</button>`}`);
       const sh = $4('m4share'); if (sh) sh.onclick = () => share4(N.code, sh);
       const st = $4('m4start'); if (st) st.onclick = start;
       $4('m4close').onclick = () => { leave(); closeSheets(); };
       document.querySelectorAll('#pageIn [data-w]').forEach(b => { b.onclick = () => { N.want = +b.dataset.w; while (N.seats.length > N.want) N.seats.pop(); lobby(); }; });
+      const no = $4('m4netopt');
+      if (no) { const oo = { to: N.to || 2, set: N.set || 'full', sharper: false }; UI4.bindChips(no, oo, () => { N.to = oo.to; N.set = oo.set; const o2 = UI4.opts(); o2.to = oo.to; o2.set = oo.set; UI4.saveOpts(o2); lobby(); }); }
     } catch (e) { console.error(e); }
-    if (host) T4.send('lobby', { seats: N.seats.map(s => s.nick), want: N.want });
+    if (host) T4.send('lobby', { seats: N.seats.map(s => s.nick), want: N.want, to: N.to, set: N.set });
   }
   function start() {
     if (!N || N.started) return;
     const n = Math.max(3, N.want), bots = UI4.C ? [] : [];
-    const BN = [{ name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', ai: 'valera' }, { name: 'Тётя Зина', face: 'З', color: '#b85b5b', ai: 'sharper' }, { name: 'Студент', face: 'СТ', color: '#4f8fd8', ai: 'student' }];
+    const BN = UI4.personas(Math.max(0, n - N.seats.length), false);
     let bi = 0;
-    while (N.seats.length < n) { const b = BN[bi++ % BN.length]; N.seats.push({ pid: 'bot' + bi, nick: b.name, kind: 'bot', bot: b, last: now() }); }
+    while (N.seats.length < n) { const b = BN[bi++]; N.seats.push({ pid: 'bot' + bi, nick: b.name, kind: 'bot', bot: b, last: now() }); }
     N.started = true;
-    const cfg = { N: n, names: N.seats.map(s => s.nick), kinds: N.seats.map((s, i) => (i === 0 ? 'me' : s.kind)), bots: N.seats.map(s => s.bot || null), series: Array(n).fill(0), games: 0 };
+    const cfg = { N: n, names: N.seats.map(s => s.nick), kinds: N.seats.map((s, i) => (i === 0 ? 'me' : s.kind)), bots: N.seats.map(s => s.bot || null),
+      to: N.to || 2, set: N.set || 'full', wins: Array(n).fill(0), pens: Array(n).fill(0), games: 0, calls: 0 };
     UI4.C.cfg = cfg;
     UI4.setFaces(N.seats.map(s => s.bot || null));
     UI4.enter('host', 0);
@@ -118,7 +124,7 @@ const NET4 = (() => {
     const st = N.seats[s];
     if (!st || st.kind !== 'net') return;
     const V = M4.viewFor(s);
-    V.fc = N.seats.map(x => (x.bot ? { face: x.bot.face, color: x.bot.color } : null));
+    V.fc = N.seats.map(x => (x.bot ? { id: x.bot.id, face: x.bot.face, color: x.bot.color } : null));
     V.code = N.code;
     T4.send('st', V, st.pid);
   }
@@ -152,6 +158,7 @@ const NET4 = (() => {
   function join(code) {
     if (!T4.available()) { toast('Не загрузилась библиотека онлайна — обнови страницу'); return; }
     N = { role: 'guest', code, seats: [], got: false, lastHost: now() };
+    try { UI4.pauseDuo(); } catch (e) {}
     setUrl4({ mt: code });
     lobby();
     T4.join(code, myNick(), {
@@ -163,7 +170,7 @@ const NET4 = (() => {
         if (!N || N.role !== 'guest') return;
         N.lastHost = now();
         if (t === 'full') { toast('За этим столом уже нет мест'); leave(); try { closeSheets(); } catch (e) {} return; }
-        if (t === 'lobby' && d) { N.got = true; N.seats = (d.seats || []).map(nick => ({ nick: String(nick).slice(0, 16) })); if (!UI4.on) lobby(); return; }
+        if (t === 'lobby' && d) { N.got = true; N.seats = (d.seats || []).map(nick => ({ nick: String(nick).slice(0, 16) })); N.to = [1, 2, 3].includes(d.to) ? d.to : 0; N.set = d.set === 'classic' ? 'classic' : 'full'; if (!UI4.on) lobby(); return; }
         if (t === 'st' && d && d.hand) {
           N.got = true;
           if (d.v && d.v !== VERSION) { if (!N.vw) { N.vw = 1; toast(d.v > VERSION ? 'У тебя старая версия игры — обнови страницу' : 'У хозяина старая версия — пусть обновит страницу', 7000); } }
@@ -180,7 +187,7 @@ const NET4 = (() => {
       if (N && now() - N.lastHost < 15000) N.warned = false;
     }, 3000);
   }
-  function sendAct(t, ns) { T4.send('act', { t, c: ns }); }
+  function sendAct(t, ns, k) { T4.send('act', k != null ? { t, c: ns, k } : { t, c: ns }); }
   function leave() {
     clearTimeout(turnT); clearInterval(watchT);
     try { T4.close(); } catch (e) {}
