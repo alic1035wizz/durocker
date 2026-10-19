@@ -141,8 +141,12 @@ function ev(cs) {
 
 /* d кроет a? Одиночка — как в обычном дураке; одиночный джокер — старший козырь, его бьёт только козырной туз */
 function singleVal(e) { const c = e.cards[0]; return c.joker ? { r: 13.5, s: G.T } : { r: c.r, s: c.s }; }
+/* перекрытие: на атаку из 2+ карт можно лечь старшей комбинацией из большего числа карт */
+const overOn = () => !G.rules || G.rules.over !== false;
+const isOver = (d, a) => !!d && !!a && a.n >= 2 && d.n > a.n && d.t > a.t && overOn();
 function beats(d, a) {
-  if (!d || !a || d.n !== a.n) return false;
+  if (!d || !a) return false;
+  if (d.n !== a.n) return isOver(d, a);
   if (d.n === 1) {
     const x = singleVal(d), y = singleVal(a);
     return (x.s === y.s && x.r > y.r) || (x.s === G.T && y.s !== G.T);
@@ -177,7 +181,9 @@ function checkMove(seat, cs) {
   if (!e) return { ok: false, e, why: 'Не комбинация' };
   if (k === 'defend') {
     const a = openB().a;
-    if (e.n !== a.n) return { ok: false, e, why: `Кроют тем же числом: ${a.n} ${plural(a.n)}, у тебя ${e.n}` };
+    if (e.n !== a.n && (a.n === 1 || e.n < a.n || !overOn()))
+      return { ok: false, e, why: a.n === 1 ? 'Одиночку кроют одной картой' : `Кроют ${overOn() && e.n < a.n ? 'не меньше чем' : 'тем же числом:'} ${a.n} ${plural(a.n)}, у тебя ${e.n}` };
+    if (e.n > a.n) return beats(e, a) ? { ok: true, e, why: 'Перекрытие!' } : { ok: false, e, why: 'Для перекрытия нужна комбинация старшего типа' };
     return beats(e, a) ? { ok: true, e, why: 'Бьёт!' } : { ok: false, e, why: 'Не бьёт' };
   }
   if (k !== 'attack' && e.n === 1) return { ok: false, e, why: 'Одиночкой не подкидывают — только комбинацией' };
@@ -235,7 +241,9 @@ function defenseOptions(seat) {
   const b = openB();
   if (!b) return { cover: [], transfer: [], acts: [] };
   const hand = H(seat), a = b.a;
-  const cover = combos(hand, [a.n]).filter(e => beats(e, a)).sort((x, y) => cost(x.cards) - cost(y.cards));
+  /* сначала обычная защита тем же числом, перекрытие — в конце списка */
+  const sizes = a.n >= 2 && overOn() ? [2, 3, 4, 5].filter(n => n >= a.n) : [a.n];
+  const cover = combos(hand, sizes).filter(e => beats(e, a)).sort((x, y) => (x.n - y.n) || cost(x.cards) - cost(y.cards));
   let transfer = [];
   if (G.rules && G.rules.transfer && noneDefended()) {
     const next = H(other(seat)).length;
@@ -271,5 +279,6 @@ function coverRule(a) {
   let s = `${a.n} ${plural(a.n)}: ${a.name.toLowerCase()} старше`;
   if (a.tr < a.n) s += ' или с козырем';
   if (higher.length) s += `, либо ${higher.join(', ')}`;
+  if (overOn() && a.n < 5) s += '. Или перекрой старшей комбинацией из большего числа карт';
   return s + '.';
 }

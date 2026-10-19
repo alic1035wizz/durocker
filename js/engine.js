@@ -35,7 +35,9 @@ function newSeries() { SERIES = MODE.kind === 'daily' ? { ...emptySeries(), mode
 function tableRules() {
   const t = load('durocker-transfer');
   const transfer = t == null ? true : t === '1';
-  return { transfer: !NET && currentBot().boss === 'vahter' ? false : transfer, blitz: blitzOn() };
+  const vahter = !NET && currentBot().boss === 'vahter';
+  /* Вахтёр: «всё по-старому» — без переводов и без перекрытия */
+  return { transfer: vahter ? false : transfer, over: !vahter, blitz: blitzOn() };
 }
 
 /* детерминированный генератор для ежедневной раздачи */
@@ -184,7 +186,12 @@ function judgeCover(seat, e, a) {
   G.turnCovers++;
   if (e.n === 1 && e.jk && !a.jk) hype('legend', seat);
   /* «могнул»: покрыл комбинацией старшего типа (на мини-флеш — сетом, на стрит — фулл-хаусом) */
-  if (e.n >= 2 && e.t > a.t) {
+  if (e.n > a.n) {
+    /* перекрытие: без штрафа, но атакующему +1 заряда, а новые номиналы открывают подкидывание */
+    G.stats.over = (G.stats.over || 0) + 1;
+    hype('over', seat);
+    addCharge(att, 1);
+  } else if (e.n >= 2 && e.t > a.t) {
     G.stats.mognul[seat]++;
     SERIES[att] += 1;
     saveSeries();

@@ -59,7 +59,8 @@ function playerAnswers() {
   if (kc.length) combos(kc, [1, 2, 3, 4, 5]).forEach(e => (by[e.n] = by[e.n] || []).push(e));
   return by;
 }
-const canBeat = (by, e) => (by[e.n] || []).some(d => beats(d, e));
+const coverers = (by, e) => (e.n === 1 ? [1] : [2, 3, 4, 5].filter(n => n >= e.n)).flatMap(n => by[n] || []).filter(d => beats(d, e));
+const canBeat = (by, e) => coverers(by, e).length > 0;
 
 
 function botAttackPick(bot) {
@@ -68,7 +69,7 @@ function botAttackPick(bot) {
   if (bot.ai === 'sharper') {
     const by = playerAnswers(), late = !G.deck.length;
     /* видит твою руку: бьёт тем, чем нечем крыть, а если крыть есть чем — заставляет тратить дорогое */
-    const coverCost = e => { const l = (by[e.n] || []).filter(d => beats(d, e)); return l.length ? Math.min(...l.map(d => cost(d.cards))) : -1; };
+    const coverCost = e => { const l = coverers(by, e); return l.length ? Math.min(...l.map(d => cost(d.cards))) : -1; };
     return (pickMax(list, e => { const cc = coverCost(e); return heur(e) + (cc < 0 ? 22 + e.n * 4 + (late ? 10 : 0) : cc / 4 - 8); }) || {}).e;
   }
   return (pickMax(list, e => heur(e)) || {}).e;
@@ -96,9 +97,6 @@ function botDefense(bot) {
   const pricey = c && (c.tr > 0 || c.jk > 0);
   if (t && (!c || pricey || cost(t.cards) + 8 < cost(c.cards))) return { type: 'transfer', e: t };
   if (!c) return null;
-  /* Шулер не тратит джокера на мелкую атаку, пока колода толстая */
-  /* Шулер видит твою руку: если после этого покрытия ты всё равно не сможешь отбиться от его следующей атаки — кроет, иначе бережёт козыри и берёт мелочь */
-  if (bot.ai === 'sharper' && G.deck.length > 10 && openB().a.n === 1 && c.tr > 0 && openB().a.cards[0].r <= 6 && G.B.length <= 6) return null;
   return { type: 'play', e: c };
 }
 
