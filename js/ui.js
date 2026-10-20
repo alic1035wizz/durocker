@@ -1107,6 +1107,7 @@ function bindUI() {
   addEventListener('resize', () => { if (G) layout(); });
   addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('input')) return;
+    if (e.key === 'Escape' && $('keysHelp')) { $('keysHelp').remove(); return; }
     if (['menu', 'bots', 'page', 'lobby'].some(id => !$(id).hidden)) { if (e.key === 'Escape') closeSheets(); return; }
     const k = e.key.toLowerCase();
     if (e.key === 'Enter') { const b = $('actMain').querySelector('.btn:not(:disabled)'); if (b) { e.preventDefault(); b.click(); } }
