@@ -458,7 +458,7 @@
         dock.appendChild(m);
       }
     }
-    if (any) document.body.appendChild(dock);
+    if (any) { const row = o.querySelector('.row'); if (row) o.insertBefore(dock, row); else document.body.appendChild(dock); }
   }
 
   /* ---------- запуск ---------- */
