@@ -450,8 +450,8 @@ html.pt-still .pt .v,html.pt-still .pt-head{transition:none!important}
 .m4opp .ava.pt-host{width:32px!important;height:32px!important;border-radius:9px!important}
 .m4lobby .seat .ava.pt-host{width:32px!important;height:32px!important;border-radius:9px!important}
 .pava.pt-host>.pt{border-radius:50%}
-.pt-over{position:absolute;z-index:3;left:10px;top:8px;width:80px;height:80px;border-radius:18px;overflow:hidden;border:3px solid ${INK};box-shadow:0 4px 0 rgba(0,0,0,.45);pointer-events:none;transition:left .5s cubic-bezier(.3,1.3,.5,1),top .5s cubic-bezier(.3,1.3,.5,1),width .5s,height .5s,transform .5s,box-shadow .5s}
-.pt-over.pop{left:50%;top:50%;width:160px;height:160px;border-radius:28px;transform:translate(-50%,-50%);box-shadow:0 0 0 100vmax rgba(4,16,12,.6),0 6px 0 rgba(0,0,0,.5);transition:none;animation:ptpop .35s cubic-bezier(.3,1.5,.5,1)}
+.pt-over{position:relative;flex:none;z-index:3;left:auto;top:auto;width:72px;height:72px;border-radius:18px;overflow:hidden;border:3px solid ${INK};box-shadow:0 4px 0 rgba(0,0,0,.45);pointer-events:none;transition:left .5s cubic-bezier(.3,1.3,.5,1),top .5s cubic-bezier(.3,1.3,.5,1),width .5s,height .5s,transform .5s,box-shadow .5s}
+.pt-over.pop{position:absolute;left:50%;top:50%;width:160px;height:160px;border-radius:28px;transform:translate(-50%,-50%);box-shadow:0 0 0 100vmax rgba(4,16,12,.6),0 6px 0 rgba(0,0,0,.5);transition:none;animation:ptpop .35s cubic-bezier(.3,1.5,.5,1)}
 @keyframes ptpop{from{transform:translate(-50%,-50%) scale(.5);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 html .pt-over.held{animation:none}
 html.pt-still .pt-over{transition:none!important;animation:none!important}
@@ -620,7 +620,7 @@ html.pt-still .pt-over{transition:none!important;animation:none!important}
     const target = baseNow(), key = oppKey(), sig = G.over + '|' + (typeof SERIES !== 'undefined' && SERIES ? (SERIES.games || 0) : 0);
     const fresh = lastOver !== sig; lastOver = sig;
     let box = o.querySelector('.pt-over');
-    if (!box) { box = document.createElement('div'); box.className = 'pt-over'; o.appendChild(box); }
+    if (!box) { box = document.createElement('div'); box.className = 'pt-over'; o.insertBefore(box, o.firstChild); }
     /* на самом экране итога места мало: портрет «выскакивает» крупно (160 px), потом уезжает в угол */
     if (fresh) popUntil = still() ? 0 : Date.now() + holdMs(1700);
     const left = popUntil - Date.now();

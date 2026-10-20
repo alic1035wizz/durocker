@@ -209,3 +209,27 @@ html[data-skin="felt"][data-district="boss"] .felt::after{left:12px;right:12px;t
 .hand .slot.sel .card .front{box-shadow:0 0 0 3px var(--gold),0 12px 16px rgba(0,0,0,.5)}
 @media (prefers-reduced-motion:reduce){#vign{display:none}.cshadow{display:none}}
 html[data-speed="off"] #vign,html[data-speed="off"] .cshadow{display:none}
+
+/* ============ итог партии/матча: модальное окно на весь экран ============
+   Раньше панель лежала внутри стола и обрезалась по его высоте. Теперь — слой поверх всего, с внутренним скроллом. */
+.over:not([hidden]){position:fixed;inset:0;z-index:52;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;overflow-y:auto;overscroll-behavior:contain;border-radius:0;
+  padding:max(16px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));background:rgba(4,14,10,.88);backdrop-filter:blur(3px)}
+.over:not([hidden])>:first-child{margin-top:auto}
+.over:not([hidden])>:last-child{margin-bottom:auto}
+.over:not([hidden])>*{flex:none;max-width:min(100%,460px)}
+.over h2{font-size:clamp(16px,5vw,22px)}
+.over p{overflow-wrap:anywhere}
+.over .row{width:100%}
+.over .row .btn{flex:1 1 auto;min-width:0;padding:12px 14px}
+/* фишки и награда встроены в панель итога, а не висят над рукой */
+.over .chdock{position:static;left:auto;right:auto;bottom:auto;z-index:auto;width:100%;max-width:min(100%,380px);margin:0;pointer-events:auto}
+.over .chnote,.over .btn.chmore,.over .btn.chchest{max-width:none}
+/* пока итог открыт, сортировка и подбор недоступны: слой перекрывает их, а читалки экрана их не видят */
+body:has(#over:not([hidden])) .sorter{visibility:hidden}
+@media (max-height:520px){
+  .over:not([hidden]){gap:6px;padding-top:8px;padding-bottom:8px}
+  .over h2{font-size:15px}.over p{font-size:13px}
+  .over .btn{padding:9px 14px}
+  .over .pt-over:not(.pop),.over .pbadge{display:none}
+  .over .pencount{padding:4px 12px}
+}
