@@ -334,16 +334,8 @@
   }
 
   /* ---------- обёртки ---------- */
-  const wrap = (name, fn) => {
-    const orig = window[name];
-    if (typeof orig !== 'function') return;
-    window[name] = function () { return fn(orig, this, arguments); };
-  };
-
-  wrap('onGameOver', (orig, th, a) => {
-    const r = orig.apply(th, a);
+  BUS.on('game:over', () => {
     try { if (!(NET && NET.role === 'guest')) settle(false); } catch (e) { console.error('[chips]', e); }
-    return r;
   });
   /* «выход посреди партии = поражение» (meta.js) засчитывается внутри newGame; если из-за этого матч с моей ставкой закончился — ставка сгорает */
   function preForfeit() {
@@ -358,15 +350,10 @@
       say('Выход посреди партии — матч проигран, ставка сгорела', 4500);
     } else b.seen = (s.games || 0) + 1;
   }
-  wrap('newGame', (orig, th, a) => {
-    try { preForfeit(); } catch (e) { console.error('[chips]', e); }
-    const r = orig.apply(th, a);
-    try { killDock(); lockBet(); } catch (e) { console.error('[chips]', e); }
-    return r;
-  });
-  wrap('renderHUD', (orig, th, a) => { const r = orig.apply(th, a); try { paint(); if (!G || !G.over) killDock(); } catch (e) {} return r; });
-  wrap('openMenu', (orig, th, a) => {
-    const r = orig.apply(th, a);
+  BUS.on('game:start:before', () => { try { preForfeit(); } catch (e) { console.error('[chips]', e); } });
+  BUS.on('game:start', () => { try { killDock(); lockBet(); } catch (e) { console.error('[chips]', e); } });
+  BUS.on('hud:render', () => { try { paint(); if (!G || !G.over) killDock(); } catch (e) {} });
+  BUS.on('menu:open', () => {
     try {
       const g = document.querySelector('#menuIn .menugrid');
       if (g) {
@@ -377,14 +364,9 @@
         g.insertBefore(b, ref || null);
       }
     } catch (e) {}
-    return r;
   });
-  wrap('menuGo', (orig, th, a) => {
-    if (a[0] === 'chips') { closeAll(); openChips(); return; }
-    return orig.apply(th, a);
-  });
-  wrap('renderLobby', (orig, th, a) => {
-    const r = orig.apply(th, a);
+  BUS.menuKey('chips', () => { closeAll(); openChips(); });
+  BUS.on('lobby:render', () => {
     try {
       const L = $c('lobbyIn');
       if (L && $c('hostBtn') && !$c('chLobbyNote')) {
@@ -393,20 +375,13 @@
         L.appendChild(p);
       }
     } catch (e) {}
-    return r;
   });
-  wrap('openBots', (orig, th, a) => {
-    const r = orig.apply(th, a);
-    try { betPicker(); } catch (e) { console.error('[chips]', e); }
-    return r;
-  });
-  wrap('showOver', (orig, th, a) => {
-    const r = orig.apply(th, a);
+  BUS.on('bots:open', () => { try { betPicker(); } catch (e) { console.error('[chips]', e); } });
+  BUS.on('over', () => {
     try {
       if (NET && NET.role === 'guest' && G && G.over) settle(true);
       decorateOver();
     } catch (e) { console.error('[chips]', e); }
-    return r;
   });
 
   function betPicker() {

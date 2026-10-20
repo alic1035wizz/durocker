@@ -215,7 +215,7 @@ function render() {
     : `<div class="empty-felt">${p === 'p_attack' ? 'Выбери карты и ходи' : p === 'over' ? '' : G.phase.who === 'b' ? `${esc(oppName())} думает…` : ''}</div>`;
   const hint = p === 'p_defend' && level() !== 'pro' ? defenseHint() : null;
   const can = hint ? hint.ids : new Set();
-  $('hand').innerHTML = sortHand(G.P).map((c, i) => `<div class="slot ${G.sel.has(c.id) ? 'sel' : ''} ${can.has(c.id) ? 'can' : ''}" style="--i:${i}">${cardHTML(c)}</div>`).join('');
+  $('hand').innerHTML = sortHand(G.P).map((c, i) => `<div class="slot ${G.sel.has(c.id) ? 'sel' : ''} ${can.has(c.id) ? 'can' : ''}" data-s="${c.action ? 'a' : c.joker ? 'j' : c.s}" style="--i:${i}">${cardHTML(c)}</div>`).join('');
   const mine = G.offer && G.offer.p ? 3 : (G.charge ? G.charge.p : 0);
   $('myCharge').innerHTML = `${pipsHTML(mine).replace(/<i/g, '<i')}<em>заряд</em>`;
   $('myCharge').querySelectorAll('i').forEach((i, k) => i.classList.toggle('on', k < mine));
@@ -675,19 +675,8 @@ function renderClocks() {
 }
 
 /* ================= веер и анимации ================= */
-function fan(el, opts) {
-  const s = [...el.children], n = s.length;
-  if (!n) return;
-  const W = el.clientWidth, cw = s[0].firstElementChild.offsetWidth;
-  const pad = cw * 0.28, step = n > 1 ? Math.min(cw * opts.spread, (W - cw - pad * 2) / (n - 1)) : 0;
-  const x0 = (W - (step * (n - 1) + cw)) / 2, k = Math.min(1, 9 / n);
-  s.forEach((sl, i) => {
-    const mx = (n - 1) / 2, off = i - mx, rot = off * opts.ang * k * opts.dir, y = (off * off - mx * mx) * opts.arc * k * opts.dir;
-    const lift = sl.classList.contains('sel') ? -24 : 0;
-    sl.style.left = (x0 + i * step) + 'px'; sl.style.zIndex = i;
-    sl.style.transform = `translateY(${y + lift}px) rotate(${rot}deg)`;
-  });
-}
+/* веер: крупные карты, несколько рядов, группы по мастям — всё в js/table.js */
+const fan = (el, opts) => TABLE.fan(el, opts);
 function layout() {
   fan($('hand'), { spread: 0.92, ang: 4, arc: 1.6, dir: 1 });
   fan($('botHand'), { spread: 0.7, ang: 4, arc: 0.9, dir: -1 });
@@ -707,25 +696,7 @@ function update(deal) {
   const snap = snapshot();
   render();
   if (reduced) return;
-  const d = document.querySelector('.deck') || $('deckcol'), dr = d.getBoundingClientRect();
-  const dx0 = dr.left + dr.width / 2, dy0 = dr.top + dr.height / 2;
-  let k = 0;
-  document.querySelectorAll('.app .card[data-id]').forEach(el => {
-    if (el.closest('.trumpcard')) return;
-    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const down = el.classList.contains('down'), o = snap[el.dataset.id], end = down ? 'rotateY(180deg)' : 'none';
-    if (o) {
-      const dx = o.x - cx, dy = o.y - cy;
-      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && o.down === down) return;
-      el.animate([{ transform: `translate(${dx}px,${dy}px) ${o.down ? 'rotateY(180deg)' : ''}` }, { transform: end }], { duration: 420, easing: 'cubic-bezier(.2,.9,.25,1.08)' });
-    } else if (deal && el.closest('.hand,.botHand')) {
-      if (k < 12) setTimeout(() => AU.play('deal'), k * 70);
-      el.animate([{ transform: `translate(${dx0 - cx}px,${dy0 - cy}px) rotate(-25deg) rotateY(180deg)` }, { transform: end }],
-        { duration: 480, delay: (k++) * 70, easing: 'cubic-bezier(.2,.9,.25,1.05)', fill: 'backwards' });
-    } else {
-      el.animate([{ transform: `scale(1.4) ${end === 'none' ? '' : end}`, opacity: 0 }, { transform: end, opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.3,1.5,.5,1)' });
-    }
-  });
+  TABLE.flights(snap, deal);
 }
 async function flyToGrave() {
   const g = $('grave');

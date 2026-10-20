@@ -209,12 +209,10 @@ const REPLAY = (() => {
     };
   }
 
-  /* ---------- встраивание обёртками ---------- */
-  const wrap = (name, fn) => { if (typeof window[name] !== 'function') return; const o = window[name]; window[name] = function (...a) { return fn(o, this, a); }; };
-  wrap('showFx', (o, t, a) => { const r = o.apply(t, a); try { if (a[0]) record(a[0]); } catch (e) {} return r; });
+  /* ---------- встраивание: события шины ---------- */
+  BUS.on('fx', d => { try { if (d.o) record(d.o); } catch (e) {} });
   /* экран итога: рядом с «📸 Открытка» — «🎬 Повтор» */
-  wrap('showOver', (o, t, a) => {
-    const r = o.apply(t, a);
+  BUS.on('over', () => {
     try {
       const so = $('snapOver');
       if (so && !$('replayOver') && best()) {
@@ -224,11 +222,9 @@ const REPLAY = (() => {
         so.after(b);
       }
     } catch (e) {}
-    return r;
   });
   /* 5-секундная кнопка после своего «могнул» — вторая рядом с «📸 Поделиться» */
-  wrap('snapButton', (o, t, a) => {
-    const r = o.apply(t, a);
+  BUS.on('snap:button', () => {
     try {
       const felt = $('felt'), old = felt.querySelector('.snapbtn.rp'); if (old) old.remove();
       const m = lastMine();
@@ -241,7 +237,6 @@ const REPLAY = (() => {
         setTimeout(() => b.remove(), 5000);
       }
     } catch (e) {}
-    return r;
   });
 
   return { open, best, makeVideo, draw, get moments() { return moments; }, lastBlob: null };

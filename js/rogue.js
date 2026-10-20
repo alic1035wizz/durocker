@@ -400,128 +400,75 @@ const ROGUE = (() => {
   const myChips = () => { const r = getRun(); return r ? r.chips : []; };
   function hook() {
     looks();
-    if (typeof matchTo === 'function') {
-      const _m = matchTo;
-      matchTo = function () { return isRogue() ? 1 : _m.apply(this, arguments); };
-    }
-    if (typeof seriesKey === 'function') {
-      const _s = seriesKey;
-      seriesKey = function () { return isRogue() ? null : _s.apply(this, arguments); };
-    }
-    if (typeof currentBot === 'function') {
-      const _cb = currentBot;
-      currentBot = function () { return isRogue() ? (BOSSES[MODE.i] || BOSSES[0]) : _cb.apply(this, arguments); };
-    }
-    if (typeof tableRules === 'function') {
-      const _tr = tableRules;
-      tableRules = function () {
-        if (!isRogue()) return _tr.apply(this, arguments);
-        return { ...RULESETS.full, ...flagsFor(Math.min(MODE.i | 0, TOTAL - 1), myChips()), set: 'rogue', blitz: false };
-      };
-    }
-    if (typeof newGame === 'function') {
-      const _ng = newGame;
-      newGame = function () {
-        if (MODE && MODE.kind === 'rogue' && !(typeof NET !== 'undefined' && NET)) {
-          /* перезагрузка или «Ещё раз» без забега — не пускаем в бой мимо экрана забега */
-          if (!allowStart || !getRun()) { MODE = { kind: 'free' }; try { loadSeries(); toast('Ночь в казино — в меню. Это «Своя игра»'); } catch (e) {} }
-          allowStart = false;
-        }
-        const r = _ng.apply(this, arguments);
-        if (isRogue()) {
-          try { applyChips(myChips()); update(true); sync(); } catch (e) { console.error(e); }
-        }
-        return r;
-      };
-    }
+    BUS.hook('matchTo', (next) => (isRogue() ? 1 : next()));
+    BUS.hook('seriesKey', (next) => (isRogue() ? null : next()));
+    BUS.hook('currentBot', (next) => (isRogue() ? (BOSSES[MODE.i] || BOSSES[0]) : next()));
+    BUS.hook('tableRules', (next) => {
+      if (!isRogue()) return next();
+      return { ...RULESETS.full, ...flagsFor(Math.min(MODE.i | 0, TOTAL - 1), myChips()), set: 'rogue', blitz: false };
+    });
+    BUS.hook('newGame', (next) => {
+      if (MODE && MODE.kind === 'rogue' && !(typeof NET !== 'undefined' && NET)) {
+        /* перезагрузка или «Ещё раз» без забега — не пускаем в бой мимо экрана забега */
+        if (!allowStart || !getRun()) { MODE = { kind: 'free' }; try { loadSeries(); toast('Ночь в казино — в меню. Это «Своя игра»'); } catch (e) {} }
+        allowStart = false;
+      }
+      const r = next();
+      if (isRogue()) {
+        try { applyChips(myChips()); update(true); sync(); } catch (e) { console.error(e); }
+      }
+      return r;
+    });
     /* нижняя кнопка «Ещё раз» в бою ночи ведёт туда же, куда кнопка на экране итогов */
-    if (typeof nextGame === 'function') {
-      const _nx = nextGame;
-      nextGame = function () {
-        if (isRogue() && G && G.over && last) { const b = document.getElementById('rgNext'); if (b) { b.click(); return; } }
-        return _nx.apply(this, arguments);
-      };
-    }
+    BUS.hook('nextGame', (next) => {
+      if (isRogue() && G && G.over && last) { const b = document.getElementById('rgNext'); if (b) { b.click(); return; } }
+      return next();
+    });
     /* фишки заряда и перевода */
-    if (typeof addCharge === 'function') {
-      const _ac = addCharge;
-      addCharge = function (seat, n) { return _ac.call(this, seat, isRogue() && seat === 'p' && has('fast') ? n * 2 : n); };
-    }
-    if (typeof act === 'function') {
-      const _act = act;
-      act = function (seat, type) {
-        const r = _act.apply(this, arguments);
-        try { if (r && isRogue() && type === 'transfer' && seat === 'p' && has('xfer')) addCharge('p', 1); } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof judgeCover === 'function') {
-      const _jc = judgeCover;
-      judgeCover = function (seat, e, a) {
-        const r = _jc.apply(this, arguments);
-        try { if (isRogue() && seat === 'b' && has('anti') && e.n >= 2 && a.n >= 2 && e.n <= a.n && e.t > a.t && rule('mognul')) addCharge('p', 1); } catch (x) {}
-        return r;
-      };
-    }
-    if (typeof onGameOver === 'function') {
-      const _go = onGameOver;
-      onGameOver = function () {
-        const r = _go.apply(this, arguments);
-        try { if (isRogue() && G && G.over) resolve(G.over === 'p' ? 'win' : G.over === 'b' ? 'lose' : 'draw'); } catch (e) { console.error(e); }
-        return r;
-      };
-    }
-    if (typeof showOver === 'function') {
-      const _so = showOver;
-      showOver = function () {
-        const r = _so.apply(this, arguments);
-        try { if (isRogue() && G && G.over) overScreen(); } catch (e) { console.error(e); }
-        return r;
-      };
-    }
+    BUS.hook('addCharge', (next, a) => next([a[0], isRogue() && a[0] === 'p' && has('fast') ? a[1] * 2 : a[1]]));
+    BUS.hook('act', (next, a) => {
+      const r = next();
+      try { if (r && isRogue() && a[1] === 'transfer' && a[0] === 'p' && has('xfer')) addCharge('p', 1); } catch (e) {}
+      return r;
+    });
+    BUS.hook('judgeCover', (next, a) => {
+      const r = next(), seat = a[0], e = a[1], x = a[2];
+      try { if (isRogue() && seat === 'b' && has('anti') && e.n >= 2 && x.n >= 2 && e.n <= x.n && e.t > x.t && rule('mognul')) addCharge('p', 1); } catch (err) {}
+      return r;
+    });
+    BUS.on('game:over', () => {
+      try { if (isRogue() && G && G.over) resolve(G.over === 'p' ? 'win' : G.over === 'b' ? 'lose' : 'draw'); } catch (e) { console.error(e); }
+    });
+    BUS.on('over', () => {
+      try { if (isRogue() && G && G.over) overScreen(); } catch (e) { console.error(e); }
+    });
     /* шапка боя: «Ночь · бой 3/8», правило босса, значки фишек, глаз */
-    if (typeof renderHUD === 'function') {
-      const _rh = renderHUD;
-      renderHUD = function () {
-        const r = _rh.apply(this, arguments);
-        try {
-          if (isRogue()) {
-            const to = document.getElementById('scTo'); if (to) to.textContent = 'одна партия';
-            const mb = document.getElementById('modeBox'), b = BOSSES[MODE.i] || BOSSES[0];
-            if (mb) {
-              const ico = myChips().map(id => { const c = chipOf(id); return `<span class="rgico" title="${escH(c.name + ' — ' + c.desc)}">${c.ico}</span>`; }).join('');
-              const eye = (G && G.rgEye ? G.B.filter(c => G.rgEye.includes(c.id)) : []).map(cardName).join(' ');
-              mb.innerHTML = `<span>🌙 Ночь · бой ${(MODE.i | 0) + 1}/${TOTAL}</span><span class="boss">${escH(b.short)}</span>${ico}${eye ? `<span class="rgeye">👁 ${escH(eye)}</span>` : ''}`;
-            }
+    BUS.on('hud:render', () => {
+      try {
+        if (isRogue()) {
+          const to = document.getElementById('scTo'); if (to) to.textContent = 'одна партия';
+          const mb = document.getElementById('modeBox'), b = BOSSES[MODE.i] || BOSSES[0];
+          if (mb) {
+            const ico = myChips().map(id => { const c = chipOf(id); return `<span class="rgico" title="${escH(c.name + ' — ' + c.desc)}">${c.ico}</span>`; }).join('');
+            const eye = (G && G.rgEye ? G.B.filter(c => G.rgEye.includes(c.id)) : []).map(cardName).join(' ');
+            mb.innerHTML = `<span>🌙 Ночь · бой ${(MODE.i | 0) + 1}/${TOTAL}</span><span class="boss">${escH(b.short)}</span>${ico}${eye ? `<span class="rgeye">👁 ${escH(eye)}</span>` : ''}`;
           }
-        } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof openMenu === 'function') {
-      const _om = openMenu;
-      openMenu = function () {
-        const r = _om.apply(this, arguments);
-        try {
-          const g = document.querySelector('#menuIn .menugrid');
-          if (g && !g.querySelector('[data-go="rogue"]')) {
-            const s = store(), R = s.run, bt = document.createElement('button');
-            bt.type = 'button'; bt.className = 'mi rg'; bt.dataset.go = 'rogue';
-            bt.innerHTML = `<b>🌙 Ночь в казино</b><small>${R ? (R.pending && R.pending.length ? 'выбери фишку' : `бой ${R.i + 1}/${TOTAL} · фишек ${R.chips.length}`) : '8 боссов подряд'} · рекорд ${s.best}/${TOTAL}</small>`;
-            const after = g.querySelector('[data-go="weekly"]') || g.querySelector('[data-go="daily"]');
-            if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
-          }
-        } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof menuGo === 'function') {
-      const _mg = menuGo;
-      menuGo = function (k) {
-        if (k === 'rogue') { try { closeSheets(); } catch (e) {} open(); return; }
-        return _mg.apply(this, arguments);
-      };
-    }
+        }
+      } catch (e) {}
+    });
+    BUS.on('menu:open', () => {
+      try {
+        const g = document.querySelector('#menuIn .menugrid');
+        if (g && !g.querySelector('[data-go="rogue"]')) {
+          const s = store(), R = s.run, bt = document.createElement('button');
+          bt.type = 'button'; bt.className = 'mi rg'; bt.dataset.go = 'rogue';
+          bt.innerHTML = `<b>🌙 Ночь в казино</b><small>${R ? (R.pending && R.pending.length ? 'выбери фишку' : `бой ${R.i + 1}/${TOTAL} · фишек ${R.chips.length}`) : '8 боссов подряд'} · рекорд ${s.best}/${TOTAL}</small>`;
+          const after = g.querySelector('[data-go="weekly"]') || g.querySelector('[data-go="daily"]');
+          if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
+        }
+      } catch (e) {}
+    });
+    BUS.menuKey('rogue', () => { try { closeSheets(); } catch (e) {} open(); });
   }
   if (typeof document !== 'undefined' && typeof window !== 'undefined') hook();
   return { CHIPS, BOSSES, RAR, open, openPick, fight, store, roll3, flagsFor, applyChips, resolve, chipOf, _last: () => last };

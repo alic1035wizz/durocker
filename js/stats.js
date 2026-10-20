@@ -120,15 +120,9 @@ const STATS = (() => {
     </div>`);
   }
 
-  /* встраивание */
-  if (typeof showFx === 'function') {
-    const _sf = showFx;
-    showFx = function (o) { try { track(o); } catch (e) {} return _sf.apply(this, arguments); };
-  }
-  if (typeof showOver === 'function') {
-    const _so = showOver;
-    showOver = function () { const r = _so.apply(this, arguments); try { record(); } catch (e) { console.error(e); } return r; };
-  }
+  /* встраивание: события шины */
+  BUS.on('fx', d => { try { track(d.o); } catch (e) {} });
+  BUS.on('over', () => { try { record(); } catch (e) { console.error(e); } });
   return { st, open, onRecord: f => listeners.push(f), get cur() { return cur; }, _record: record };
 })();
 function openProfile() { STATS.open(); }
