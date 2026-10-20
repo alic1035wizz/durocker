@@ -4,6 +4,13 @@
    Своего сервера нет; в сборке для Claude (без mqtt) показываем только свою статистику. */
 'use strict';
 
+function newPid() {
+  let s = '';
+  try { const a = new Uint8Array(10); crypto.getRandomValues(a); a.forEach(x => { s += (x % 36).toString(36); }); } catch (e) {}
+  while (s.length < 10) s += Math.floor(Math.random() * 36).toString(36);
+  return s;
+}
+
 const LB = (() => {
   const ROOT = 'durocker/lb1/p/';
   const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
@@ -14,7 +21,7 @@ const LB = (() => {
 
   function pid() {
     let v = rd('durocker-pid');
-    if (!v || !/^[a-z0-9]{8,16}$/.test(v)) { v = Math.random().toString(36).slice(2, 12).padEnd(10, '0'); wr('durocker-pid', v); }
+    if (!v || !/^[a-z0-9]{8,16}$/.test(v) || /^(.)\1+$/.test(v)) { v = newPid(); wr('durocker-pid', v); }
     return v;
   }
   function local() {

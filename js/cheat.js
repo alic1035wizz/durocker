@@ -1,14 +1,15 @@
 /* ДурКер — «Поймай шулера!»
    Шулер (свой и финальный босс) подтасовывает карту из колоды. Это видно: рука соперника мерцает,
-   и на ~1,7 с появляется кнопка «ШУЛЕР!». Поймал — ему +3 штрафа и карта уходит обратно.
-   Но иногда Шулер только делает вид (мерцание вхолостую) — нажал зря, +1 штраф тебе.
-   Обвинить можно не больше двух раз за партию — жать на каждое мерцание невыгодно.
-   Подсказка внимательным: при настоящей подтасовке дёргается и колода. */
+   и на ~1,7 с появляется кнопка «ШУЛЕР!». Поймал — ему +3 штрафа, подменённая карта возвращается, игра идёт дальше.
+   Но иногда Шулер только делает вид (мерцание вхолостую) — нажал зря: +2 штрафа тебе, а его
+   следующая настоящая подтасовка проходит «вслепую» (без мерцания и кнопки).
+   Обвинить можно не больше двух раз за матч — жать на каждое мерцание невыгодно.
+   Подсказка внимательным: колода дёргается в 35% настоящих подтасовок и в 15% холостых мерцаний. */
 'use strict';
 
 const CHEAT = (() => {
   const WINDOW = 1700, CALLS = 2;   // окно реакции и сколько раз за партию можно обвинить
-  let open = null, timer = 0, el = null;
+  let open = null, timer = 0, el = null, blind = false, mkey = '';
 
   function style() {
     if (document.getElementById('cheatCss')) return;
@@ -59,9 +60,10 @@ const CHEAT = (() => {
     if (typeof NET !== 'undefined' && NET) return;
     if (!G || G.over || typeof document === 'undefined') return;
     close();
+    if (info && blind) { blind = false; return; }   /* ложное обвинение: эта подтасовка прошла незаметно */
     flick('botHand', 'dk-flick');
-    if (info) flick('deckcol', 'dk-twitch');
-    const left = CALLS - (G.calls || 0);
+    if (Math.random() < (info ? 0.35 : 0.15)) flick('deckcol', 'dk-twitch');
+    const left = CALLS - calls();
     if (left <= 0) return;   /* обвинения кончились — мерцание видно, но поймать уже нечем */
     open = { info, tok: TOK, at: Date.now() };
     const b = button(); place(b);
@@ -69,40 +71,43 @@ const CHEAT = (() => {
     b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
     timer = setTimeout(close, WINDOW);
   }
+  /* обвинения считаем на матч (SERIES живёт весь матч, новая серия — новый счётчик) */
+  function calls() { return (typeof SERIES !== 'undefined' && SERIES && SERIES.calls) || 0; }
   function accuse() {
     const o = open;
     close();
     if (!o || o.tok !== TOK || !G || G.over) return;
     G.calls = (G.calls || 0) + 1;
+    if (typeof SERIES !== 'undefined' && SERIES) SERIES.calls = (SERIES.calls || 0) + 1;
     if (o.info) {
       /* поймал: карту возвращаем в колоду, если она ещё на руке у Шулера */
       const { got, worst } = o.info;
       const bi = G.B.indexOf(got), di = G.deck.indexOf(worst);
       if (bi >= 0 && di >= 0) { G.B[bi] = worst; G.deck[di] = got; }
-      SERIES.b += 3; saveSeries();
       showHype('caught', true);
       if (typeof voiceLine === 'function') voiceLine('caught', true);
       if (typeof AU !== 'undefined') AU.play('win');
       G.caught = (G.caught || 0) + 1;
+      SERIES.b += 3; saveSeries();
     } else {
-      SERIES.p += 1; saveSeries();
+      SERIES.p += 2; saveSeries(); blind = true;
       showHype('falsecall', false);
       if (typeof voiceLine === 'function') voiceLine('falsecall', true);
       if (typeof AU !== 'undefined') AU.play('lose');
     }
     if (typeof update === 'function') update();
   }
-  return { seen, accuse, close, get open() { return open; }, WINDOW };
+  return { seen, accuse, close, reset() { blind = false; }, get open() { return open; }, WINDOW };
 })();
 function cheatSeen(info) { CHEAT.seen(info); }
 
 /* фразы для хайпа: [когда это твоё, когда против тебя] */
 if (typeof HYPE !== 'undefined') {
   HYPE.caught = { rude: ['СПАЛИЛСЯ, С*КА!', 'СПАЛИЛСЯ, С*КА!'], clean: ['ПОЙМАН!', 'ПОЙМАН!'] };
-  HYPE.falsecall = { rude: ['ГОНИШЬ? +1 ТЕБЕ', 'ГОНИШЬ? +1 ТЕБЕ'], clean: ['МИМО! +1 ТЕБЕ', 'МИМО! +1 ТЕБЕ'] };
+  HYPE.falsecall = { rude: ['ГОНИШЬ? +2 ТЕБЕ', 'ГОНИШЬ? +2 ТЕБЕ'], clean: ['МИМО! +2 ТЕБЕ', 'МИМО! +2 ТЕБЕ'] };
 }
 /* новая партия — старое окно закрываем */
 if (typeof newGame === 'function') {
   const _ng = newGame;
-  newGame = function (...a) { CHEAT.close(); return _ng.apply(this, a); };
+  newGame = function (...a) { CHEAT.close(); CHEAT.reset(); return _ng.apply(this, a); };
 }

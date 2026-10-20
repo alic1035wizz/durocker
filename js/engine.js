@@ -154,8 +154,15 @@ function newGame() {
   if (!NET && (currentBot().boss === 'major' || currentBot().boss === 'sharper')) makeOffer('b');
   const low = s => H(s).filter(c => c.s === G.T && c.r <= 14).sort((a, b) => a.r - b.r)[0];
   const lp = low('p'), lb = low('b');
-  const first = !lb || (lp && lp.r < lb.r) ? 'p' : 'b';
-  const lc = first === 'p' ? lp : lb;
+  let first = !lb || (lp && lp.r < lb.r) ? 'p' : 'b';
+  /* в матче первый ход чередуется; в решающей партии первым ходит проигравший предыдущую */
+  if (SERIES.games > 0 && SERIES.first) {
+    first = other(SERIES.first);
+    const to = seriesTo(), w = SERIES.w || { p: 0, b: 0 };
+    if (w.p === to - 1 && w.b === to - 1 && SERIES.lastLoser) first = SERIES.lastLoser;
+  }
+  SERIES.first = first; saveSeries();
+  const lc = H(first).filter(c => c.s === G.T && c.r <= 14).sort((a, b) => a.r - b.r)[0] || null;
   run(async () => {
     await wait(reduced ? 100 : 1400);
     fx({ what: 'trump', actor: first, kind: 'gold', low: lc ? lc.n : null });
@@ -167,7 +174,7 @@ function newGame() {
 function startTurn(who) {
   if (G.over) return;
   G.attacker = who; G.table = []; G.turnCovers = 0; G.chained = false; G.upgraded = false;
-  G.turnNo++; G.stats.turns++;
+  G.turnNo++; G.stats.turns++; G.noTransfer = false;
   G.limit = Math.min(HAND, H(other(who)).length);
   /* Бабка у подъезда: каждый третий ход меняет козырь */
   if (!NET && currentBot().boss === 'babka' && G.turnNo % 3 === 0) {
@@ -196,7 +203,10 @@ function addCharge(seat, n) {
 function makeOffer(seat) {
   if (!rule('charge')) return;
   G.charge[seat] = 0;
-  const ks = ACT_KEYS.filter(k => !(k === 'trump' && wrule('noTrump'))).sort(() => Math.random() - 0.5).slice(0, 2);
+  let ks = ACT_KEYS.filter(k => !(k === 'trump' && wrule('noTrump'))).sort(() => Math.random() - 0.5);
+  /* козырной щит бьёт любую атаку — предлагаем его вдвое реже */
+  if (G.lastSuit[seat] === G.T && Math.random() < 0.5) { const w = ks.filter(k => k !== 'shield'); ks = w.slice(0, 2); }
+  else ks = ks.slice(0, 2);
   G.offer[seat] = { kinds: ks, s: G.lastSuit[seat] };
 }
 function pickAction(seat, kind) {
@@ -345,7 +355,8 @@ function playAction(seat, c) {
   if (c.action === 'plus') {
     G.grave++;
     const n = c.s === G.T ? 3 : 2;
-    for (let i = 0; i < n; i++) { if (G.deck.length) H(opp).push(G.deck.pop()); else G.extra[opp]++; }
+    if (G.deck.length) { for (let i = 0; i < n && G.deck.length; i++) H(opp).push(G.deck.pop()); }
+    else G.noTransfer = true;   /* колода пуста: соперник не сможет переводить в этот ход */
     update(true);
   }
   if (c.action === 'trump') {
@@ -416,6 +427,7 @@ function finishGame(win, pen, why) {
     const loser = other(win);
     G.penalty = pen;
     SERIES[loser] += G.penalty;
+    SERIES.lastLoser = loser;
     hype(why === 'time' ? 'gg' : G.penalty >= 8 ? 'dry' : 'gg', win);
   }
   SERIES.p += G.extra.p; SERIES.b += G.extra.b;

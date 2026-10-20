@@ -484,3 +484,51 @@ html[data-four="1"] .trumpbox b.s3{color:#4fd08a}
 html[data-four="1"] .su2{color:#8ab8ff}
 html[data-four="1"] .su3{color:#7fe3a8}
 @media (prefers-reduced-motion:reduce){.pencount b.bang,.series b.roll,.snapbtn{animation:none}}
+
+/* ---------- волна 5: скорость, справка по клавишам, свайп, достижения, профиль ---------- */
+/* турбо: все CSS-анимации и переходы короче; «без анимаций» — мгновенно */
+html[data-speed="turbo"] *, html[data-speed="turbo"] *::before, html[data-speed="turbo"] *::after{animation-duration:.42s!important;transition-duration:.08s!important}
+html[data-speed="off"] *, html[data-speed="off"] *::before, html[data-speed="off"] *::after{animation-duration:.01s!important;animation-delay:0s!important;transition-duration:0s!important}
+html[data-speed="off"] .hype.on{opacity:1!important;animation:none!important}
+html[data-speed="off"] .banner.on{animation-duration:.7s!important}
+html[data-speed="turbo"] .banner.on{animation-duration:.6s!important}
+.hand{touch-action:none}
+.keyshelp{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;background:#10241e;border:2px solid var(--gold,#e8b33c);border-radius:12px;padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.6);width:min(92vw,380px);font-size:14px;color:var(--paper,#f8f1df)}
+.keyshelp b{display:block;font-family:var(--f-hard);font-size:12px;color:var(--gold,#e8b33c);margin-bottom:8px}
+.keyshelp div{display:flex;gap:8px;align-items:center;margin:5px 0}
+.keyshelp kbd{background:#f8f1df;color:#201a26;border-radius:5px;padding:1px 6px;font:700 12px/1.6 monospace;box-shadow:0 2px 0 rgba(0,0,0,.5)}
+.keyshelp span{color:var(--muted);margin-left:auto;text-align:right}
+.ach.secret{opacity:.6}
+.achbar{display:flex;align-items:center;gap:6px;margin-top:3px}
+.achbar i{display:block;height:5px;border-radius:3px;background:var(--gold,#e8b33c);flex:none;max-width:140px}
+.achbar{position:relative}
+.achbar::before{content:'';position:absolute;left:0;top:50%;width:140px;height:5px;margin-top:-2.5px;border-radius:3px;background:rgba(255,255,255,.12)}
+.achbar i{position:relative}
+.achbar em{font-style:normal;font-size:11px;color:var(--muted);margin-left:146px;position:absolute}
+.achpop{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:95;background:linear-gradient(180deg,#2a2210,#14100a);border:2px solid #e8b33c;border-radius:14px;padding:14px 18px 12px;text-align:center;box-shadow:0 0 0 4px rgba(232,179,60,.18),0 14px 40px rgba(0,0,0,.6);width:min(90vw,340px);animation:achin .5s cubic-bezier(.2,1.5,.4,1)}
+.achpop small{display:block;font-family:var(--f-hard);font-size:10px;letter-spacing:.08em;color:#e8b33c}
+.achpop b{display:block;font-size:20px;margin:6px 0 2px;color:#fff}
+.achpop p{margin:0;color:var(--muted);font-size:13px}
+.achpop em{display:block;margin-top:6px;font-style:normal;font-size:13px;color:#ffe9a6}
+@keyframes achin{from{transform:translateX(-50%) scale(.6);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
+/* рубашки за достижения */
+html[data-back="a-wall"]{--backbg:repeating-linear-gradient(0deg,#7a3b22 0 7px,#d8c3a5 7px 8px),repeating-linear-gradient(90deg,transparent 0 13px,#d8c3a5 13px 14px),#7a3b22}
+html[data-back="a-flush"]{--backbg:radial-gradient(circle at 50% 50%,#ffe14a 0 12%,transparent 13%),conic-gradient(from 0deg,#d9362f,#f39b2b,#ffe14a,#2e9d5b,#2c7fe0,#7b4fd8,#d9362f)}
+html[data-back="a-detective"]{--backbg:radial-gradient(circle at 50% 46%,#f3ecd8 0 18%,#111 19% 23%,transparent 24%),repeating-linear-gradient(45deg,#2b2318 0 5px,#3a3020 5px 10px)}
+html[data-back="a-streak"]{--backbg:repeating-linear-gradient(-30deg,#ff5a4e 0 6px,#ffb03a 6px 12px,#ffe14a 12px 18px)}
+html[data-back="a-veteran"]{--backbg:radial-gradient(circle at 50% 50%,#c0c0c0 0 3px,transparent 4px) 0 0/10px 10px,linear-gradient(135deg,#3a4652,#1b232b)}
+html[data-back="a-legend"]{--backbg:linear-gradient(45deg,#1b0f2e 25%,transparent 25% 75%,#1b0f2e 75%) 0 0/14px 14px,linear-gradient(-45deg,#1b0f2e 25%,transparent 25% 75%,#1b0f2e 75%) 0 0/14px 14px,linear-gradient(135deg,#e8b33c,#c79bff)}
+/* профиль */
+.prof .statrow{margin-bottom:6px}
+.prof .bars{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px}
+.prof .bar{display:grid;grid-template-columns:minmax(0,1fr) 120px 56px;gap:8px;align-items:center;font-size:13px}
+.prof .bar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prof .bar u{display:block;height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;text-decoration:none}
+.prof .bar u i{display:block;height:100%;background:var(--green,#2e9d5b)}
+.prof .bar em{font-style:normal;color:var(--muted);text-align:right;font-size:12px}
+.prof svg{width:100%;height:auto;display:block;background:rgba(0,0,0,.25);border-radius:8px}
+.prof .hist{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);max-height:220px;overflow:auto}
+.prof .hist div{display:flex;gap:6px}
+.prof .hist b{min-width:16px}
+.prof .chips{display:flex;flex-wrap:wrap;gap:6px}
+.prof .chips span{background:rgba(255,255,255,.08);border-radius:999px;padding:3px 10px;font-size:13px}

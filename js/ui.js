@@ -2,6 +2,34 @@
    меню (карьера, своя игра, ежедневная, онлайн, коллекция, настройки, правила). */
 'use strict';
 
+/* ================= скорость: обычная / турбо / без анимаций ================= */
+/* animK — множитель длительности анимаций интерфейса (0 — без анимаций), holdK — сколько держать надписи.
+   window.TURBO — множитель задержек бота и движка (его читает speed()). */
+const SPEEDS = { normal: { anim: 1, hold: 1, bot: 1 }, turbo: { anim: 0.35, hold: 0.5, bot: 0.35 }, off: { anim: 0, hold: 0.45, bot: 0.3 } };
+function speedMode() { const m = load('durocker-speed'); return SPEEDS[m] ? m : 'normal'; }
+const animK = () => SPEEDS[speedMode()].anim;
+const holdT = ms => Math.round(ms * SPEEDS[speedMode()].hold);
+const animT = ms => Math.round(ms * animK());
+function applySpeed() {
+  const m = speedMode();
+  document.documentElement.dataset.speed = m;
+  window.TURBO = m === 'normal' ? 0 : 1; /* rules.js speed(): истина = паузы ×0.3 */
+}
+applySpeed();
+/* все анимации Web Animations API интерфейса масштабируются одним местом */
+(() => {
+  const orig = Element.prototype.animate;
+  Element.prototype.animate = function (kf, opt) {
+    const k = animK();
+    if (k !== 1 && opt != null) {
+      if (typeof opt === 'number') opt = Math.max(1, opt * k);
+      else { opt = { ...opt }; if (opt.duration) opt.duration = Math.max(1, opt.duration * k); if (opt.delay) opt.delay = opt.delay * k; }
+    }
+    return orig.call(this, kf, opt);
+  };
+})();
+function setSpeed(m) { store('durocker-speed', m); applySpeed(); }
+
 /* ================= эффекты ходов ================= */
 function fx(o) {
   o.id = ++fxId; G.fx = o;
@@ -69,9 +97,9 @@ function showHype(key, mine) {
     if (mine) VFX.burstFelt(9); else shake(9);
     buzz(mine ? 'big' : 'bad');
     if (mine && key === 'mognul' && G && G.lastMoment && MODE.kind !== 'tutorial') snapButton(txt);
-    setTimeout(() => { el.hidden = true; }, 1800);
+    setTimeout(() => { el.hidden = true; }, holdT(1800));
     res();
-  }, 450)));
+  }, holdT(450))));
 }
 function banner(big, sub, kind) {
   const b = $('banner');
@@ -88,7 +116,7 @@ let sayT;
 function say(t) {
   if (!t) return;
   const b = $('bubble'); b.textContent = t; b.classList.add('on');
-  clearTimeout(sayT); sayT = setTimeout(() => b.classList.remove('on'), 1400);
+  clearTimeout(sayT); sayT = setTimeout(() => b.classList.remove('on'), Math.max(1100, holdT(1400)));
 }
 
 /* ================= состояние для интерфейса ================= */
@@ -468,14 +496,14 @@ function countUp(pen, loser) {
     num.textContent = '+' + pen;
     if (serEl) serEl.textContent = serTo;
   };
-  if (reduced) return;
+  if (reduced || !animK()) return;
   num.textContent = '+0';
   if (serEl) serEl.textContent = serFrom;
   /* можно пропустить касанием по итогу */
   over.addEventListener('pointerdown', finish, { once: true });
   const src = [...document.querySelectorAll(loser === 'p' ? '#hand .card' : '#botHand .card')];
   const nr = num.getBoundingClientRect(), tx = nr.left + nr.width / 2, ty = nr.top + nr.height / 2;
-  const step = Math.min(110, 900 / pen);
+  const step = Math.min(110, 900 / pen) * Math.max(0.3, animK());
   for (let k = 0; k < pen; k++) {
     setTimeout(() => {
       if (tok !== countTok) return;
@@ -724,6 +752,7 @@ function openMenu() {
       <button type="button" class="mi" data-go="free"><b>Своя игра</b><small>Студент, Валера или Шулер</small></button>
       <button type="button" class="mi" data-go="daily"><b>Ежедневная #${dailyNumber(day)}</b><small>${played ? 'Сыграно — поделись результатом' : 'Одна колода для всех'}</small></button>
       <button type="button" class="mi" data-go="online"><b>Онлайн</b><small>С другом по коду стола</small></button>
+      <button type="button" class="mi" data-go="profile"><b>Профиль 📊</b><small>Статистика, серии, любимые комбинации</small></button>
       <button type="button" class="mi" data-go="coll"><b>Коллекция</b><small>Рубашки, столы, достижения</small></button>
       <button type="button" class="mi" data-go="settings"><b>Настройки</b><small>Звук, мат, подсказки, Блиц</small></button>
       <button type="button" class="mi" data-go="rules"><b>Правила</b><small>Чем крыть, заряд, «могнул»</small></button>
@@ -738,6 +767,7 @@ function menuGo(k) {
   else if (k === 'daily') openDaily();
   else if (k === 'online') { renderLobby(); $('lobby').hidden = false; }
   else if (k === 'coll') openCollection();
+  else if (k === 'profile') { if (typeof openProfile === 'function') openProfile(); }
   else if (k === 'settings') openSettings();
   else if (k === 'rules') openRules();
   else if (k === 'leave') leaveTable();
@@ -791,7 +821,9 @@ function rewardName(r) {
   if (r.table) n.push('стол «' + (VFX.SKINS.find(s => s.id === r.table) || {}).name + '»');
   if (r.back) n.push('рубашка «' + (BACKS.find(s => s.id === r.back) || {}).name + '»');
   if (r.track) n.push('трек «' + (TRACKS.find(s => s.id === r.track) || {}).name + '»');
-  return '🎁 ' + n.join(', ');
+  if (r.frame) n.push('рамка аватара');
+  if (r.ttl) n.push('титул «' + r.ttl + '»');
+  return n.length ? '🎁 ' + n.join(', ') : '';
 }
 
 /* своя игра */
@@ -840,7 +872,11 @@ function openCollection() {
     return `<button type="button" class="skin sk-${s.id} ${skin === s.id ? 'on' : ''}" data-skin="${s.id}" ${has ? '' : 'disabled'}><i></i>${has ? s.name : '???'}</button>`; }).join('');
   const tracks = TRACKS.map(t => { const has = p.unlocked.track.includes(t.id);
     return `<button type="button" class="${p.track === t.id ? 'on' : ''}" data-track="${t.id}" ${has ? '' : 'disabled'}>${has ? t.name : '???'}</button>`; }).join('');
-  const achs = ACHS.map(a => `<div class="ach ${p.ach[a.id] ? 'got' : ''}"><i>${p.ach[a.id] ? '🏆' : '🔒'}</i><div><b>${a.name}</b><small>${a.desc}${a.reward ? ' · ' + rewardName(a.reward) : ''}</small></div></div>`).join('');
+  const achs = ACHS.map(a => {
+    const got = !!p.ach[a.id], hide = a.secret && !got;
+    const prog_ = !got && typeof a.progress === 'function' ? a.progress() : null;
+    return `<div class="ach ${got ? 'got' : ''} ${hide ? 'secret' : ''}"><i>${got ? '🏆' : hide ? '❔' : '🔒'}</i><div><b>${hide ? 'Секретное достижение' : a.name}</b><small>${hide ? 'Условие откроется, когда получишь' : a.desc}${a.reward && !hide ? ' · ' + rewardName(a.reward) : ''}</small>${prog_ ? `<span class="achbar"><i style="width:${Math.min(100, Math.round(prog_[0] / prog_[1] * 100))}%"></i><em>${Math.min(prog_[0], prog_[1])}/${prog_[1]}</em></span>` : ''}</div></div>`;
+  }).join('');
   const friends = Object.entries(p.friends);
   sheet('page', `${head('Коллекция')}
     <div class="statrow"><div><b>${p.games}</b><span>партий</span></div><div><b>${p.wins}</b><span>побед</span></div><div><b>${p.mognul}</b><span>могнул</span></div><div><b>${Object.keys(p.ach).length}/${ACHS.length}</b><span>достижений</span></div></div>
@@ -886,6 +922,9 @@ function openSettings() {
     ${toggleHTML('stSfx', 'Звуки карт и эффектов', AU.sfx)}
     <h3>Фразы</h3>
     ${toggleHTML('stRude', 'Мат в хайп-фразах (под звёздочками)', rudeOn())}
+    <h3>Скорость</h3>
+    <div class="seg" id="stSpeed">${[['normal', 'Обычная'], ['turbo', 'Турбо ⚡'], ['off', 'Без анимаций']].map(([k, n]) => `<button type="button" data-sp="${k}" class="${speedMode() === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    <p class="small">Турбо — бот ходит почти сразу, анимации втрое быстрее. Клавиша T на ПК переключает турбо.</p>
     <h3>Карты</h3>
     ${toggleHTML('stFour', 'Колода из 4 цветов: ♦ синие, ♣ зелёные', load('durocker-four') === '1')}
     <h3>Подсказки</h3>
@@ -903,6 +942,7 @@ function openSettings() {
   $('stBlitz').onchange = e => { store('durocker-blitz', e.target.checked ? '1' : '0'); };
   $('stTransfer').onchange = e => store('durocker-transfer', e.target.checked ? '1' : '0');
   $('stRules').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); openSettings(); toast('Правила сменятся со следующей партии'); };
+  $('stSpeed').onclick = e => { const b = e.target.closest('[data-sp]'); if (!b) return; setSpeed(b.dataset.sp); openSettings(); };
   $('stHints').onclick = e => { const b = e.target.closest('[data-h]'); if (!b) return; store('durocker-hints', b.dataset.h); openSettings(); if (G) update(); };
 }
 
@@ -979,6 +1019,52 @@ function toggleCard(id) {
   document.querySelectorAll('#hand .slot').forEach(s => s.classList.toggle('sel', G.sel.has(s.firstElementChild.dataset.id)));
   layout(); renderCombo(); renderActions();
 }
+/* справка по горячим клавишам */
+function keysHelp() {
+  let el = $('keysHelp');
+  if (el) { el.remove(); return; }
+  el = document.createElement('div'); el.id = 'keysHelp'; el.className = 'keyshelp';
+  el.innerHTML = `<b>Горячие клавиши</b>
+    <div><kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd><span>выбрать / снять карту по месту в руке</span></div>
+    <div><kbd>Пробел</kbd><span>⟳ Подбор — следующий возможный ход</span></div>
+    <div><kbd>Enter</kbd><span>главная кнопка (Ходить, Покрыть…)</span></div>
+    <div><kbd>B</kbd><span>правая кнопка (Беру, Бито, Хватит)</span></div>
+    <div><kbd>Esc</kbd><span>снять выбор / закрыть окно</span></div>
+    <div><kbd>H</kbd><span>подсказка новичку</span></div>
+    <div><kbd>T</kbd><span>турбо вкл / выкл</span></div>
+    <div><kbd>M</kbd><span>меню</span></div>
+    <div><kbd>?</kbd><span>эта справка</span></div>`;
+  el.onclick = () => el.remove();
+  document.body.appendChild(el);
+}
+/* свайп по руке: провёл пальцем по картам — выделил их подряд */
+let swipeEat = false;
+function bindSwipe() {
+  const hand = $('hand');
+  let st = null;
+  const cardAt = (x, y) => { const el = document.elementFromPoint(x, y); const c = el && el.closest && el.closest('#hand .card'); return c ? c.dataset.id : null; };
+  hand.addEventListener('pointerdown', e => {
+    const id = cardAt(e.clientX, e.clientY);
+    if (!id || !G || (!uiPhase().startsWith('p_') && !upPhase())) { st = null; return; }
+    st = { first: id, last: id, on: !G.sel.has(id), moved: false };
+  });
+  addEventListener('pointermove', e => {
+    if (!st) return;
+    const id = cardAt(e.clientX, e.clientY);
+    if (!id || id === st.last) return;
+    if (!st.moved) { st.moved = true; setSel(st.first, st.on); }
+    st.last = id; setSel(id, st.on);
+  });
+  const end = () => { if (st && st.moved) { swipeEat = true; setTimeout(() => { swipeEat = false; }, 350); } st = null; };
+  addEventListener('pointerup', end); addEventListener('pointercancel', end);
+  function setSel(id, on) {
+    if (on && !G.sel.has(id) && G.sel.size < 5) { G.sel.add(id); AU.play('select'); }
+    else if (!on && G.sel.has(id)) { G.sel.delete(id); AU.play('select'); }
+    else return;
+    document.querySelectorAll('#hand .slot').forEach(s => s.classList.toggle('sel', G.sel.has(s.firstElementChild.dataset.id)));
+    layout(); renderCombo(); renderActions();
+  }
+}
 function applyFour() { document.documentElement.dataset.four = load('durocker-four') === '1' ? '1' : '0'; }
 function bindUI() {
   applyFour();
@@ -996,7 +1082,7 @@ function bindUI() {
     const pk = e.target.closest('[data-pick]'); if (pk) pickOffer(pk.dataset.pick);
     const rr = e.target.closest('[data-r]'); if (rr) sendReact(+rr.dataset.r);
   });
-  $('hand').addEventListener('click', e => { const c = e.target.closest('.card'); if (c) toggleCard(c.dataset.id); });
+  $('hand').addEventListener('click', e => { if (swipeEat) { swipeEat = false; return; } const c = e.target.closest('.card'); if (c) toggleCard(c.dataset.id); });
   const onAct = e => {
     const a = e.target.closest('[data-a]');
     if (!a || a.disabled) return;
@@ -1021,6 +1107,7 @@ function bindUI() {
   addEventListener('resize', () => { if (G) layout(); });
   addEventListener('keydown', e => {
     if (e.target.closest && e.target.closest('input')) return;
+    if (e.key === 'Escape' && $('keysHelp')) { $('keysHelp').remove(); return; }
     if (['menu', 'bots', 'page', 'lobby'].some(id => !$(id).hidden)) { if (e.key === 'Escape') closeSheets(); return; }
     const k = e.key.toLowerCase();
     if (e.key === 'Enter') { const b = $('actMain').querySelector('.btn:not(:disabled)'); if (b) { e.preventDefault(); b.click(); } }
@@ -1028,7 +1115,15 @@ function bindUI() {
     else if (k === 'b' || k === 'и') { const b = $('actAlt').querySelector('.btn:not(:disabled)'); if (b) b.click(); }
     else if (k === 'h' || k === 'р') useHint();
     else if (k === 'm' || k === 'ь') openMenu();
+    else if (/^[0-9]$/.test(e.key)) {
+      const n = e.key === '0' ? 10 : +e.key, c = document.querySelectorAll('#hand .card')[n - 1];
+      if (c && G) { e.preventDefault(); toggleCard(c.dataset.id); }
+    }
+    else if (e.key === ' ') { const b = $('pickBtn'); if (b && !b.disabled) { e.preventDefault(); b.click(); } }
+    else if (k === 't' || k === 'е') { setSpeed(speedMode() === 'turbo' ? 'normal' : 'turbo'); toast(speedMode() === 'turbo' ? '⚡ Турбо включено' : 'Обычная скорость'); }
+    else if (e.key === '?' || e.key === ',' && e.shiftKey) keysHelp();
   });
+  bindSwipe();
   renderSound();
   VFX.skin(); VFX.bindTilt();
 }

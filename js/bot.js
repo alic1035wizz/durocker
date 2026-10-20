@@ -138,8 +138,9 @@ function oppAnswer(s, e) {
     if (!beats(d, e)) continue;
     const c = powSum(d.cards); if (c < bc) { bc = c; best = d; }
   }
+  if (!best && e.n === 5) best = eachFind(s.cards, e.cards);
   if (!best && G.rules && G.rules.charge !== false) {
-    const sh = s.cards.find(c => c.action === 'shield' && (c.s === G.T || e.cards.some(x => x.s === c.s)));
+    const sh = s.cards.find(c => c.action === 'shield' && (c.s === G.T || (e.cards.some(x => x.s === c.s) && shieldSize(e))));
     if (sh) return { cards: [sh], shield: true };
   }
   return best;
@@ -148,7 +149,7 @@ const sQ = s => (s.q == null ? (s.q = handQ(s.cards)) : s.q);
 
 /* ---------- просчёт ходов ---------- */
 let END = 0;
-function deadline() { return (END = Date.now() + 80); }
+function deadline() { return (END = Date.now() + 45); }
 const late_ = () => Date.now() > END;
 /* комбинации руки по размеру — с кэшем на время одного решения */
 let CC = new Map();
@@ -167,6 +168,7 @@ function cheapestCover(r, e) {
   const sizes = e.n === 1 ? [1] : [2, 3, 4, 5].filter(n => n >= e.n);
   let best = null, bc = 1e9;
   for (const n of sizes) for (const d of rCombos(r, n)) { if (!beats(d, e)) continue; const c = powSum(d.cards); if (c < bc) { bc = c; best = d; } }
+  if (!best && e.n === 5) best = eachFind(rCards(r), e.cards);
   return best;
 }
 /* что можно подкинуть на стол с номиналами ranks (упрощённо: по номиналу) */
@@ -201,6 +203,7 @@ function evalAttack(bot, samples, e, onTable) {
     if (room0 >= 2 && P1.length) {
       const ranks = new Set([...rankSet(onTable), ...rankSet(e.cards), ...rankSet(d.cards)]);
       for (const t of throwables(R(G.B, e.cards), ranks, Math.min(room0, P1.length))) {
+        if (late_()) break;
         if (cheapestCover(R(s.cards, d.cards), t)) continue;
         const w = handQ(minus(B1, t.cards), hoard) - handQ(s.cards.concat(onTable, e.cards, t.cards)) + tempo();
         if (w > v) v = w;
@@ -215,7 +218,7 @@ function searchAttack(bot, list, kind) {
   CC = new Map();
   remember();
   const samples = sampleHands(bot, N), onTable = kind === 'throw' ? tblCards() : [];
-  const cand = list.slice(0, 10);
+  const cand = list.slice(0, G.B.length > 10 ? 5 : 10);
   let best = null, bs = -1e9;
   if (kind === 'throw') bs = samples.reduce((a, s) => a + handQ(G.B, styleOf(bot).hoard) - sQ(s), 0) / samples.length - tempo();
   for (const e of cand) {
@@ -251,7 +254,7 @@ function searchDefense(bot, cover, transfer) {
   }
   take /= samples.length;
   let best = null, bs = take;
-  for (const d of cover.slice(0, 6)) {
+  for (const d of cover.slice(0, G.B.length > 10 ? 3 : 6)) {
     if (Date.now() > end && best) break;
     const B1 = minus(G.B, d.cards), ranks = new Set([...rankSet(table), ...rankSet(d.cards)]);
     /* остальные открытые атаки тоже надо покрыть; не выйдет — всё равно брать */
@@ -266,6 +269,7 @@ function searchDefense(bot, cover, transfer) {
       let v = handQ(B1, hoard) - sQ(s) + (openLeft <= 1 ? tempo() : 0);
       if (openLeft <= 1 && room >= 2) {
         for (const t of throwables(R(s.cards), ranks, Math.min(room, B1.length))) {
+          if (late_()) break;
           if (cheapestCover(R(G.B, d.cards), t)) continue;
           const w = handQ(G.B.concat(table, d.cards.filter(() => false), t.cards).filter(c => !d.cards.includes(c)).concat(d.cards), hoard) - handQ(minus(s.cards, t.cards)) - tempo();
           if (w < v) v = w;
@@ -310,6 +314,8 @@ function defenseList() {
   const a = openB().a, L = plainCards(G.B).length;
   const sizes = capSizes(L, a.n === 1 ? [1] : [2, 3, 4, 5].filter(n => n >= a.n));
   const cover = combos(G.B, sizes).filter(e => beats(e, a)).sort((x, y) => (x.n - y.n) || cost(x.cards) - cost(y.cards));
+  const each = a.n === 5 ? eachFind(G.B, a.cards) : null;
+  if (each) cover.push(each);
   let transfer = [];
   if (G.rules && G.rules.transfer && noneDefended() && atkCount() + a.n <= Math.min(HAND, G.P.length))
     transfer = combos(G.B, [a.n]).filter(e => checkTransfer('b', e.cards).ok);
@@ -451,7 +457,12 @@ function cheatSwap(bot) {
 }
 
 /* решение бота: что сделать сейчас. Возвращает [действие, карты, реплика] */
+/* потолок решения: на телефоне в ~3 раза медленнее, поэтому в node держим максимум около 100 мс */
 function botDecide(bot) {
+  COMBO_STOP = Date.now() + 70;
+  try { return botDecide0(bot); } finally { COMBO_STOP = 0; }
+}
+function botDecide0(bot) {
   cheatSwap(bot);
   const k = G.phase.kind;
   const first = botActionFirst(bot);

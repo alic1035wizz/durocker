@@ -1,0 +1,32 @@
+name: test
+on:
+  push:
+  pull_request:
+jobs:
+  sim:
+    name: Симуляции (бот против бота, компания)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node tests/sim.js
+      - run: node tests/multi.js
+  ui:
+    name: UI (Playwright, chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-screenshots
+          path: test-results/
+          if-no-files-found: ignore

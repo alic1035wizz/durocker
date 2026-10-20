@@ -83,11 +83,12 @@ function hostTable(restore) {
       else if (topic === 'react') showReact(data && data.i);
       else if (topic === 'rematch') { toast(`${oppName()} хочет реванш`); if (G && G.over) { if (SERIES.done) newSeries(); newGame(); } }
     },
-    gone() { if (!NET) return; NET.connected = false; armTimer(); renderNet(); showOver(); },
+    gone() { if (!NET) return; NET.connected = false; armTimer(); renderNet(); showOver(); armFlee(); },
     error(t) { lobbyStatus(t, true); },
   });
 }
 function onHi(d) {
+  clearTimeout(fleeT);
   checkVersion(d && d.v);
   const fresh = !NET.started;
   NET.connected = true;
@@ -124,10 +125,12 @@ function joinTable(codeArg) {
       if (topic === 'st' && data && typeof data === 'object') {
         if (!NET.got) { NET.got = true; $('lobby').hidden = true; $('over').hidden = true; }
         if (!NET.connected) { NET.connected = true; renderNet(); }
+        clearTimeout(fleeT);
+        if (NET.fled) return;
         applyView(data);
       }
     },
-    gone() { if (!NET) return; NET.connected = false; renderNet(); showOver(); },
+    gone() { if (!NET) return; NET.connected = false; renderNet(); showOver(); armFlee(); },
     error(t) { lobbyStatus(t, true); },
   });
   setTimeout(() => { if (NET && NET.role === 'guest' && !NET.got) lobbyStatus('Стол не отвечает. Проверь код или попроси друга создать стол заново.', true); }, 10000);
@@ -182,3 +185,55 @@ function sendAct(type) {
   if (type === 'play' || type === 'transfer' || type === 'action' || type === 'upgrade') G.sel.clear();
   if (!act('p', type, cs)) update();
 }
+
+
+/* ---------- соперник сбежал: техническая победа ----------
+   Пропал и не вернулся за 30 секунд — матч засчитывается оставшемуся. */
+const FLEE_MS = 30000;
+let fleeT = null;
+function armFlee() {
+  clearTimeout(fleeT);
+  const net = NET;
+  fleeT = setTimeout(() => {
+    if (!NET || NET !== net || NET.connected || NET.fled || !G || G.over) return;
+    if (NET.role === 'host' && !NET.started) return;
+    if (NET.role === 'guest' && !NET.got) return;
+    techWin();
+  }, FLEE_MS);
+}
+function techWin() {
+  NET.fled = true;
+  if (NET.role === 'host') {
+    /* партия заканчивается победой, и она сразу решает матч */
+    SERIES.w = SERIES.w || { p: 0, b: 0 };
+    SERIES.w.p = Math.max(SERIES.w.p, seriesTo() - 1);
+    NET.started = false;
+    finishGame('p', 10, 'flee');
+  } else {
+    G.over = 'p'; G.overWhy = 'flee'; G.penalty = 10; G.phase = { who: null };
+    SERIES.w = SERIES.w || { p: 0, b: 0 };
+    SERIES.w.p = Math.max(SERIES.w.p, SERIES.to || seriesTo()); SERIES.done = true;
+    const p = prog(); p.games++; p.wins++;
+    if (NET.oppNick) { const f = p.friends[NET.oppNick] || (p.friends[NET.oppNick] = { w: 0, l: 0 }); f.w++; }
+    saveProg();
+    NET.got = false;
+    try { TR.close(); } catch (e) {}
+    update(); showOver();
+  }
+}
+/* экран итога после бегства соперника */
+if (typeof addEventListener === 'function') addEventListener('load', () => {
+  if (typeof showOver !== 'function') return;
+  const _so = showOver;
+  showOver = function () {
+    const r = _so.apply(this, arguments);
+    try {
+      if (NET && NET.fled && G && G.over === 'p') {
+        const o = $('over'), h = o && o.querySelector('h2'), p = o && o.querySelector('p');
+        if (h) h.textContent = 'СОПЕРНИК СБЕЖАЛ — ПОБЕДА';
+        if (p) p.textContent = `${oppName()} пропал и не вернулся за 30 секунд. Матч твой.`;
+      }
+    } catch (e) {}
+    return r;
+  };
+});

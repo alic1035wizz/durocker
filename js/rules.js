@@ -25,9 +25,9 @@ const DECK = 54;          // 52 карты + 2 джокера
 /* карты-действия не лежат в колоде: их получают за полный заряд.
    4 вида × 4 масти, как цветные карты в УНО; масть решает, когда карта срабатывает, козырная версия сильнее */
 const ACTS = {
-  shield:  { name: 'Щит', icon: 'ЩИТ', desc: s => `При защите: атака, в которой есть ${s}, уходит в бито без покрытия. Козырный щит отбивает любую атаку.` },
+  shield:  { name: 'Щит', icon: 'ЩИТ', desc: s => `При защите: атака, в которой есть ${s}, уходит в бито без покрытия. Обычный щит держит атаку до 3 карт или из одной масти; козырный — любую.` },
   reverse: { name: 'Разворот', icon: '↺', desc: s => `При защите: вся атака возвращается атакующему, если в ней есть ${s}. Козырный — любая атака. Вместо своего хода — передать ход.` },
-  plus:    { name: '+2', icon: '+2', desc: s => `Когда ходишь ты: соперник добирает 2 карты из колоды (козырная — 3). Колода пуста — столько же штрафных очков.` },
+  plus:    { name: '+2', icon: '+2', desc: s => `Когда ходишь ты: соперник добирает 2 карты из колоды (козырная — 3). Колода пуста — соперник в этот ход не сможет переводить.` },
   trump:   { name: 'Смена козыря', icon: '↻', desc: s => `В любой свой ход: козырем до конца партии становится ${s}.` },
 };
 const ACT_KEYS = ['shield', 'reverse', 'plus', 'trump'];
@@ -53,54 +53,62 @@ function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
 /* таймеры, которые умирают при новой партии */
-function wait(ms) { const t = TOK; return new Promise((res, rej) => setTimeout(() => (t === TOK ? res() : rej('stale')), ms)); }
+/* турбо-режим: window.TURBO ускоряет паузы бота и движка в 3+ раза */
+const speed = () => (typeof window !== 'undefined' && window.TURBO ? 0.3 : 1);
+function wait(ms) { const t = TOK; return new Promise((res, rej) => setTimeout(() => (t === TOK ? res() : rej('stale')), ms * speed())); }
 function run(f) { f().catch(e => { if (e !== 'stale') console.error(e); }); }
 
 /* версия игры: в онлайне хозяин и гость сверяют её, чтобы играть по одним правилам */
-const VERSION = '2026.10.19-w4';
+const VERSION = '2026.10.19-w5';
 const myNick = () => (load('durocker-nick') || 'Игрок').slice(0, 16);
 
 /* ---------- оценка комбинаций ---------- */
+const EPC = new Int8Array(20);
+/* старшая карта стрита (0 — не стрит); по готовой таблице номиналов */
 function straightHigh(cs) {
-  const n = cs.length, rs = [...new Set(cs.map(c => c.r))].sort((a, b) => a - b);
-  if (rs.length !== n) return 0;
-  if (rs[n - 1] - rs[0] === n - 1) return rs[n - 1];
-  if (rs.includes(14)) {
-    const lo = rs.map(r => (r === 14 ? 1 : r)).sort((a, b) => a - b);
-    if (lo[n - 1] - lo[0] === n - 1) return lo[n - 1];
-  }
+  const n = cs.length; let lo = 99, hi = 0, d = 0;
+  for (let i = 0; i < n; i++) { const r = cs[i].r; if (EPC[r] === 1) { d++; if (r < lo) lo = r; if (r > hi) hi = r; } else if (EPC[r] > 1) return 0; }
+  if (d !== n) return 0;
+  if (hi - lo === n - 1) return hi;
+  if (EPC[14]) { let l2 = 99, h2 = 0; for (let i = 0; i < n; i++) { const r = cs[i].r === 14 ? 1 : cs[i].r; if (r < l2) l2 = r; if (r > h2) h2 = r; } if (h2 - l2 === n - 1) return h2; }
   return 0;
 }
 /* оценка без джокеров */
 function evPlain(cs) {
-  const n = cs.length, byR = {};
-  cs.forEach(c => (byR[c.r] = (byR[c.r] || 0) + 1));
-  const g = Object.entries(byR).map(([r, k]) => [+r, k]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
-  const tr = cs.filter(c => c.s === G.T).length;
-  const fl = n >= 3 && cs.every(c => c.s === cs[0].s), sh = n >= 3 ? straightHigh(cs) : 0;
-  const desc = () => cs.map(c => c.r).sort((a, b) => b - a);
-  const mk = (t, keys) => ({ t, keys, n, tr, jk: 0, name: TN[t] });
-  if (n === 1) return mk(0, [cs[0].r]);
-  if (n === 2) return g[0][1] === 2 ? mk(1, [g[0][0]]) : null;
-  if (n === 3) {
-    if (fl && sh) return mk(5, [sh]);
-    if (g[0][1] === 3) return mk(4, [g[0][0]]);
-    if (sh) return mk(3, [sh]);
-    if (fl) return mk(2, desc());
+  const n = cs.length;
+  let tr = 0, fl = n >= 3;
+  const s0 = cs[0].s;
+  for (let i = 0; i < n; i++) { const c = cs[i]; EPC[c.r]++; if (c.s === G.T) tr++; if (c.s !== s0) fl = false; }
+  try {
+    const mk = (t, keys) => ({ t, keys, n, tr, jk: 0, name: TN[t] });
+    if (n === 1) return mk(0, [cs[0].r]);
+    /* группы: (номинал, сколько) по убыванию количества, затем номинала */
+    const g = [];
+    for (let r = 19; r >= 0; r--) if (EPC[r]) g.push([r, EPC[r]]);
+    g.sort((x, y) => y[1] - x[1] || y[0] - x[0]);
+    const desc = () => cs.map(c => c.r).sort((x, y) => y - x);
+    if (n === 2) return g[0][1] === 2 ? mk(1, [g[0][0]]) : null;
+    const sh = n >= 3 ? straightHigh(cs) : 0;
+    if (n === 3) {
+      if (fl && sh) return mk(5, [sh]);
+      if (g[0][1] === 3) return mk(4, [g[0][0]]);
+      if (sh) return mk(3, [sh]);
+      if (fl) return mk(2, desc());
+      return null;
+    }
+    if (n === 4) {
+      if (g[0][1] === 4) return mk(7, [g[0][0]]);
+      if (g.length === 2 && g[0][1] === 2) return mk(6, [g[0][0], g[1][0]]);
+      return null;
+    }
+    if (n === 5) {
+      if (fl && sh) return mk(11, [sh]);
+      if (g[0][1] === 3 && g[1] && g[1][1] === 2) return mk(10, [g[0][0], g[1][0]]);
+      if (fl) return mk(9, desc());
+      if (sh) return mk(8, [sh]);
+    }
     return null;
-  }
-  if (n === 4) {
-    if (g[0][1] === 4) return mk(7, [g[0][0]]);
-    if (g.length === 2 && g[0][1] === 2) return mk(6, [g[0][0], g[1][0]]);
-    return null;
-  }
-  if (n === 5) {
-    if (fl && sh) return mk(11, [sh]);
-    if (g[0][1] === 3 && g[1] && g[1][1] === 2) return mk(10, [g[0][0], g[1][0]]);
-    if (fl) return mk(9, desc());
-    if (sh) return mk(8, [sh]);
-  }
-  return null;
+  } finally { for (let i = 0; i < n; i++) EPC[cs[i].r] = 0; }
 }
 /* сравнение комбинаций одного размера: тип, потом козыри, потом ранги, потом меньше джокеров */
 function cmpE(a, b) {
@@ -110,9 +118,24 @@ function cmpE(a, b) {
   return b.jk - a.jk;
 }
 /* полная оценка: джокер сам становится картой, которая делает комбинацию сильнее всего */
+/* кэш оценок: ключ — номера карт и козырь; отдаём копию с картами вызывающего (по ним сравнивают по ссылке) */
+let EVC = new Map();
 function ev(cs) {
   const n = cs.length;
   if (!n || n > 5 || cs.some(c => c.action)) return null;
+  let key = G.T + ':';
+  for (let i = 0; i < n; i++) key += cs[i].n + ',';
+  let tpl = EVC.get(key);
+  if (tpl === undefined) {
+    tpl = evRaw(cs);
+    if (EVC.size > 60000) EVC = new Map();
+    EVC.set(key, tpl ? { ...tpl, cards: null } : null);
+    return tpl;
+  }
+  return tpl ? { ...tpl, cards: cs } : null;
+}
+function evRaw(cs) {
+  const n = cs.length;
   const jokers = cs.filter(c => c.joker), real = cs.filter(c => !c.joker);
   if (!jokers.length) { const e = evPlain(cs); if (e) e.cards = cs; return e; }
   if (n === 1) return { t: 0, keys: [13.5], n: 1, tr: 1, jk: 1, name: 'Одиночка', cards: cs };
@@ -151,8 +174,51 @@ const wrule = k => !!(G && G.rules && G.rules[k]);
 const overOn = () => rule('over');
 /* перекрытие — ровно на одну карту больше и старшим типом */
 const isOver = (d, a) => !!d && !!a && a.n >= 2 && (wrule('overAny') ? d.n > a.n : d.n === a.n + 1) && d.t > a.t && overOn();
+/* пятёрку можно побить «поштучно»: каждую её карту — своей картой, как в обычном дураке
+   (старшей той же масти или козырем; джокера бьёт только козырной туз) */
+const eachOn = () => rule('each');
+function singleBeats(d, a) {
+  const x = d.joker ? { r: 13.5, s: G.T } : { r: d.r, s: d.s }, y = a.joker ? { r: 13.5, s: G.T } : { r: a.r, s: a.s };
+  if (a.joker) return !d.joker && d.s === G.T && d.r === 14;
+  return (x.s === y.s && x.r > y.r) || (x.s === G.T && y.s !== G.T);
+}
+/* есть ли такое распределение: каждой карте атаки — своя карта защиты, которая её бьёт */
+function eachMatch(def, atk) {
+  if (def.length !== atk.length || def.some(c => c.action)) return null;
+  const used = new Array(def.length).fill(false), pair = [];
+  const order = atk.map((c, i) => i).sort((i, j) => def.filter(d => singleBeats(d, atk[i])).length - def.filter(d => singleBeats(d, atk[j])).length);
+  const rec = k => {
+    if (k === order.length) return true;
+    const ai = order[k];
+    for (let i = 0; i < def.length; i++) if (!used[i] && singleBeats(def[i], atk[ai])) { used[i] = true; pair[ai] = i; if (rec(k + 1)) return true; used[i] = false; }
+    return false;
+  };
+  return rec(0) ? pair : null;
+}
+const mkEach = cs => ({ t: -1, n: cs.length, tr: cs.filter(c => c.s === G.T).length, jk: cs.filter(c => c.joker).length, keys: [], name: 'Поштучно', cards: cs, each: true });
+/* самое дешёвое «поштучное» покрытие пятёрки из руки (или null) */
+function eachFind(hand, atk) {
+  if (!eachOn() || atk.length !== 5) return null;
+  const pool = hand.filter(c => !c.action).slice().sort((x, y) => val(x) - val(y));
+  const order = atk.slice().sort((a, b) => pool.filter(d => singleBeats(d, a)).length - pool.filter(d => singleBeats(d, b)).length);
+  const used = new Set(), pick = [];
+  let steps = 0;
+  const rec = k => {
+    if (k === order.length) return true;
+    for (const d of pool) {
+      if (used.has(d.id) || !singleBeats(d, order[k])) continue;
+      if (++steps > 4000) return false;
+      used.add(d.id); pick.push(d);
+      if (rec(k + 1)) return true;
+      used.delete(d.id); pick.pop();
+    }
+    return false;
+  };
+  return rec(0) ? mkEach(pick.slice()) : null;
+}
 function beats(d, a) {
   if (!d || !a) return false;
+  if (d.each) return a.n === 5 && eachOn() && !!eachMatch(d.cards, a.cards);
   if (d.n !== a.n) return isOver(d, a);
   if (d.n === 1) {
     const x = singleVal(d), y = singleVal(a);
@@ -220,6 +286,8 @@ function refill(s) { const h = H(s); while (h.length < HAND && G.deck.length) h.
 function checkMove(seat, cs) {
   if (G.over || G.busy || G.phase.who !== seat || !cs.length) return { ok: false, e: null };
   const k = G.phase.kind, e = ev(cs);
+  if (k === 'defend' && cs.length === 5 && openB().a.n === 5 && eachOn() && !(e && beats(e, openB().a)) && eachMatch(cs, openB().a.cards))
+    return { ok: true, e: mkEach(cs), why: 'Поштучно!' };
   if (!e) return { ok: false, e, why: 'Не комбинация' };
   if (k === 'defend') {
     const a = openB().a;
@@ -246,7 +314,7 @@ function checkMove(seat, cs) {
 }
 /* можно ли перевести этими картами */
 function checkTransfer(seat, cs) {
-  if (!G.rules || !G.rules.transfer) return { ok: false };
+  if (!G.rules || !G.rules.transfer || G.noTransfer) return { ok: false };
   if (G.over || G.busy || G.phase.who !== seat || G.phase.kind !== 'defend' || !cs.length || !noneDefended()) return { ok: false };
   const e = ev(cs), a = G.table[0].a;
   if (!sameRank(e, a)) return { ok: false };
@@ -256,6 +324,8 @@ function checkTransfer(seat, cs) {
 }
 
 /* можно ли сейчас сыграть карту-действие */
+/* обычный щит держит атаку до 3 карт либо из одной масти */
+const shieldSize = a => a.cards.length <= 3 || a.cards.every(x => x.joker || x.s === a.cards.find(y => !y.joker).s);
 function checkAction(seat, c) {
   const no = why => ({ ok: false, why }), ok = why => ({ ok: true, why });
   if (!c || !c.action || G.over || G.busy || G.phase.who !== seat) return { ok: false };
@@ -264,7 +334,10 @@ function checkAction(seat, c) {
   if (c.action === 'shield') {
     if (k === 'attack') return ok('Пас: щит уйдёт в бито, ход перейдёт сопернику');
     if (k !== 'defend') return no('Щит играют при защите');
-    return hasSuit(openB().a) ? ok('Атака уйдёт в бито без покрытия') : no(`В атаке нет ${SU[c.s]} — щит не подходит`);
+    if (trumpy) return ok('Козырный щит: атака уйдёт в бито без покрытия');
+    const sa = openB().a;
+    if (!hasSuit(sa)) return no(`В атаке нет ${SU[c.s]} — щит не подходит`);
+    return shieldSize(sa) ? ok('Атака уйдёт в бито без покрытия') : no('Обычный щит держит атаку до 3 карт или одной масти');
   }
   if (c.action === 'reverse') {
     if (k === 'attack') return ok('Пас: ход перейдёт сопернику');
@@ -277,7 +350,7 @@ function checkAction(seat, c) {
   if (c.action === 'plus') {
     if (k === 'defend') return no('+2 играют, когда ходишь ты');
     const n = trumpy ? 3 : 2;
-    return ok(G.deck.length ? `Соперник доберёт ${n} ${plural(n)}` : `Колода пуста: сопернику +${n} штрафа`);
+    return ok(G.deck.length ? `Соперник доберёт ${n} ${plural(n)}` : 'Колода пуста: соперник не сможет переводить в этот ход');
   }
   if (c.action === 'trump') {
     if (c.s !== G.T) return ok(`Козырем станет ${SU[c.s]}`);
@@ -294,8 +367,11 @@ function defenseOptions(seat) {
   /* сначала обычная защита тем же числом, перекрытие — в конце списка */
   const sizes = a.n >= 2 && a.n < 5 && overOn() ? (wrule('overAny') ? [2, 3, 4, 5].filter(n => n >= a.n) : [a.n, a.n + 1]) : [a.n];
   const cover = combos(hand, sizes).filter(e => beats(e, a)).sort((x, y) => (x.n - y.n) || cost(x.cards) - cost(y.cards));
+  /* пятёрку — ещё и поштучно (в конце списка: это обычно дороже) */
+  const each = a.n === 5 ? eachFind(hand, a.cards) : null;
+  if (each) cover.push(each);
   let transfer = [];
-  if (G.rules && G.rules.transfer && noneDefended()) {
+  if (G.rules && G.rules.transfer && !G.noTransfer && noneDefended()) {
     const next = H(other(seat)).length;
     if (atkCount() + a.n <= Math.min(HAND, next))
       transfer = combos(hand, [a.n]).filter(e => sameRank(e, G.table[0].a)).sort((x, y) => cost(x.cards) - cost(y.cards));
@@ -303,13 +379,15 @@ function defenseOptions(seat) {
   const acts = hand.filter(c => c.action && (c.action === 'shield' || c.action === 'reverse' || c.action === 'trump') && checkAction(seat, c).ok);
   return { cover, transfer, acts };
 }
+/* жёсткий потолок на перебор: бот выставляет время, после которого combos отдаёт то, что успел */
+let COMBO_STOP = 0, COMBO_N = 0;
 function combos(hand, sizes) {
   hand = hand.filter(c => !c.action);
   const out = [], L = hand.length, pick = [];
   for (const n of sizes) {
     if (n < 1 || n > L || (n === 5 && L > 24)) continue;
     const rec = (st, d) => {
-      if (d === n) { const e = ev(pick.slice(0, n)); if (e) out.push(e); return; }
+      if (d === n) { if (COMBO_STOP && !(++COMBO_N & 127) && Date.now() > COMBO_STOP) return; const e = ev(pick.slice(0, n)); if (e) out.push(e); return; }
       for (let i = st; i <= L - (n - d); i++) { pick[d] = hand[i]; rec(i + 1, d + 1); }
     };
     rec(0, 0);
@@ -329,6 +407,7 @@ function coverRule(a) {
   let s = `${a.n} ${plural(a.n)}: ${a.name.toLowerCase()} старше`;
   if (a.tr < a.n) s += ' или с козырем';
   if (higher.length) s += `, либо ${higher.join(', ')}`;
+  if (a.n === 5 && eachOn()) s += '. Или побей поштучно: каждую карту — своей, старшей той же масти или козырем';
   if (overOn() && a.n >= 2 && a.n < 5) s += wrule('overAny') ? '. Или перекрой комбинацией старшего типа из большего числа карт' : `. Или перекрой комбинацией старшего типа из ${a.n + 1} ${plural(a.n + 1)}`;
   return s + '.';
 }

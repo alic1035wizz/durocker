@@ -2,12 +2,20 @@
    Своего сервера нет: ищущие перекликаются через тот же публичный MQTT-брокер, что и онлайн-стол.
    Протокол (topics durocker/q1/…):
    - seek: каждый ищущий раз в 2 с публикует {pid, nick, v, r, busy, t} и слушает чужие;
-   - хозяином пары становится тот, у кого pid меньше: он открывает обычный стол (hostTable)
+   - хозяином пары становится тот, кому выпал жребий (каждый шлёт случайное число n в seek, у кого
+     больше — тот хозяин; при равенстве — меньший pid): он открывает обычный стол (hostTable)
      и шлёт сопернику в durocker/q1/match/<его pid> {k:'offer', from, nick, r, code};
    - гость отвечает {k:'ok'} или {k:'no'} хозяину в его match-topic и садится за стол (joinTable);
    - нет ответа 6 с — стол закрывается, этот соперник на 15 с в игноре, поиск продолжается.
    Сначала (10 с) ищем соперника с близким рейтингом (±30 очков), потом любого. */
 'use strict';
+
+function newPid() {
+  let s = '';
+  try { const a = new Uint8Array(10); crypto.getRandomValues(a); a.forEach(x => { s += (x % 36).toString(36); }); } catch (e) {}
+  while (s.length < 10) s += Math.floor(Math.random() * 36).toString(36);
+  return s;
+}
 
 const QUICK = (() => {
   const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
@@ -18,7 +26,7 @@ const QUICK = (() => {
   const wr = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const pid = (() => {
     let v = rd('durocker-pid');
-    if (!v || !/^[a-z0-9]{8,16}$/.test(v)) { v = Math.random().toString(36).slice(2, 12).padEnd(10, '0'); wr('durocker-pid', v); }
+    if (!v || !/^[a-z0-9]{8,16}$/.test(v) || /^(.)\1+$/.test(v)) { v = newPid(); wr('durocker-pid', v); }
     return v;
   })();
   const rating = () => { try { return Math.max(0, Math.round(+(JSON.parse(rd('durocker-lb')) || {}).r || 0)); } catch (e) { return 0; } };
@@ -26,6 +34,10 @@ const QUICK = (() => {
   const cleanNick = n => String(n == null ? '' : n).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 16) || 'Соперник';
   const available = () => typeof window.mqtt === 'object' || typeof window.mqtt === 'function';
 
+  /* жребий хозяина: у каждого ищущего своё случайное число на раунд поиска; хозяин — у кого оно больше */
+  const roll = () => { try { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0]; } catch (e) { return Math.floor(Math.random() * 4294967296); } };
+  const hostWins = (n1, p1, n2, p2) => n1 > n2 || (n1 === n2 && p1 < p2);
+  let myN = roll();
   let cl = null, timers = [], peers = new Map(), ignore = new Map();
   let st = null; /* {startedAt, busy, offerTo, offerT, waitShown, found} */
 
@@ -57,6 +69,7 @@ const QUICK = (() => {
     try { closeSheets(); } catch (e) {}
     if (typeof NET !== 'undefined' && NET) { try { TR.close(); } catch (e) {} NET = null; setUrl(null); }
     stopNet();
+    myN = roll();
     st = { startedAt: Date.now(), busy: false, offerTo: null, offerT: 0, waitShown: false, found: null };
     render('Подключаемся…');
     connect(c => {
@@ -73,7 +86,7 @@ const QUICK = (() => {
   }
   function beat() {
     if (!st || !cl) return;
-    pub(SEEK, { pid, nick: cleanNick(myNick()), v: VERSION, r: rating(), busy: !!st.busy, t: Date.now() });
+    pub(SEEK, { pid, n: myN, nick: cleanNick(myNick()), v: VERSION, r: rating(), busy: !!st.busy, t: Date.now() });
   }
   function onMsg(topic, payload) {
     if (!st) return;
@@ -82,7 +95,7 @@ const QUICK = (() => {
     if (topic === SEEK) {
       if (typeof m.pid !== 'string' || !/^[a-z0-9]{8,16}$/.test(m.pid) || m.pid === pid) return;
       if (major(m.v) !== major(VERSION)) return;
-      peers.set(m.pid, { nick: cleanNick(m.nick), r: Math.max(0, Math.min(1e6, Math.round(+m.r || 0))), busy: !!m.busy, seen: Date.now() });
+      peers.set(m.pid, { n: Math.max(0, Math.min(4294967295, Math.floor(+m.n || 0))), nick: cleanNick(m.nick), r: Math.max(0, Math.min(1e6, Math.round(+m.r || 0))), busy: !!m.busy, seen: Date.now() });
       return;
     }
     if (topic !== ROOT + 'match/' + pid || typeof m.from !== 'string' || !/^[a-z0-9]{8,16}$/.test(m.from)) return;
@@ -114,8 +127,8 @@ const QUICK = (() => {
     }
     if (st.found) return;
     if (!st.busy) {
-      /* хозяин пары — у кого pid меньше: так двое не откроют два стола друг для друга */
-      const c = candidates().find(p => pid < p.id);
+      /* хозяин пары — по жребию (у кого случайное число больше): так двое не откроют два стола друг для друга */
+      const c = candidates().find(p => hostWins(myN, pid, p.n, p.id));
       if (c) makeOffer(c);
     }
     if (!st.waitShown && now - st.startedAt > WAIT_BOT) { st.waitShown = true; }
@@ -128,17 +141,18 @@ const QUICK = (() => {
     if (!NET) { st.busy = false; st.offerTo = null; return; }
     NET.quick = true; NET.bo = 3; NET.oppNick = p.nick; NET.oppR = p.r;
     $('lobby').hidden = true;
-    pub(ROOT + 'match/' + p.id, { k: 'offer', from: pid, nick: cleanNick(myNick()), r: rating(), code: NET.code, v: VERSION });
+    pub(ROOT + 'match/' + p.id, { k: 'offer', from: pid, n: myN, nick: cleanNick(myNick()), r: rating(), code: NET.code, v: VERSION });
   }
   function dropOffer(id) {
     ignore.set(id, Date.now() + 15000);
     if (NET && NET.quick && NET.role === 'host' && !NET.connected) { try { TR.close(); } catch (e) {} NET = null; setUrl(null); }
     st.busy = false; st.offerTo = null; st.peer = null;
+    myN = roll();
     beat(); render();
   }
   function onOffer(m) {
     const reply = k => pub(ROOT + 'match/' + m.from, { k, from: pid });
-    if (st.busy || st.found || !(m.from < pid) || major(m.v) !== major(VERSION) || !/^[a-z0-9]{4}$/.test(String(m.code || ''))) { reply('no'); return; }
+    if (st.busy || st.found || !hostWins(Math.floor(+m.n || 0), m.from, myN, pid) || major(m.v) !== major(VERSION) || !/^[a-z0-9]{4}$/.test(String(m.code || ''))) { reply('no'); return; }
     st.busy = true;
     st.found = { role: 'guest', from: m.from, nick: cleanNick(m.nick), r: Math.max(0, Math.round(+m.r || 0)), t: Date.now() };
     reply('ok');
@@ -161,7 +175,7 @@ const QUICK = (() => {
       if (seated) {
         const f = st.found;
         st = null; stopNet(); hide();
-        toast(`⚡ Соперник найден: ${f.nick}${f.r ? ` · ★${f.r}` : ''}`);
+        toast(`⚡ Соперник найден: ${f.nick}${f.r ? ` · ★${f.r} (по его данным)` : ''}`);
       }
     }, 300);
   }
@@ -197,7 +211,7 @@ const QUICK = (() => {
     const near = now - st.startedAt < 10000;
     let body;
     if (msg) body = `<p class="${err ? 'qerr' : ''}">${esc(msg)}</p>`;
-    else if (st.found) body = `<p class="qfound">Нашли: <b>${esc(st.found.nick)}</b>${st.found.r ? ` · ★${st.found.r}` : ''}</p><p class="qsm">Садимся за стол…</p>`;
+    else if (st.found) body = `<p class="qfound">Нашли: <b>${esc(st.found.nick)}</b>${st.found.r ? ` · ★${st.found.r} (по его данным)` : ''}</p><p class="qsm">Садимся за стол…</p>`;
     else if (st.offerTo) body = `<p>Зовём <b>${esc(st.peer ? st.peer.nick : 'соперника')}</b>…</p>`;
     else body = `<p class="qsm">${near ? 'Ищем соперника твоего уровня' : 'Ищем любого свободного соперника'} · твой рейтинг ★${rating()}</p>
       <p class="qsm">Сейчас ищут игру: <b>${n + 1}</b></p>`;
@@ -289,7 +303,7 @@ const QUICK = (() => {
       const _rh = renderHUD;
       renderHUD = function () {
         const r = _rh.apply(this, arguments);
-        try { if (NET && NET.quick && NET.oppR != null) { const o = $('oppName'); if (o) o.textContent = `${oppName()} · ★${NET.oppR}`; } } catch (e) {}
+        try { if (NET && NET.quick && NET.oppR != null) { const o = $('oppName'); if (o) o.textContent = `${oppName()} · ★${NET.oppR} по его данным`; } } catch (e) {}
         return r;
       };
     }

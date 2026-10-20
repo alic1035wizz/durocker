@@ -1,0 +1,14 @@
+{
+  "name": "durocker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ДурКер — карточная игра. Тесты и сборка.",
+  "scripts": {
+    "test": "npm run test:sim && npm run test:ui",
+    "test:sim": "node tests/sim.js && node tests/multi.js",
+    "test:ui": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
