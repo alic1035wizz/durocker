@@ -31,5 +31,41 @@
       "type": "image/svg+xml"
     }
   ],
-  "id": "./"
+  "id": "./",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "shortcuts": [
+    {
+      "name": "ИГРАТЬ",
+      "short_name": "Играть",
+      "description": "Продолжить карьеру или быстрая игра",
+      "url": "./?go=play",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Ночь в казино",
+      "short_name": "Ночь",
+      "description": "8 боссов подряд, фишки-модификаторы между боями",
+      "url": "./?go=rogue",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

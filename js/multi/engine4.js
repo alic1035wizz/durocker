@@ -32,7 +32,7 @@ const M4 = (() => {
     return e;
   }
   /* перебор с бюджетом: на руке в 20 карт пятёрок слишком много — останавливаемся, но сначала дешёвые карты */
-  function combosC(S, hand, sizes, budget) {
+  function combosC(S, hand, sizes, budget, filt) {
     const out = [], pick = [];
     hand = hand.filter(c => !c.action).sort((a, b) => (a.joker - b.joker) || ((a.s === S.T) - (b.s === S.T)) || a.r - b.r);
     const L = hand.length;
@@ -41,7 +41,7 @@ const M4 = (() => {
       if (n < 1 || n > L) continue;
       const rec = (st, d) => {
         if (left <= 0) return;
-        if (d === n) { left--; const cs = pick.slice(0, n), e = evC(S, cs); if (e) out.push(e); return; }
+        if (d === n) { const cs = pick.slice(0, n); if (filt && !filt(cs)) return; left--; const e = evC(S, cs); if (e) out.push(e); return; }
         for (let i = st; i <= L - (n - d) && left > 0; i++) { pick[d] = hand[i]; rec(i + 1, d + 1); }
       };
       rec(0, 0);
@@ -179,7 +179,7 @@ const M4 = (() => {
     return no(null);
   }
   /* все допустимые ходы из руки (для подбора и ботов) */
-  function options(S, seat, hand) {
+  function options(S, seat, hand, budget) {
     const plain = hand.filter(c => !c.action);
     const k = S.phase && S.phase.kind;
     if (!k || S.phase.who !== seat) return [];
@@ -189,7 +189,9 @@ const M4 = (() => {
       sizes = R(S).over && n >= 2 && n < 5 ? [n, n + 1] : [n];
     } else sizes = k === 'attack' ? [1, 2, 3, 4, 5] : [2, 3, 4, 5];
     if (plain.length > 12) { const i = sizes.indexOf(5); if (i >= 0 && k !== 'defend') sizes.splice(i, 1); }
-    const list = combosC(S, plain, sizes);
+    /* боты (budget задан): подкидывают только картами с номиналом со стола — так перебор в разы дешевле */
+    const rs0 = budget && (k === 'throw' || k === 'addtake') ? tableRanks(S) : null;
+    const list = combosC(S, plain, sizes, budget, rs0 && (cs => cs.some(c => rs0.has(c.r))));
     const out = [];
     list.forEach(e => { const r = check(S, seat, e.cards, e); if (r.ok) out.push({ ...r, e: r.e || e }); });
     return out;

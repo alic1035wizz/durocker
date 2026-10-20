@@ -143,11 +143,37 @@ function dailyCard(day) {
 }
 
 /* ---------- всплывашка ---------- */
-let toastT;
-function toast(t, ms) {
-  const el = $('toast'); if (!el) return;
-  el.textContent = t; el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
-  clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, ms || 3200);
+/* Очередь компактных всплывашек: не больше двух сразу, по тапу закрываются, пока открыт итог — ждут. */
+const TQ = []; let TACT = 0, toastW = 0;
+function toastBusy() {
+  try {
+    const ov = document.getElementById('over');
+    if (ov && !ov.hidden && ov.offsetParent !== null) return true;
+    return !!document.querySelector('#m4over .m4over');
+  } catch (e) { return false; }
+}
+function toast(t, ms, o) {
+  const box = $('toast'); if (!box || !t) return;
+  if (TQ.some(x => x.t === t) || [...box.children].some(c => c.dataset.t === t)) return;
+  TQ.push({ t, ms: ms ? Math.min(ms, 3600) : 2200, ach: !!(o && o.ach), at: Date.now() });
+  toastPump();
+}
+function toastPump() {
+  const box = $('toast'); if (!box) return;
+  clearTimeout(toastW);
+  while (TQ.length && Date.now() - TQ[0].at > 20000) TQ.shift();
+  if (!TQ.length) return;
+  if (toastBusy()) { toastW = setTimeout(toastPump, 450); return; }
+  while (TACT < 2 && TQ.length) {
+    const x = TQ.shift(), el = document.createElement('div');
+    el.className = 'tpill' + (x.ach ? ' ach' : ''); el.dataset.t = x.t; el.setAttribute('role', 'status');
+    el.textContent = x.t;
+    box.hidden = false; box.appendChild(el); TACT++;
+    let gone = false;
+    const done = () => { if (gone) return; gone = true; el.remove(); TACT = Math.max(0, TACT - 1); if (!box.children.length) box.hidden = true; toastPump(); };
+    el.addEventListener('click', done);
+    setTimeout(done, x.ms * (typeof animK === 'function' && animK() === 0 ? 0.8 : 1));
+  }
 }
 
 /* ---------- применить выбранную рубашку и трек ---------- */

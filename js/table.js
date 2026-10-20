@@ -42,14 +42,14 @@ const TABLE = (() => {
   function fan(el, opts) {
     const s = [...el.children], n = s.length;
     if (!n) return;
-    const isHand = el.id === 'hand';
+    const isHand = el.id === 'hand' || el.id === 'm4hand';
     if (isHand) el.style.removeProperty('--w');
     const W = el.clientWidth;
     if (W < 20) return;
     const natural = s[0].firstElementChild.offsetWidth;
     if (!natural) return;
     const suits = s.map(sl => sl.dataset.s || '');
-    const grp = isHand && typeof G !== 'undefined' && G && G.sort === 's';
+    const grp = isHand && (opts.grp != null ? !!opts.grp : typeof G !== 'undefined' && G && G.sort === 's');
     if (isHand) el.classList.toggle('grp', !!grp);
     let cw = natural, p;
     if (isHand) {
@@ -225,6 +225,6 @@ const TABLE = (() => {
       return h0.apply(this, arguments);
     };
   }
-  return { fan, flights, slowmo, district, init, isWide };
+  return { fan, flights, slowmo, district, init, isWide, arcFly, shadowFor };
 })();
 TABLE.init();

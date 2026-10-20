@@ -31,7 +31,7 @@ const UI4 = (() => {
   function saveOpts(o) { store(OPT_KEY, JSON.stringify(o)); }
   const FMT = { 1: 'одна партия', 2: 'до 2 побед', 3: 'до 3 побед' };
 
-  const C = { on: false, mode: null, me: 0, V: null, S: null, sel: new Set(), sort: 'r', pick: null, lastEv: 0, lastHype: 0, botT: null, upT: null, tok: 0,
+  const C = { on: false, mode: null, me: 0, V: null, S: null, sel: new Set(), sort: (() => { try { return load('durocker-sort') === 's' ? 's' : 'r'; } catch (e) { return 'r'; } })(), emo: {}, pick: null, lastEv: 0, lastHype: 0, botT: null, upT: null, tok: 0,
     cfg: null, faces: [], seen: new Set(), log: [], say: {}, voiceAt: 0, cheat: null, cheatTurn: -1, offerLater: false, frozen: false };
   const $4 = id => document.getElementById(id);
 
@@ -103,11 +103,6 @@ const UI4 = (() => {
 .m4me{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;color:var(--muted);padding:0 4px}
 .m4me .badges{display:flex;gap:4px;align-items:center}
 .m4me .chg{background:none;border:none;padding:2px 4px;color:var(--muted);font-size:11px;display:inline-flex;gap:4px;align-items:center;cursor:pointer}
-.m4hand{--w:62px;display:flex;justify-content:center;align-items:flex-end;height:104px;padding:0 6px;flex:none}
-.m4hand .m4slot{position:relative;flex:none;transition:transform .15s;cursor:pointer;margin-left:calc(var(--w)*var(--ov,-.45))}
-.m4hand .m4slot:first-child{margin-left:0}
-.m4hand .m4slot.sel{transform:translateY(-18px)}
-.m4hand .m4slot.sel .card .front{box-shadow:0 0 0 3px var(--gold),0 8px 12px rgba(0,0,0,.45)}
 .m4ctl{display:grid;grid-template-columns:1fr auto 1fr;gap:8px}
 .m4ctl .btn{min-height:50px;font-size:16px}
 .m4mid{display:flex;flex-direction:column;gap:4px;align-items:stretch;justify-content:center}
@@ -164,7 +159,7 @@ const UI4 = (() => {
   .m4log div:last-child{color:var(--text);font-weight:700}
   .m4log .sc{font-family:var(--f-hard);font-size:9px;color:var(--gold);margin-bottom:auto;line-height:1.6;white-space:normal}
   .m4me{grid-column:2;grid-row:4}
-  .m4hand{grid-column:2;grid-row:5;--w:46px;height:76px}
+  .m4hand{grid-column:2;grid-row:5}
   .m4ctl{grid-column:2;grid-row:6}
   .m4ctl .btn{min-height:42px;font-size:14px;padding:8px 4px}
   .m4opp{padding:3px 5px}.m4opp .backs{display:none}
@@ -174,7 +169,7 @@ const UI4 = (() => {
 }
 @media (min-width:900px) and (min-height:521px){
   #m4{max-width:980px;margin:0 auto}
-  .m4felt{--w:58px}.m4hand{--w:70px;height:120px}
+
 }`;
     document.head.appendChild(st);
   }
@@ -191,7 +186,7 @@ const UI4 = (() => {
         <div class="m4log" id="m4log"></div>
         <div class="m4me" id="m4me"></div>
         <div class="m4hand" id="m4hand"></div>
-        <div class="m4ctl"><div id="m4alt" class="ctl"></div><div class="m4mid"><button type="button" class="pk" id="m4pick">⟳ Подбор</button><button type="button" class="so" id="m4sort">Ранг</button></div><div id="m4main" class="ctl"></div></div>
+        <div class="m4ctl"><div id="m4alt" class="ctl"></div><div class="m4mid"><button type="button" class="pk" id="m4pick">⟳ Подбор</button><button type="button" class="so" id="m4sort">Ранги</button></div><div id="m4main" class="ctl"></div></div>
         <button type="button" id="m4cheat">🕵️ ШУЛЕР!<i></i></button>
         <div id="m4offer"></div>
         <div id="m4over"></div>`;
@@ -204,7 +199,8 @@ const UI4 = (() => {
         if (e.target.closest('#m4chg')) { C.offerLater = false; renderOffer(); }
       });
       $4('m4pick').onclick = nextPick;
-      $4('m4sort').onclick = () => { C.sort = C.sort === 'r' ? 's' : 'r'; render(); };
+      $4('m4sort').onclick = () => { C.sort = C.sort === 'r' ? 's' : 'r'; try { store('durocker-sort', C.sort); } catch (e) {} render(); };
+      addEventListener('resize', () => layoutHand());
       $4('m4exit').onclick = () => exit();
       $4('m4menu').onclick = () => { try { openMenu(); } catch (e) {} };
       $4('m4cheat').onclick = e => { e.stopPropagation(); accuse(); };
@@ -234,6 +230,7 @@ const UI4 = (() => {
     C.on = true; C.mode = mode; C.me = me || 0; C.sel = new Set(); C.pick = null; C.lastEv = 0; C.lastHype = 0; C.seen = new Set(); C.tok++;
     C.log = []; C.say = {}; C.cheat = null; C.cheatTurn = -1; C.offerLater = false; C.overShown = null;
     $4('m4').hidden = false;
+    $4('m4').dataset.theme = (C.faces || []).some(f => f && f.id === 'sharper') ? 'casino' : 'kitchen';
     document.documentElement.classList.add('m4on');
     try { closeSheets(); } catch (e) {}
   }
@@ -492,10 +489,12 @@ const UI4 = (() => {
       return `<div class="m4opp ${who ? 'who' : ''} ${V.out.includes(s) ? 'out' : ''}" data-seat="${s}"><div class="hd">${ava(s)}<span class="nm">${esc(V.names[s])}${off ? ' 📵' : ''}</span>${dots(V.wins[s], V.to)}</div>
         <div class="row"><span class="backs">${backs}</span><span class="cnt">${n} ${plural(n)}</span></div><div class="row">${badge(s) || '<span></span>'}${who && V.phase.kind !== 'over' ? '<span class="cnt">думает…</span>' : pips(s)}</div>${sy}</div>`;
     }).join('');
+    if (Object.keys(C.emo).length) applyEmo();
   }
   function render() {
     const V = C.V;
     if (!C.on || !V) return;
+    const snap = snap4();
     const S = C.S, me = C.me, myTurn = V.phase.who === me && !C.pending, up = canUp();
     $4('m4title').textContent = (C.mode === 'bots' ? 'КОМПАНИЯ' : 'СТОЛ ' + (NET4.code() || '').toUpperCase()) + ` · ${FMT[V.to] || ''} · партия ${V.games + (V.over != null ? 0 : 1)}`;
     renderOpps();
@@ -521,7 +520,7 @@ const UI4 = (() => {
       const k = V.ev.kind;
       if (k === 'atk') AU.play('place'); else if (k === 'def') { AU.play('place'); AU.play('cover'); } else if (k === 'take') AU.play('take');
       else if (k === 'bito') AU.play('bito'); else if (k === 'gold') AU.play('transfer');
-      voiceFor(V);
+      voiceFor(V); emoFor(V);
     }
     if (V.hype && V.hype.id !== C.lastHype) { C.lastHype = V.hype.id; showHype4(V.hype); }
     $4('m4log').innerHTML = `<div class="sc">${[...Array(V.N).keys()].map(s => `${s === me ? 'Ты' : esc(V.names[s])} ${V.wins[s]}`).join(' · ')} · ${FMT[V.to]}</div>` + C.log.slice(-7).map(t => `<div>${esc(t)}</div>`).join('');
@@ -554,9 +553,8 @@ const UI4 = (() => {
     $4('m4me').innerHTML = `<span>Ты ${dots(V.wins[me], V.to)} · штраф ${V.pens[me]}</span><span class="badges">${chg}${badge(me)}<span>на руке ${V.hand.length}</span></span>`;
     /* рука */
     const hand = sortHand(S.hand);
-    const n = hand.length, ov = n > 12 ? -.68 : n > 9 ? -.58 : n > 6 ? -.45 : -.2;
-    $4('m4hand').style.setProperty('--ov', ov);
-    $4('m4hand').innerHTML = withT(() => hand.map(c => `<div class="m4slot ${C.sel.has(c.n) ? 'sel' : ''}">${cardHTML(c)}</div>`).join(''));
+    $4('m4hand').innerHTML = withT(() => hand.map((c, i) => `<div class="slot ${C.sel.has(c.n) ? 'sel' : ''}" data-s="${c.action ? 'a' : c.joker ? 'j' : c.s}" style="--i:${i}">${cardHTML(c)}</div>`).join(''));
+    layoutHand();
     const B = (cls, a, label, en = true) => `<button class="btn ${cls}" type="button" data-a4="${a}" ${en ? '' : 'disabled'}>${label}</button>`;
     let main = B('ghost', 'none', 'Ждём…', false), alt = B('ghost', 'none', '—', false);
     if (myTurn && V.over == null) {
@@ -570,9 +568,83 @@ const UI4 = (() => {
     $4('m4alt').innerHTML = alt; $4('m4main').innerHTML = main;
     $4('m4pick').disabled = (!myTurn && !up) || V.over != null;
     $4('m4pick').textContent = C.pick && C.pick.i >= 0 && C.pick.list[C.pick.i] && C.pick.list[C.pick.i].e.cards.every(c => C.sel.has(c.n)) ? `⟳ ${C.pick.i + 1}/${C.pick.list.length}` : '⟳ Подбор';
-    $4('m4sort').textContent = C.sort === 'r' ? 'Ранг' : 'Масть';
+    $4('m4sort').textContent = C.sort === 'r' ? 'Ранги' : 'Масти';
     renderOffer();
     renderOver();
+    fly4(snap);
+  }
+  /* ---------- веер руки, полёт карт, эмоции портретов ---------- */
+  function layoutHand() {
+    const h = $4('m4hand');
+    if (!h || h.hidden || !C.on || typeof TABLE === 'undefined') return;
+    try { TABLE.fan(h, { spread: 0.92, ang: 4, arc: 1.6, dir: 1, grp: C.sort === 's' }); } catch (e) {}
+  }
+  const motionOff = () => { try { return (typeof reduced !== 'undefined' && reduced) || (typeof animK === 'function' && !animK()); } catch (e) { return false; } };
+  function snap4() {
+    const m = {};
+    if (!C.on) return m;
+    document.querySelectorAll('#m4 .card[data-id]').forEach(el => {
+      if (el.closest('.m4deck,.m4opp')) return;
+      const r = el.getBoundingClientRect();
+      m[el.dataset.id] = { x: r.left + r.width / 2, y: r.top + r.height / 2, down: el.classList.contains('down') };
+    });
+    return m;
+  }
+  const suitOf4 = el => { const f = el.querySelector('.front'); const m = f && /\bs(\d)\b/.exec(f.className); return el.classList.contains('joker') ? 4 : (m ? +m[1] : 0); };
+  function fly4(snap) {
+    if (!C.on || motionOff() || typeof TABLE === 'undefined' || !TABLE.arcFly || $4('m4').hidden) return;
+    const V = C.V, k = (typeof animK === 'function' ? animK() : 1) || 1;
+    const dk = document.querySelector('#m4 .m4deck'), dr = dk && dk.getBoundingClientRect();
+    const actor = V && V.ev && V.ev.actor != null ? V.ev.actor : null;
+    const seat = actor != null && actor !== C.me ? document.querySelector(`#m4 .m4opp[data-seat="${actor}"]`) : null;
+    const sr = seat && seat.getBoundingClientRect();
+    let n = 0;
+    document.querySelectorAll('#m4 .card[data-id]').forEach(el => {
+      if (el.closest('.m4deck,.m4opp') || n > 14) return;
+      const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const o = snap[el.dataset.id], onTable = !!el.closest('.m4bats'), down = el.classList.contains('down');
+      let dx, dy, from = false;
+      if (o) { dx = o.x - cx; dy = o.y - cy; from = o.down; }
+      else if (onTable && sr) { dx = sr.left + sr.width / 2 - cx; dy = sr.top + sr.height / 2 - cy; from = true; }
+      else if (!onTable && dr) { dx = dr.left + dr.width / 2 - cx; dy = dr.top + dr.height / 2 - cy; from = true; }
+      else return;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 8 && from === down) return;
+      n++;
+      if (!onTable && o && dist < 90) {
+        el.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: 300 * k, easing: 'cubic-bezier(.2,.9,.25,1.08)' });
+        return;
+      }
+      TABLE.arcFly(el, { dx, dy, fromDown: from, toDown: down, dur: 460 * k, delay: !o && !onTable ? Math.min(n, 8) * 50 : 0, land: onTable, rect: r, noShadow: !onTable });
+      if (onTable) setTimeout(() => { try { VFX.land(cx, cy + r.height * 0.3, suitOf4(el), 1, r.width); } catch (e) {} }, Math.round(460 * 0.84 * k));
+    });
+  }
+  /* эмоция портрета у места: переживает перерисовку мест */
+  function seatEmote(s, e, ms) {
+    if (s == null || s === C.me) return;
+    C.emo[s] = { e, until: Date.now() + (ms || 1500) };
+    applyEmo();
+  }
+  function applyEmo() {
+    if (typeof PORTRAITS === 'undefined' || !PORTRAITS.emote) return;
+    setTimeout(() => {
+      const now = Date.now();
+      Object.keys(C.emo).forEach(s => {
+        const o = C.emo[s];
+        if (o.until <= now) { delete C.emo[s]; return; }
+        const el = document.querySelector(`#m4 .m4opp[data-seat="${s}"] svg.pt`);
+        if (el) PORTRAITS.emote(el, o.e, o.until - now);
+      });
+    }, 0);
+  }
+  function emoFor(V) {
+    const e = V.ev;
+    if (!e) return;
+    if (e.what === 'take') seatEmote(e.actor, 'angry', 1800);
+    else if (e.what === 'cover' || e.what === 'transfer') seatEmote(e.actor, 'smug', 1400);
+    else if (e.what === 'mognul') { seatEmote(e.actor, 'smug', 1900); seatEmote(e.target, 'shock', 1700); }
+    else if (e.what === 'charge') seatEmote(e.actor, 'think', 1200);
+    else if (e.what === 'over') { if (V.over !== 'draw' && V.over != null) seatEmote(V.over, 'angry', 3000); if (V.winner != null) seatEmote(V.winner, 'smug', 3000); }
   }
   /* хайп-фраза, если это про тебя */
   function showHype4(h) {
@@ -585,6 +657,7 @@ const UI4 = (() => {
     const el = $4('m4hype');
     el.textContent = t; el.className = 'm4hype' + (mine ? '' : ' bad');
     void el.offsetWidth; el.classList.add('on');
+    if (h.key === 'mognul') { try { TABLE.slowmo(mine); } catch (e) {} }
     try { if (mine) VFX.burstFelt(9); } catch (e) {}
     try { buzz(mine ? 'big' : 'bad'); } catch (e) {}
     try { AU.play(mine ? 'hype' : 'hypeBad'); } catch (e) {}
@@ -612,7 +685,7 @@ const UI4 = (() => {
       if ((won || (V.matchDone && V.matchWinner === me))) try { VFX.confetti(); } catch (e) {}
     }
     const order = [...Array(V.N).keys()].sort((a, b) => V.wins[b] - V.wins[a] || V.pens[a] - V.pens[b]);
-    const rows = order.map(s => `<tr class="${s === V.over ? 'loser' : s === V.winner ? 'win' : ''}"><td>${s === me ? 'Ты' : esc(V.names[s])}${s === V.over ? ' — дурак' : s === V.winner ? ' — вышел первым' : ''}</td><td class="w">${dots(V.wins[s], V.to)}</td><td class="p">штраф ${V.pens[s]}</td></tr>`).join('');
+    const rows = order.map(s => `<tr class="${s === V.over ? 'loser' : s === V.winner ? 'win' : ''}"><td><span class="who">${ava(s)}<span>${s === me ? 'Ты' : esc(V.names[s])}${s === V.over ? ' — дурак' : s === V.winner ? ' — вышел первым' : ''}</span></span></td><td class="w">${dots(V.wins[s], V.to)}</td><td class="p">штраф ${V.pens[s]}</td></tr>`).join('');
     const host = C.mode !== 'guest';
     let h, sub, deci = '';
     if (V.matchDone) {
@@ -629,7 +702,7 @@ const UI4 = (() => {
     }
     el.innerHTML = `<div class="m4over"><div class="box"><h2 class="${V.matchDone ? 'big' : ''}">${h}</h2>
       <p>${sub}</p><table>${rows}</table>${deci ? `<div class="deci">${deci}</div>` : ''}<p class="small" style="color:var(--muted);font-size:12px">Матч: ${FMT[V.to]} · ${V.set === 'full' ? 'полные правила' : 'классика'}</p>
-      <div class="btns">${host ? `<button class="btn blue" type="button" data-a4="new">${V.matchDone ? 'Новый матч' : deci === 'РЕШАЮЩАЯ!' ? 'Решающая партия' : 'Следующая партия'}</button>` : '<span style="color:var(--muted)">Ждём хозяина стола…</span>'}<button class="btn grey" type="button" data-a4="exit">Выйти</button></div></div></div>`;
+      <div class="btns">${host ? `<button class="btn blue" type="button" data-a4="new">${V.matchDone ? 'Реванш' : deci === 'РЕШАЮЩАЯ!' ? 'Решающая партия' : 'Следующая партия'}</button>` : '<span style="color:var(--muted)">Ждём хозяина стола…</span>'}<button class="btn grey" type="button" data-a4="exit">${V.matchDone ? 'Меню' : 'Выйти'}</button></div></div></div>`;
   }
 
   /* ---------- окно выбора ---------- */

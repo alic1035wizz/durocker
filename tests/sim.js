@@ -69,8 +69,10 @@ vm.runInContext(src + harness, ctx, { filename: 'durocker-bundle.js' });
     console.log(`${o.x} vs ${o.y}: ${JSON.stringify(o.r)}  победы первого ${pct.toFixed(1)}%`);
   }
   const lim = (key, lo, hi, name) => { const v = rate[key]; if (v == null) return; if (v < lo || v > hi) errs.push(`${name}: ${v.toFixed(1)}% вне ${lo}–${hi}%`); };
-  lim('valera>student', 55, 90, 'Валера/Студент');
-  lim('sharper>valera', 55, 100, 'Шулер/Валера');
+  /* цели волны 7 (по партиям; тест не моделирует ловлю подлога): Валера/Студент 70–75, Шулер/Валера около 60, Шулер/Студент около 70 */
+  lim('valera>student', 62, 82, 'Валера/Студент');
+  lim('sharper>valera', 50, 72, 'Шулер/Валера');
+  lim('sharper>student', 60, 85, 'Шулер/Студент');
   for (const id in times) {
     const a = times[id].slice().sort((p, q) => p - q), mx = a[a.length - 1];
     console.log(`процессорное время решения ${id}: n=${a.length} среднее ${(a.reduce((p, q) => p + q, 0) / a.length).toFixed(2)} мс, p95 ${a[Math.floor(a.length * .95)]} мс, макс ${mx} мс`);

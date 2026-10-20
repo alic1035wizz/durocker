@@ -1,0 +1,82 @@
+/* ДурКер — сюжет и знакомства (волна 7). Карточка соперника, сюжетные экраны, окно «Знакомства», реплика на экране итога.
+   Окна — в стиле ds.css (.win/.btn/.chip/.tile). */
+
+/* ============ слой-окно по центру ============ */
+.sheet.sov{z-index:66;align-items:center;padding:12px;background:rgba(2,10,9,.78);backdrop-filter:blur(3px);animation:sovfade .22s ease both}
+.sheet.sov .in.win.sov-in{
+  align-items:center;text-align:center;gap:var(--s2);width:min(100%,440px);max-width:440px;max-height:min(96%,820px);
+  border:var(--border-gold);border-radius:var(--r-lg);padding:var(--s4) var(--s4) var(--s4);
+  background:radial-gradient(120% 70% at 50% 0%,#17463c,#0b2420 70%);box-shadow:0 18px 60px rgba(0,0,0,.6);
+  animation:sovpop .28s cubic-bezier(.2,1.2,.3,1) both}
+.sheet.sov .in.win.sov-in::before{display:none}
+@keyframes sovfade{from{opacity:0}to{opacity:1}}
+@keyframes sovpop{from{transform:translateY(14px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+
+.sov-tag{font-family:var(--f-pix);font-size:var(--t-micro);letter-spacing:.14em;color:var(--gold);opacity:.9}
+.sov-por{flex:none;width:132px;height:132px;border-radius:26px;overflow:hidden;border:3px solid #1a0f06;background:#244a40;
+  box-shadow:0 0 0 3px rgba(234,181,75,.45),0 8px 0 rgba(0,0,0,.4);margin:var(--s1) 0}
+.sov-por.big{width:150px;height:150px;align-self:center}
+.sov-por .pt{width:100%;height:100%;display:block}
+.sov-por.narr{display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,#2c5b50,#142f29)}
+.sov-ph{font-size:64px;line-height:1}
+.sov-name{font-family:var(--f-hard);font-size:16px;line-height:1.4;color:var(--gold);margin:0}
+.sov-sub{font-size:var(--t-small);color:var(--muted);font-style:italic}
+.sov-bio{font-size:var(--t-small);line-height:1.5;color:var(--text);max-width:36ch}
+.sov-quote{position:relative;min-height:4.4em;display:flex;align-items:center;justify-content:center;width:100%;
+  padding:var(--s3) var(--s4);border-radius:var(--r-md);background:rgba(0,0,0,.32);border:var(--border);font-size:16px;line-height:1.45;color:#fff6dc;font-weight:600}
+.sov-quote.narrq{font-weight:400;font-size:var(--t-body);color:var(--text);text-align:left;font-style:italic}
+.sov-q{overflow-wrap:anywhere}
+.sov-cur{display:inline-block;width:2px;height:1.1em;margin-left:2px;background:var(--gold);animation:sovcur .7s steps(2) infinite;vertical-align:-.15em}
+@keyframes sovcur{50%{opacity:0}}
+.sov-meta{display:flex;flex-direction:column;align-items:center;gap:var(--s1)}
+.sov-rel{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;justify-content:center}
+.sov-rel b{font-size:var(--t-small);color:var(--gold)}
+.sov-meta small{color:var(--muted);font-size:var(--t-micro)}
+.sov-chips{display:flex;flex-wrap:wrap;gap:var(--s1);justify-content:center}
+.sov-chips .chip{font-size:var(--t-micro);text-align:left}
+.sov-row{display:flex;width:100%;gap:var(--s2);margin-top:var(--s1)}
+.sov-row .btn{flex:1 1 auto}
+.sov-dots{display:flex;gap:6px}
+.sov-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18)}
+.sov-dots i.was{background:rgba(234,181,75,.45)}
+.sov-dots i.on{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+
+/* шкала отношения −5…+5 */
+.sovbar{display:inline-flex;gap:2px;align-items:center}
+.sovbar i{width:9px;height:12px;border-radius:2px;background:rgba(255,255,255,.12)}
+.sovbar i.mid{width:3px;height:18px;border-radius:2px;background:rgba(255,255,255,.4)}
+.sovbar i.pos{background:#7ee2a0}.sovbar i.neg{background:#ff6b5e}
+
+/* ============ окно «Знакомства» ============ */
+.sov-sum,.sov-rew{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.stlist{display:flex;flex-direction:column;gap:var(--s2)}
+.stp{display:flex;align-items:center;gap:var(--s3);width:100%;text-align:left;padding:var(--s2) var(--s3);border-radius:var(--r-md);
+  border:var(--border);background:var(--surface);box-shadow:var(--shadow-tile);color:var(--text)}
+.stp:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.stp-p{flex:none;width:52px;height:52px;border-radius:14px;overflow:hidden;border:2px solid #1a0f06;background:#244a40}
+.stp-p .pt{width:100%;height:100%;display:block}
+.stp-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stp-t b{font-size:var(--t-body)}
+.stp-t small{color:var(--muted);font-size:var(--t-micro)}
+.stp-r{display:flex;align-items:center;gap:var(--s2)}
+.stp-r em{font-style:normal;font-size:var(--t-micro);color:var(--gold)}
+.stp-r .sovbar i{width:6px;height:9px}.stp-r .sovbar i.mid{height:13px}
+
+/* ============ реплика соперника на экране итога ============ */
+.stline{width:100%;max-width:min(100%,420px);padding:var(--s2) var(--s3);border-radius:var(--r-md);background:rgba(0,0,0,.32);
+  border-left:4px solid var(--gold);text-align:left;font-size:var(--t-small);line-height:1.4;color:#fff6dc;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
+.stline b{color:var(--gold)}
+.stl-rel{flex:none;width:100%;font-size:var(--t-micro);font-weight:800;letter-spacing:.04em}
+.stl-rel.up{color:#7ee2a0}.stl-rel.down{color:#ff8a7e}
+
+@media (max-height:520px){
+  .sheet.sov .in.win.sov-in{max-height:98%;padding:var(--s2) var(--s3);gap:4px}
+  .sov-por{width:76px;height:76px;border-radius:16px}
+  .sov-quote{min-height:3em;font-size:14px;padding:var(--s2) var(--s3)}
+  .sov-bio,.sov-chips,.sov-sub,.sov-off,.sov-tag{display:none}
+  .sov-meta small{display:none}
+  .sov-row .btn.lg{min-height:44px;font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){.sheet.sov,.sheet.sov .in.win.sov-in{animation:none}.sov-cur{animation:none}}
+html[data-speed="off"] .sheet.sov,html[data-speed="off"] .sheet.sov .in.win.sov-in,html[data-speed="off"] .sov-cur{animation:none}
+@media (max-height:520px){.stline{font-size:12px;padding:4px 10px}}

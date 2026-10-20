@@ -371,7 +371,7 @@
       const L = $c('lobbyIn');
       if (L && $c('hostBtn') && !$c('chLobbyNote')) {
         const p = document.createElement('p'); p.className = 'small'; p.id = 'chLobbyNote';
-        p.textContent = '🪙 За онлайн-матч платят фишками (40 за победу в матче). Ставки пока только против ботов.';
+        p.textContent = '🪙 За онлайн-матч платят фишками (40 за победу в матче). Хозяин стола может предложить ставку — гость вправе отказаться.';
         L.appendChild(p);
       }
     } catch (e) {}
@@ -464,5 +464,13 @@
   /* ---------- запуск ---------- */
   ensureBar(); paint();
   setTimeout(() => { try { claimDaily(); paint(); } catch (e) {} }, 1600);
-  window.CHIPS = { get: () => chips, state: () => st, add: n => { addChips(n); saveMeta(); } };
+  window.CHIPS = {
+    get: () => chips, state: () => st, add: n => { addChips(n); saveMeta(); },
+    /* для онлайн-ставок (js/netbet.js): списать, вернуть, выплатить победителю (ставка + выигрыш с учётом займа) */
+    spend: n => { n = Math.round(n); if (!(n > 0) || chips < n) return false; addChips(-n); saveMeta(); return true; },
+    refund: n => { n = Math.round(n); if (n > 0) { addChips(n); saveMeta(); } },
+    payout: (stake, profit) => { addChips(Math.round(stake)); const r = profit > 0 ? income(profit) : { net: 0, paid: 0 }; saveMeta(); return r; },
+    calm: () => night() || st.lossRun >= 3,
+    loan: () => takeLoan(),
+  };
 })();

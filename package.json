@@ -4,10 +4,13 @@
   "private": true,
   "description": "ДурКер — карточная игра. Тесты и сборка.",
   "scripts": {
-    "test": "npm run test:bus && npm run test:sim && npm run test:ui",
+    "test": "npm run test:bus && npm run test:bets && npm run test:pwa && npm run test:story && npm run test:sim && npm run test:ui",
     "test:sim": "node tests/sim.js && node tests/multi.js",
     "test:ui": "playwright test",
-    "test:bus": "node tests/bus.js"
+    "test:bus": "node tests/bus.js",
+    "test:bets": "node tests/bets.js",
+    "test:story": "node tests/story.js",
+    "test:pwa": "node tests/pwa.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"

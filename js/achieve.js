@@ -81,17 +81,10 @@
   window.ACH_TITLES = () => ACHS.filter(a => a.title && prog().ach[a.id]).map(a => a.title);
 
   /* ---------- попап ---------- */
-  const q = []; let busy = false;
-  function pop(a) { q.push(a); if (!busy) next(); }
-  function next() {
-    const a = q.shift(); if (!a) { busy = false; return; }
-    busy = true;
-    const el = document.createElement('div');
-    el.className = 'achpop'; el.setAttribute('role', 'status');
-    el.innerHTML = `<small>🏆 ДОСТИЖЕНИЕ</small><b>${esc(a.name)}</b><p>${esc(a.desc)}</p>${a.reward ? `<em>🎁 ${esc(rewardName(a.reward))}</em>` : ''}${a.title ? `<em>🏷 Титул «${esc(a.title)}»</em>` : ''}`;
-    document.body.appendChild(el);
-    setTimeout(() => { el.remove(); next(); }, Math.max(1400, 3200 * (typeof animK === 'function' && animK() ? 1 : 0.5)));
-    el.onclick = () => el.remove();
+  /* компактная всплывашка в общей очереди toast: «🏆 Название · награда» */
+  function pop(a) {
+    const extra = a.title ? ` · титул «${a.title}»` : a.reward ? ' · награда' : '';
+    toast(`🏆 ${a.name}${extra}`, 2600, { ach: true });
   }
 
   /* ---------- проверка ---------- */
