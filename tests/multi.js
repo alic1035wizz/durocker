@@ -11,6 +11,7 @@ const sandbox = {
   matchMedia: () => ({ matches: true, addEventListener() {} }),
   localStorage: { getItem: k => (k in LS ? LS[k] : null), setItem: (k, v) => { LS[k] = String(v); } },
 };
+Object.assign(sandbox, require('./i18n-stub.js'));
 sandbox.window = sandbox;
 const ctx = vm.createContext(sandbox);
 const src = ['rules.js', 'multi/engine4.js', 'multi/bot4.js'].map(f => fs.readFileSync(path.join(ROOT, 'js', f), 'utf8')).join('\n').replace(/'use strict';/g, '');

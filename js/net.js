@@ -64,7 +64,7 @@ function checkVersion(v) {
   if (verWarned || v === VERSION) return;
   verWarned = true;
   const mineOld = v && v > VERSION;
-  toast(mineOld ? 'У тебя старая версия игры — обнови страницу' : 'У друга старая версия игры — пусть обновит страницу', 8000);
+  toast(mineOld ? t('У тебя старая версия игры — обнови страницу') : t('У друга старая версия игры — пусть обновит страницу'), 8000);
 }
 
 /* ---------- хозяин ---------- */
@@ -84,7 +84,7 @@ function hostTable(restore) {
       else if (topic === 'act') onAct(data);
       else if (topic === 'react') showReact(data && data.i);
       else if (topic === 'bet' || topic === 'dbl') netEvt(topic, data);
-      else if (topic === 'rematch') { toast(`${oppName()} хочет реванш`); if (G && G.over) { if (SERIES.done) newSeries(); newGame(); } }
+      else if (topic === 'rematch') { toast(t('{n} хочет реванш', { n: oppName() })); if (G && G.over) { if (SERIES.done) newSeries(); newGame(); } }
     },
     gone() { if (!NET) return; NET.connected = false; armTimer(); renderNet(); showOver(); armFlee(); },
     error(t) { lobbyStatus(t, true); },
@@ -114,7 +114,7 @@ function onAct(d) {
 /* ---------- гость ---------- */
 function joinTable(codeArg) {
   const code = String(codeArg || ($('codeIn') ? $('codeIn').value : '')).trim().toLowerCase();
-  if (!/^[a-z0-9]{4}$/.test(code)) return lobbyStatus('Код — 4 символа, как у хозяина стола.', true);
+  if (!/^[a-z0-9]{4}$/.test(code)) return lobbyStatus(t('Код — 4 символа, как у хозяина стола.'), true);
   if (!TR.available()) return lobbyStatus(TR.unavailableText, true);
   TOK++;
   NET = { role: 'guest', code, oppNick: '', lastFx: null, got: false, connected: false, series: null };
@@ -124,7 +124,7 @@ function joinTable(codeArg) {
     open() { if (NET) NET.connected = true; },
     msg(topic, data) {
       if (!NET) return;
-      if (topic === 'full') { lobbyStatus('За этим столом уже играют двое.', true); return; }
+      if (topic === 'full') { lobbyStatus(t('За этим столом уже играют двое.'), true); return; }
       if (topic === 'react') { showReact(data && data.i); return; }
       if (topic === 'bet' || topic === 'dbl') { netEvt(topic, data); return; }
       if (topic === 'st' && data && typeof data === 'object') {
@@ -138,7 +138,7 @@ function joinTable(codeArg) {
     gone() { if (!NET) return; NET.connected = false; renderNet(); showOver(); armFlee(); },
     error(t) { lobbyStatus(t, true); },
   });
-  setTimeout(() => { if (NET && NET.role === 'guest' && !NET.got) lobbyStatus('Стол не отвечает. Проверь код или попроси друга создать стол заново.', true); }, 10000);
+  setTimeout(() => { if (NET && NET.role === 'guest' && !NET.got) lobbyStatus(t('Стол не отвечает. Проверь код или попроси друга создать стол заново.'), true); }, 10000);
 }
 
 let applyChain = Promise.resolve();
@@ -236,8 +236,8 @@ if (typeof addEventListener === 'function') addEventListener('load', () => {
     try {
       if (NET && NET.fled && G && G.over === 'p') {
         const o = $('over'), h = o && o.querySelector('h2'), p = o && o.querySelector('p');
-        if (h) h.textContent = 'СОПЕРНИК СБЕЖАЛ — ПОБЕДА';
-        if (p) p.textContent = `${oppName()} пропал и не вернулся за 30 секунд. Матч твой.`;
+        if (h) h.textContent = t('СОПЕРНИК СБЕЖАЛ — ПОБЕДА');
+        if (p) p.textContent = t('{n} пропал и не вернулся за 30 секунд. Матч твой.', { n: oppName() });
       }
     } catch (e) {}
     return r;

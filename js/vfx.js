@@ -68,7 +68,7 @@ const VFX = (() => {
   /* карта-действие вылетает на весь экран */
   function actionZoom(c, mine) {
     const el = $('actzoom');
-    el.innerHTML = `<div class="zcard">${cardHTML(c)}</div><div class="zname">${esc(ACTS[c.action].name)} ${SU[c.s]}</div><div class="zwho">${mine ? 'Ты' : esc(oppName())}</div>`;
+    el.innerHTML = `<div class="zcard">${cardHTML(c)}</div><div class="zname">${esc(t(ACTS[c.action].name))} ${SU[c.s]}</div><div class="zwho">${mine ? t('Ты') : esc(oppName())}</div>`;
     el.hidden = false; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
     clearTimeout(actionZoom.t); actionZoom.t = setTimeout(() => { el.hidden = true; }, reduced ? 900 : 1500);
     const r = el.getBoundingClientRect();

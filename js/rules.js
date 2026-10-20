@@ -25,10 +25,10 @@ const DECK = 54;          // 52 карты + 2 джокера
 /* карты-действия не лежат в колоде: их получают за полный заряд.
    4 вида × 4 масти, как цветные карты в УНО; масть решает, когда карта срабатывает, козырная версия сильнее */
 const ACTS = {
-  shield:  { name: 'Щит', icon: 'ЩИТ', desc: s => `При защите: атака, в которой есть ${s}, уходит в бито без покрытия. Обычный щит держит атаку до 3 карт или из одной масти; козырный — любую.` },
-  reverse: { name: 'Разворот', icon: '↺', desc: s => `При защите: вся атака возвращается атакующему, если в ней есть ${s}. Козырный — любая атака. Вместо своего хода — передать ход.` },
-  plus:    { name: '+2', icon: '+2', desc: s => `Когда ходишь ты: соперник добирает 2 карты из колоды (козырная — 3). Колода пуста — соперник в этот ход не сможет переводить.` },
-  trump:   { name: 'Смена козыря', icon: '↻', desc: s => `В любой свой ход: козырем до конца партии становится ${s}.` },
+  shield:  { name: 'Щит', icon: 'ЩИТ', desc: s => t('При защите: атака, в которой есть {s}, уходит в бито без покрытия. Обычный щит держит атаку до 3 карт или из одной масти; козырный — любую.', { s }) },
+  reverse: { name: 'Разворот', icon: '↺', desc: s => t('При защите: вся атака возвращается атакующему, если в ней есть {s}. Козырный — любая атака. Вместо своего хода — передать ход.', { s }) },
+  plus:    { name: '+2', icon: '+2', desc: s => t('Когда ходишь ты: соперник добирает 2 карты из колоды (козырная — 3). Колода пуста — соперник в этот ход не сможет переводить.') },
+  trump:   { name: 'Смена козыря', icon: '↻', desc: s => t('В любой свой ход: козырем до конца партии становится {s}.', { s }) },
 };
 const ACT_KEYS = ['shield', 'reverse', 'plus', 'trump'];
 const JOKER_R = 15;
@@ -43,8 +43,10 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const mkCard = n => (n >= 1000 ? { n, r: 16, s: (n - 1000) % 4, id: 'c' + n, action: ACT_KEYS[Math.floor(((n - 1000) % 16) / 4)] }
   : n >= 52 ? { n, r: JOKER_R, s: 4, id: 'c' + n, joker: true } : { n, r: n % 13 + 2, s: Math.floor(n / 13), id: 'c' + n });
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const plural = n => (n === 1 ? 'карта' : n < 5 ? 'карты' : 'карт');
-const cardName = c => (c.action ? `«${ACTS[c.action].name}» ${SU[c.s]}` : c.joker ? 'джокер' : rn(c.r) + SU[c.s]);
+const plural = n => I18N.pl(n, ['карта', 'карты', 'карт'], ['card', 'cards']);
+/* название типа комбинации для показа (ключи сравнений остаются русскими) */
+const tnl = s => t(s).toLowerCase();
+const cardName = c => (c.action ? `«${t(ACTS[c.action].name)}» ${SU[c.s]}` : c.joker ? t('джокер') : rn(c.r) + SU[c.s]);
 
 /* G — партия; 'p' — ты (или хозяин стола), 'b' — соперник (бот или гость) */
 let G, TOK = 0, NET = null, fxId = 0;
@@ -267,15 +269,15 @@ function checkUpgrade(seat, cs) {
   const no = why => ({ ok: false, why });
   if (!cs.length || G.over || G.busy || G.attacker !== seat || G.phase.kind !== 'defend' || G.phase.who !== other(seat)) return no(null);
   if (!rule('upgrade')) return no(null);
-  if (G.upgraded) return no('Апгрейд — один раз за ход');
+  if (G.upgraded) return no(t('Апгрейд — один раз за ход'));
   if (cs.some(c => c.action)) return no(null);
   const b = openB();
   if (!b) return no(null);
   const e = ev([...b.a.cards, ...cs]);
-  if (!e || cmpE2(e, b.a) <= 0) return no('Так атака не станет старше');
-  if (atkCount() + cs.length > G.limit) return no('Стол полон');
-  if (atkCount() + cs.length > H(other(seat)).length) return no('У соперника не хватит карт');
-  return { ok: true, e, why: `Апгрейд: ${b.a.name.toLowerCase()} → ${e.name.toLowerCase()}` };
+  if (!e || cmpE2(e, b.a) <= 0) return no(t('Так атака не станет старше'));
+  if (atkCount() + cs.length > G.limit) return no(t('Стол полон'));
+  if (atkCount() + cs.length > H(other(seat)).length) return no(t('У соперника не хватит карт'));
+  return { ok: true, e, why: t('Апгрейд: {a} → {b}', { a: tnl(b.a.name), b: tnl(e.name) }) };
 }
 /* сравнение комбинаций разного размера: по типу, при равном — как обычно */
 function cmpE2(a, b) { return a.t !== b.t ? a.t - b.t : cmpE(a, b); }
@@ -287,30 +289,30 @@ function checkMove(seat, cs) {
   if (G.over || G.busy || G.phase.who !== seat || !cs.length) return { ok: false, e: null };
   const k = G.phase.kind, e = ev(cs);
   if (k === 'defend' && cs.length === 5 && openB().a.n === 5 && eachOn() && !(e && beats(e, openB().a)) && eachMatch(cs, openB().a.cards))
-    return { ok: true, e: mkEach(cs), why: 'Поштучно!' };
-  if (!e) return { ok: false, e, why: 'Не комбинация' };
+    return { ok: true, e: mkEach(cs), why: t('Поштучно!') };
+  if (!e) return { ok: false, e, why: t('Не комбинация') };
   if (k === 'defend') {
     const a = openB().a;
     if (e.n !== a.n && (a.n === 1 || e.n < a.n || !overOn() || (e.n > a.n + 1 && !wrule('overAny'))))
-      return { ok: false, e, why: a.n === 1 ? 'Одиночку кроют одной картой'
-        : overOn() && e.n > a.n + 1 ? `Перекрывают ровно на одну карту больше: ${a.n + 1} ${plural(a.n + 1)}, у тебя ${e.n}`
-        : `Кроют ${overOn() && e.n < a.n ? 'не меньше чем' : 'тем же числом:'} ${a.n} ${plural(a.n)}, у тебя ${e.n}` };
-    if (e.n > a.n) return beats(e, a) ? { ok: true, e, why: 'Перекрытие!' } : { ok: false, e, why: 'Для перекрытия нужна комбинация старшего типа' };
-    return beats(e, a) ? { ok: true, e, why: 'Бьёт!' } : { ok: false, e, why: 'Не бьёт' };
+      return { ok: false, e, why: a.n === 1 ? t('Одиночку кроют одной картой')
+        : overOn() && e.n > a.n + 1 ? t('Перекрывают ровно на одну карту больше: {n} {w}, у тебя {m}', { n: a.n + 1, w: plural(a.n + 1), m: e.n })
+        : t('Кроют {how} {n} {w}, у тебя {m}', { how: overOn() && e.n < a.n ? t('не меньше чем') : t('тем же числом:'), n: a.n, w: plural(a.n), m: e.n }) };
+    if (e.n > a.n) return beats(e, a) ? { ok: true, e, why: t('Перекрытие!') } : { ok: false, e, why: t('Для перекрытия нужна комбинация старшего типа') };
+    return beats(e, a) ? { ok: true, e, why: t('Бьёт!') } : { ok: false, e, why: t('Не бьёт') };
   }
-  if (k !== 'attack' && e.n === 1 && !wrule('singleThrow')) return { ok: false, e, why: 'Одиночкой не подкидывают — только комбинацией' };
+  if (k !== 'attack' && e.n === 1 && !wrule('singleThrow')) return { ok: false, e, why: t('Одиночкой не подкидывают — только комбинацией') };
   /* босс недели «только пары и крупнее»: одиночкой можно, только если ни одной комбинации не сыграть */
   if (k === 'attack' && e.n === 1 && wrule('noSingles')) {
     const room = Math.min(G.limit - atkCount(), H(other(seat)).length);
-    if (room >= 2 && combos(H(seat), [2, 3]).length) return { ok: false, e, why: 'На этой неделе одиночками не ходят — только пары и крупнее' };
+    if (room >= 2 && combos(H(seat), [2, 3]).length) return { ok: false, e, why: t('На этой неделе одиночками не ходят — только пары и крупнее') };
   }
   if (k !== 'attack' && !e.cards.some(c => tableRanks().has(c.r)) && !tableHasType(e))
-    return { ok: false, e, why: 'Нет на столе ни номинала, ни такой комбинации' };
+    return { ok: false, e, why: t('Нет на столе ни номинала, ни такой комбинации') };
   const room = G.limit - atkCount();
-  if (e.n > room) return { ok: false, e, why: room ? `Влезет ещё ${room} ${plural(room)}` : 'Стол полон' };
+  if (e.n > room) return { ok: false, e, why: room ? t('Влезет ещё {n} {w}', { n: room, w: plural(room) }) : t('Стол полон') };
   const oh = H(other(seat)).length;
-  if (k !== 'addtake' && e.n > oh) return { ok: false, e, why: `У соперника ${oh} ${plural(oh)}` };
-  return { ok: true, e, why: k === 'attack' ? 'Можно ходить' : 'Можно подкинуть' };
+  if (k !== 'addtake' && e.n > oh) return { ok: false, e, why: t('У соперника {n} {w}', { n: oh, w: plural(oh) }) };
+  return { ok: true, e, why: k === 'attack' ? t('Можно ходить') : t('Можно подкинуть') };
 }
 /* можно ли перевести этими картами */
 function checkTransfer(seat, cs) {
@@ -319,8 +321,8 @@ function checkTransfer(seat, cs) {
   const e = ev(cs), a = G.table[0].a;
   if (!sameRank(e, a)) return { ok: false };
   const next = H(other(seat)).length;
-  if (atkCount() + e.n > Math.min(HAND, next)) return { ok: false, e, why: 'У соперника не хватит карт на перевод' };
-  return { ok: true, e, why: 'Можно перевести!' };
+  if (atkCount() + e.n > Math.min(HAND, next)) return { ok: false, e, why: t('У соперника не хватит карт на перевод') };
+  return { ok: true, e, why: t('Можно перевести!') };
 }
 
 /* можно ли сейчас сыграть карту-действие */
@@ -332,29 +334,29 @@ function checkAction(seat, c) {
   const k = G.phase.kind, opp = other(seat), trumpy = c.s === G.T;
   const hasSuit = e => trumpy || e.cards.some(x => x.s === c.s);
   if (c.action === 'shield') {
-    if (k === 'attack') return ok('Пас: щит уйдёт в бито, ход перейдёт сопернику');
-    if (k !== 'defend') return no('Щит играют при защите');
-    if (trumpy) return ok('Козырный щит: атака уйдёт в бито без покрытия');
+    if (k === 'attack') return ok(t('Пас: щит уйдёт в бито, ход перейдёт сопернику'));
+    if (k !== 'defend') return no(t('Щит играют при защите'));
+    if (trumpy) return ok(t('Козырный щит: атака уйдёт в бито без покрытия'));
     const sa = openB().a;
-    if (!hasSuit(sa)) return no(`В атаке нет ${SU[c.s]} — щит не подходит`);
-    return shieldSize(sa) ? ok('Атака уйдёт в бито без покрытия') : no('Обычный щит держит атаку до 3 карт или одной масти');
+    if (!hasSuit(sa)) return no(t('В атаке нет {s} — щит не подходит', { s: SU[c.s] }));
+    return shieldSize(sa) ? ok(t('Атака уйдёт в бито без покрытия')) : no(t('Обычный щит держит атаку до 3 карт или одной масти'));
   }
   if (c.action === 'reverse') {
-    if (k === 'attack') return ok('Пас: ход перейдёт сопернику');
-    if (k !== 'defend') return no('Разворот играют при защите или вместо хода');
-    if (!noneDefended()) return no('Разворот — только пока ничего не покрыто');
-    if (!G.table.some(b => hasSuit(b.a))) return no(`В атаке нет ${SU[c.s]} — разворот не подходит`);
-    if (atkCount() > Math.min(HAND, H(opp).length)) return no('У соперника не хватит карт');
-    return ok('Вся атака вернётся атакующему');
+    if (k === 'attack') return ok(t('Пас: ход перейдёт сопернику'));
+    if (k !== 'defend') return no(t('Разворот играют при защите или вместо хода'));
+    if (!noneDefended()) return no(t('Разворот — только пока ничего не покрыто'));
+    if (!G.table.some(b => hasSuit(b.a))) return no(t('В атаке нет {s} — разворот не подходит', { s: SU[c.s] }));
+    if (atkCount() > Math.min(HAND, H(opp).length)) return no(t('У соперника не хватит карт'));
+    return ok(t('Вся атака вернётся атакующему'));
   }
   if (c.action === 'plus') {
-    if (k === 'defend') return no('+2 играют, когда ходишь ты');
+    if (k === 'defend') return no(t('+2 играют, когда ходишь ты'));
     const n = trumpy ? 3 : 2;
-    return ok(G.deck.length ? `Соперник доберёт ${n} ${plural(n)}` : 'Колода пуста: соперник не сможет переводить в этот ход');
+    return ok(G.deck.length ? t('Соперник доберёт {n} {w}', { n, w: plural(n) }) : t('Колода пуста: соперник не сможет переводить в этот ход'));
   }
   if (c.action === 'trump') {
-    if (c.s !== G.T) return ok(`Козырем станет ${SU[c.s]}`);
-    return k === 'attack' ? ok('Эта масть уже козырь: пас, ход перейдёт сопернику') : no('Эта масть уже козырь');
+    if (c.s !== G.T) return ok(t('Козырем станет {s}', { s: SU[c.s] }));
+    return k === 'attack' ? ok(t('Эта масть уже козырь: пас, ход перейдёт сопернику')) : no(t('Эта масть уже козырь'));
   }
   return { ok: false };
 }
@@ -399,15 +401,15 @@ function combos(hand, sizes) {
 function coverRule(a) {
   if (a.n === 1) {
     const c = a.cards[0];
-    if (c.joker) return 'Джокера бьёт только козырной туз.';
-    if (c.s === G.T) return `Козырную ${cardName(c)} бьёт только козырь старше.`;
-    return `${cardName(c)} бьют старшей картой ${SU[c.s]} или любым козырем.`;
+    if (c.joker) return t('Джокера бьёт только козырной туз.');
+    if (c.s === G.T) return t('Козырную {c} бьёт только козырь старше.', { c: cardName(c) });
+    return t('{c} бьют старшей картой {s} или любым козырем.', { c: cardName(c), s: SU[c.s] });
   }
-  const higher = TYPES.map((t, i) => ({ ...t, i })).filter(t => t.n === a.n && t.i > a.t).map(t => t.name.toLowerCase());
-  let s = `${a.n} ${plural(a.n)}: ${a.name.toLowerCase()} старше`;
-  if (a.tr < a.n) s += ' или с козырем';
-  if (higher.length) s += `, либо ${higher.join(', ')}`;
-  if (a.n === 5 && eachOn()) s += '. Или побей поштучно: каждую карту — своей, старшей той же масти или козырем';
-  if (overOn() && a.n >= 2 && a.n < 5) s += wrule('overAny') ? '. Или перекрой комбинацией старшего типа из большего числа карт' : `. Или перекрой комбинацией старшего типа из ${a.n + 1} ${plural(a.n + 1)}`;
+  const higher = TYPES.map((t, i) => ({ ...t, i })).filter(t => t.n === a.n && t.i > a.t).map(x => tnl(x.name));
+  let s = t('{n} {w}: {a} старше', { n: a.n, w: plural(a.n), a: tnl(a.name) });
+  if (a.tr < a.n) s += t(' или с козырем');
+  if (higher.length) s += t(', либо {list}', { list: higher.join(', ') });
+  if (a.n === 5 && eachOn()) s += t('. Или побей поштучно: каждую карту — своей, старшей той же масти или козырем');
+  if (overOn() && a.n >= 2 && a.n < 5) s += wrule('overAny') ? t('. Или перекрой комбинацией старшего типа из большего числа карт') : t('. Или перекрой комбинацией старшего типа из {n} {w}', { n: a.n + 1, w: plural(a.n + 1) });
   return s + '.';
 }

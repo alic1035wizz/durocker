@@ -50,7 +50,7 @@
   let lastBack = 0;
   const visible = id => { const e = document.getElementById(id); return !!(e && !e.hidden); };
   function onBack() {
-    const t = (typeof toast === 'function') ? toast : () => {};
+    const say = (typeof toast === 'function') ? toast : () => {};
     /* вложенные окна (правила, «Знакомства», профиль...) → в меню/лобби */
     if (visible('page') || visible('bots') || visible('lobby')) {
       ['page', 'bots', 'lobby'].forEach(id => { const e = document.getElementById(id); if (e) e.hidden = true; });
@@ -62,7 +62,7 @@
       const now = Date.now();
       if (now - lastBack < 1800) { const a = plug('App'); if (a && a.exitApp) a.exitApp(); return; }
       lastBack = now;
-      t('Нажми «Назад» ещё раз, чтобы выйти', 1600);
+      say(t('Нажми «Назад» ещё раз, чтобы выйти'), 1600);
       return;
     }
     /* идёт партия: открываем меню, как по кнопке ☰ */
@@ -75,10 +75,10 @@
     const orig = shareInvite;
     window.shareInvite = function (code, btn) {
       const link = inviteLink(code);
-      const text = `Го в ДурКер! Стол ${String(code).toUpperCase()}. Приложение: ${PLAY_LINK}`;
-      if (navigator.share) { navigator.share({ title: 'ДурКер', text, url: link }).catch(() => {}); return; }
+      const text = t('Го в ДурКер! Стол {c}. Приложение: {l}', { c: String(code).toUpperCase(), l: PLAY_LINK });
+      if (navigator.share) { navigator.share({ title: t('ДурКер'), text, url: link }).catch(() => {}); return; }
       const sh = plug('Share');
-      if (sh && sh.share) { sh.share({ title: 'ДурКер', text, url: link, dialogTitle: 'Позвать друга' }).catch(() => {}); return; }
+      if (sh && sh.share) { sh.share({ title: t('ДурКер'), text, url: link, dialogTitle: t('Позвать друга') }).catch(() => {}); return; }
       return orig(code, btn);
     };
   }

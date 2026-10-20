@@ -151,7 +151,7 @@
     st.mine = code; st.club = { nm: sc.nm, em: sc.em, co: sc.co, ct: sc.ct }; save();
     remember(sc);
     await publish();
-    say(`${sc.em} Ты в клубе «${sc.nm}»`, 3500);
+    say(t('{e} Ты в клубе «{n}»', { e: sc.em, n: sc.nm }), 3500);
     return true;
   }
   async function leave() {
@@ -165,10 +165,10 @@
   };
   function shareClub(btn) {
     if (!st.mine) return;
-    const link = inviteLink(st.mine), text = `Го в мой клуб «${st.club.nm}» в ДурКере! Код ${st.mine}`;
+    const link = inviteLink(st.mine), text = t('Го в мой клуб «{n}» в ДурКере! Код {c}', { n: st.club.nm, c: st.mine });
     const tga = typeof TGA !== 'undefined' && TGA;
     if (tga && tga.openTelegramLink) { tga.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text)); return; }
-    if (navigator.share) { navigator.share({ title: 'ДурКер', text, url: link }).catch(() => {}); return; }
+    if (navigator.share) { navigator.share({ title: t('ДурКер'), text, url: link }).catch(() => {}); return; }
     if (typeof copyText === 'function') copyText(link, btn);
   }
 
@@ -202,7 +202,7 @@
     document.head.appendChild(s);
   }
   let openNow = false, tab = 'club', data = null, status = '', draft = { nm: '', em: EMOJI[0], co: 0 };
-  const left = ms => { const d = Math.floor(ms / DAY), h = Math.floor(ms % DAY / 3600e3); return d ? `${d} д ${h} ч` : `${h} ч`; };
+  const left = ms => { const d = Math.floor(ms / DAY), h = Math.floor(ms % DAY / 3600e3); return d ? t('{d} д {h} ч', { d, h }) : t('{h} ч', { h }); };
   const weekEnd = () => { try { return WEEKLY && WEEKLY.weekEnds ? WEEKLY.weekEnds(weekNow()) : 0; } catch (e) { return 0; } };
 
   async function refresh() {
@@ -237,17 +237,17 @@
   function renderIn() {
     const me = pid(), sc = data && data.get(st.mine) || scoreClub(st.mine, []);
     const color = COLORS[(st.club && st.club.co) || 0];
-    const mem = sc.members.map((m, i) => `<li class="${m.id === me ? 'me' : ''}${i >= 5 ? ' off' : ''}"><span class="pl">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span class="nm">${E(m.n)}${m.id === me ? ' (ты)' : ''}</span><span class="sc">${m.pts} оч.${i >= 5 ? ' · вне зачёта' : ''}</span></li>`).join('');
+    const mem = sc.members.map((m, i) => `<li class="${m.id === me ? 'me' : ''}${i >= 5 ? ' off' : ''}"><span class="pl">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span class="nm">${E(t(m.n))}${m.id === me ? ' ' + t('(ты)') : ''}</span><span class="sc">${t('{n} оч.', { n: m.pts })}${i >= 5 ? ' · ' + t('вне зачёта') : ''}</span></li>`).join('');
     const rank = data ? [...data.values()].sort((a, b) => b.score - a.score || b.n - a.n) : [];
-    const lines = rank.map((c, i) => `<div class="clrow${c.code === st.mine ? ' me' : ''}"><span style="text-align:center">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span style="font-size:22px">${E(c.em)}</span><span class="nm">${E(c.nm)}<small style="display:block;font-weight:500;opacity:.7">${c.n} уч. · ${c.code}</small></span><b>${c.score}</b></div>`).join('');
+    const lines = rank.map((c, i) => `<div class="clrow${c.code === st.mine ? ' me' : ''}"><span style="text-align:center">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span style="font-size:22px">${E(c.em)}</span><span class="nm">${E(c.nm)}<small style="display:block;font-weight:500;opacity:.7">${t('{n} уч.', { n: c.n })} · ${c.code}</small></span><b>${c.score}</b></div>`).join('');
     const body = tab === 'club'
       ? `<ul class="clmem">${mem}</ul><div class="small">В зачёте — 5 лучших за неделю. Очки: победы над ботами и друзьями (как в «Лидерах»).</div>`
       : `<div style="display:flex;flex-direction:column;gap:5px">${lines || '<p class="small">Клубов пока нет в списке.</p>'}</div><div class="small">Турнир недели — среди клубов, которые ты видишь: свой, открытые по коду и приглашённые. Общей таблицы всех клубов без сервера нет.</div>`;
-    return `<div class="clhero" style="--cc:${color}"><span class="em">${E(sc.em)}</span><div><b>${E(sc.nm)}</b><small>${sc.n} ${sc.n === 1 ? 'участник' : 'участников'} · на неделе ${sc.score} оч.${st.cups ? ` · 🏆 ${st.cups}` : ''}</small></div></div>
+    return `<div class="clhero" style="--cc:${color}"><span class="em">${E(sc.em)}</span><div><b>${E(sc.nm)}</b><small>${sc.n} ${t(sc.n === 1 ? 'участник' : 'участников')} · ${t('на неделе {s} оч.', { s: sc.score })}${st.cups ? ` · 🏆 ${st.cups}` : ''}</small></div></div>
       <div class="cbox" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div class="small">Код клуба</div><div class="clcode">${st.mine}</div></div>
         <div style="display:flex;gap:6px"><button type="button" class="btn green" id="clShare">Позвать</button><button type="button" class="btn grey" id="clCopy">Код</button></div></div>
       <div class="cltabs"><button type="button" data-cltab="club" class="${tab === 'club' ? 'on' : ''}">Участники</button><button type="button" data-cltab="week" class="${tab === 'week' ? 'on' : ''}">Клубы недели</button></div>
-      ${weekEnd() ? `<div class="small">Неделя закончится через ${left(weekEnd() - Date.now())}</div>` : ''}${body}
+      ${weekEnd() ? `<div class="small">${t('Неделя закончится через {x}', { x: left(weekEnd() - Date.now()) })}</div>` : ''}${body}
       <div style="display:flex;gap:6px"><button type="button" class="btn blue" id="clRef" style="flex:1">Обновить</button><button type="button" class="btn grey" id="clLeave" style="flex:1">Выйти из клуба</button></div>`;
   }
   function render() {
@@ -278,8 +278,8 @@
   function peekWin(sc) {
     const el = $c('pageIn'); if (!el) return;
     const me = pid();
-    el.innerHTML = `${head('Клуб 👥')}<div class="clhero" style="--cc:${COLORS[sc.co] || COLORS[0]}"><span class="em">${E(sc.em)}</span><div><b>${E(sc.nm)}</b><small>${sc.n} уч. · на неделе ${sc.score} оч. · код ${sc.code}</small></div></div>
-      <ul class="clmem">${sc.members.map((m, i) => `<li class="${m.id === me ? 'me' : ''}${i >= 5 ? ' off' : ''}"><span class="pl">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span class="nm">${E(m.n)}</span><span class="sc">${m.pts} оч.</span></li>`).join('')}</ul>
+    el.innerHTML = `${head('Клуб 👥')}<div class="clhero" style="--cc:${COLORS[sc.co] || COLORS[0]}"><span class="em">${E(sc.em)}</span><div><b>${E(sc.nm)}</b><small>${t('{n} уч. · на неделе {s} оч. · код {c}', { n: sc.n, s: sc.score, c: sc.code })}</small></div></div>
+      <ul class="clmem">${sc.members.map((m, i) => `<li class="${m.id === me ? 'me' : ''}${i >= 5 ? ' off' : ''}"><span class="pl">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span class="nm">${E(t(m.n))}</span><span class="sc">${t('{n} оч.', { n: m.pts })}</span></li>`).join('')}</ul>
       <div style="display:flex;gap:6px"><button type="button" class="btn blue" id="clGo" style="flex:1">Вступить</button><button type="button" class="btn grey" id="clBack" style="flex:1">Назад</button></div>`;
     $c('clGo').onclick = async () => { const ok = await join(sc.code); if (ok) { data = null; render(); refresh(); } };
     $c('clBack').onclick = () => render();
@@ -315,7 +315,7 @@
     const rows = got && got.get(code) || [];
     if (!rows.length) { say('Клуб из приглашения не нашли', 4000); return; }
     const sc = scoreClub(code, rows);
-    ask(`Тебя зовут в клуб ${sc.em} «${sc.nm}» (${sc.n} уч.). Вступить?`, 'Вступить', async () => { await join(code); open(); }, () => remember(sc));
+    ask(t('Тебя зовут в клуб {e} «{nm}» ({n} уч.). Вступить?', { e: sc.em, nm: sc.nm, n: sc.n }), 'Вступить', async () => { await join(code); open(); }, () => remember(sc));
   }
 
   /* ---------- встраивание ---------- */
@@ -324,7 +324,7 @@
     try {
       const g = document.querySelector('#menuIn .menugrid'); if (!g || g.querySelector('[data-go="club"]')) return;
       const b = document.createElement('button'); b.type = 'button'; b.className = 'mi'; b.dataset.go = 'club';
-      b.innerHTML = st.mine && st.club ? `<b>Клуб ${E(st.club.em)} ${E(st.club.nm)}</b><small>неделя: ${myWeekPts()} оч. · код ${st.mine}</small>` : '<b>Клуб 👥</b><small>команда друзей, общий рейтинг</small>';
+      b.innerHTML = st.mine && st.club ? `<b>${t('Клуб {e} {n}', { e: E(st.club.em), n: E(st.club.nm) })}</b><small>${t('неделя: {p} оч. · код {c}', { p: myWeekPts(), c: st.mine })}</small>` : '<b>Клуб 👥</b><small>команда друзей, общий рейтинг</small>';
       const ref = g.querySelector('[data-go="leaders"]');
       g.insertBefore(b, ref ? ref.nextSibling : null);
     } catch (e) {}

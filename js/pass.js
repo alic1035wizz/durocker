@@ -69,7 +69,7 @@ const PASS = (() => {
     t1: 'Дворовый', t6: 'Картёжник', t11: 'Гроза двора', t15: 'Шулер на минималках', t19: 'Король подкидного',
     t23: 'Могильщик', t24: 'Легенда района', t26: 'Барон', t27: 'Без пяти минут чемпион', t29: 'ДурКер месяца',
   };
-  const seasonBack = k => ({ id: 'ps-' + k, name: `Сезон: ${MONTHS_N[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}` });
+  const seasonBack = k => ({ id: 'ps-' + k, name: t('Сезон: {m} {y}', { m: t(MONTHS_N[+k.slice(5, 7) - 1]), y: k.slice(0, 4) }) });
 
   /* 30 уровней: [вид, id] */
   function levels(k) {
@@ -85,7 +85,8 @@ const PASS = (() => {
   }
   const KIND = { back: 'Рубашка', table: 'Стол', frame: 'Рамка аватара', mog: 'Фраза «могнул»', title: 'Титул', track: 'Музыка' };
   const ICON = { back: '🂠', table: '🟩', frame: '✨', mog: '💬', title: '🏷', track: '🎵' };
-  function rewardName(kind, id) {
+  function rewardName(kind, id) { return t(rewardNameRaw(kind, id)); }
+  function rewardNameRaw(kind, id) {
     if (kind === 'back') return ([...BACKS_P, seasonBack(state().k)].find(b => b.id === id) || { name: id }).name;
     if (kind === 'table') return (TABLES_P.find(t => t.id === id) || { name: id }).name;
     if (kind === 'frame') return (FRAMES.find(f => f.id === id) || { name: id }).name;
@@ -218,7 +219,7 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
 
   /* ---------- аватар ---------- */
   function initials(n) {
-    const w = String(n || 'Игрок').trim().split(/\s+/);
+    const w = String(n || t('Игрок')).trim().split(/\s+/);
     return (w.length > 1 ? w[0][0] + w[1][0] : w[0].slice(0, 2)).toUpperCase();
   }
   function avaHTML(sm) {
@@ -258,15 +259,15 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
   /* итог партии: одна всплывашка «+35 XP» */
   function flush() {
     if (!pend.xp) {
-      if (pend.cap) { pend.cap = false; try { toast('🎟 Дневной лимит опыта за ботов — 400 XP. Онлайн, дейли и босс недели — без лимита'); } catch (e) {} }
+      if (pend.cap) { pend.cap = false; try { toast(t('🎟 Дневной лимит опыта за ботов — 400 XP. Онлайн, дейли и босс недели — без лимита')); } catch (e) {} }
       return;
     }
-    const n = pend.xp, why = pend.why.slice(0, 4).join(' · ');
+    const n = pend.xp, why = pend.why.slice(0, 4).map(w => w.split(' + ').map(x => t(x)).join(' + ')).join(' · ');
     pend = { xp: 0, why: [] };
     const s = state(), lv = levelOf(s.xp);
     const el = document.createElement('div');
     el.className = 'pxp';
-    el.innerHTML = `🎟 +${n} XP<small>${e_(why)}${why ? ' · ' : ''}ур. ${lv.L}${lv.L < 30 ? ` · ${lv.into}/${lv.next}` : ' · максимум'}</small>`;
+    el.innerHTML = `🎟 +${n} XP<small>${e_(why)}${why ? ' · ' : ''}${t('ур. {n}', { n: lv.L })}${lv.L < 30 ? ` · ${lv.into}/${lv.next}` : ' · ' + t('максимум')}</small>`;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 2700);
   }
@@ -323,9 +324,9 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
     el.className = 'plvl';
     const name = rewardName(g.kind, g.id), canWear = g.kind !== 'track' || true;
     el.innerHTML = `<div class="box" role="dialog" aria-label="Новый уровень пропуска">
-      <h2>УРОВЕНЬ ${g.L}!</h2>
-      <div class="rw">${cellIcon(g.kind, g.id, true)}<div><small>${KIND[g.kind] || 'Награда'}</small><b>${e_(name)}</b>${g.kind === 'mog' ? `<small>«${e_(mogText(g.id))}»</small>` : ''}</div></div>
-      <div class="btns">${canWear ? '<button type="button" class="wear">Надеть</button>' : ''}<button type="button" class="ok">${queue.length ? 'Дальше' : 'Круто'}</button></div></div>`;
+      <h2>${t('УРОВЕНЬ {n}!', { n: g.L })}</h2>
+      <div class="rw">${cellIcon(g.kind, g.id, true)}<div><small>${t(KIND[g.kind] || 'Награда')}</small><b>${e_(name)}</b>${g.kind === 'mog' ? `<small>«${e_(mogText(g.id))}»</small>` : ''}</div></div>
+      <div class="btns">${canWear ? '<button type="button" class="wear">' + t('Надеть') + '</button>' : ''}<button type="button" class="ok">${queue.length ? t('Дальше') : t('Круто')}</button></div></div>`;
     document.body.appendChild(el);
     paintSeasonPrev(el);
     try { AU.play('win'); } catch (e) {}
@@ -350,14 +351,14 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
     saveProg();
     try { applyLooks(); } catch (e) {}
     seasonHue();
-    try { toast(`Надето: ${rewardName(kind, id)}`); } catch (e) {}
+    try { toast(t('Надето: {n}', { n: rewardName(kind, id) })); } catch (e) {}
   }
 
   /* ---------- лист пропуска ---------- */
   function left(ms) {
-    if (ms <= 0) return 'вот-вот';
+    if (ms <= 0) return t('вот-вот');
     const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
-    return d ? `${d} д ${h} ч` : h ? `${h} ч ${m} мин` : `${m} мин`;
+    return d ? t('{d} д {h} ч', { d, h }) : h ? t('{h} ч {m} мин', { h, m }) : t('{m} мин', { m });
   }
   let tick = null;
   function open() {
@@ -365,14 +366,14 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
     const s = state(), lv = levelOf(s.xp), list = levels(s.k), mName = MONTHS_N[+s.k.slice(5, 7) - 1];
     const cells = list.map(([kind, id], i) => {
       const L = i + 1, cls = L <= lv.L ? 'got' : L === lv.L + 1 ? 'cur' : 'lock';
-      return `<div class="pass-cell ${cls}${L === 30 ? ' top' : ''}"><span class="n">${L}</span>${cellIcon(kind, id)}<span class="nm">${e_(rewardName(kind, id))}</span><span class="kd">${KIND[kind]}</span></div>`;
+      return `<div class="pass-cell ${cls}${L === 30 ? ' top' : ''}"><span class="n">${L}</span>${cellIcon(kind, id)}<span class="nm">${e_(rewardName(kind, id))}</span><span class="kd">${t(KIND[kind])}</span></div>`;
     }).join('');
     const pct = lv.L >= 30 ? 100 : Math.round(100 * lv.into / lv.next);
-    sheet('page', `${head('Пропуск сезона 🎟')}
+    sheet('page', `${head(t('Пропуск сезона 🎟'))}
       <div class="pass-top"><div class="pass-lv"><b>${lv.L}</b><span>УРОВЕНЬ</span></div>
-        <div><b>Сезон: ${mName}</b>
+        <div><b>${t('Сезон: {m}', { m: t(mName) })}</b>
           <div class="pass-bar"><i style="width:${pct}%"></i></div>
-          <div class="pass-meta"><span>${lv.L >= 30 ? 'Все 30 уровней!' : `${lv.into} / ${lv.next} XP до ур. ${lv.L + 1}`}</span><span id="passLeft">до конца сезона: ${left(monthEnd(s.k) - Date.now())}</span></div></div></div>
+          <div class="pass-meta"><span>${lv.L >= 30 ? t('Все 30 уровней!') : t('{a} / {b} XP до ур. {n}', { a: lv.into, b: lv.next, n: lv.L + 1 })}</span><span id="passLeft">${t('до конца сезона: {x}', { x: left(monthEnd(s.k) - Date.now()) })}</span></div></div></div>
       <div class="pass-strip" id="passStrip">${cells}</div>
       <h3>Как получать опыт</h3>
       <div class="pass-how">
@@ -385,14 +386,14 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
         <span>Победить босса недели</span><b>+${XP.weekly}</b>
         <span>Онлайн и быстрая игра</span><b>+${XP.online}</b>
         <span>Сила соперника</span><b>Студент ×0.5 · Валера ×1 · Шулер ×1.5 · боссы ×2 · онлайн ×1.5</b>
-        <span>Лимит за ботов</span><b>${BOT_CAP} XP в день (сегодня осталось ${capLeft().left})</b>
+        <span>Лимит за ботов</span><b>${t('{cap} XP в день (сегодня осталось {n})', { cap: BOT_CAP, n: capLeft().left })}</b>
       </div>
-      <p class="pass-note">Пропуск бесплатный. В новом месяце уровень начинается с нуля, всё полученное остаётся навсегда — надевай в «Коллекции». На 30 уровне — анимированная рубашка этого сезона, в другом месяце её уже не получить.${s.hist ? ` Прошлый сезон: ${s.hist.lvl} ур.` : ''}</p>`);
+      <p class="pass-note">${t('Пропуск бесплатный. В новом месяце уровень начинается с нуля, всё полученное остаётся навсегда — надевай в «Коллекции». На 30 уровне — анимированная рубашка этого сезона, в другом месяце её уже не получить.')}${s.hist ? ' ' + t('Прошлый сезон: {n} ур.', { n: s.hist.lvl }) : ''}</p>`);
     paintSeasonPrev($('pageIn'));
     const strip = $('passStrip'), cur = strip && strip.querySelector('.cur, .got:last-of-type');
     if (cur && strip) strip.scrollLeft = Math.max(0, cur.offsetLeft - strip.clientWidth / 2 + cur.clientWidth / 2);
     clearInterval(tick);
-    tick = setInterval(() => { const el = $('passLeft'); if (!el || $('page').hidden) { clearInterval(tick); return; } el.textContent = 'до конца сезона: ' + left(monthEnd(state().k) - Date.now()); }, 30000);
+    tick = setInterval(() => { const el = $('passLeft'); if (!el || $('page').hidden) { clearInterval(tick); return; } el.textContent = t('до конца сезона: {x}', { x: left(monthEnd(state().k) - Date.now()) }); }, 30000);
   }
 
   /* ---------- коллекция: рамки, титулы, фразы ---------- */
@@ -400,15 +401,15 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
     const p = prog(), u = p.unlocked;
     const frames = [{ id: '', name: 'Без рамки' }, ...FRAMES].map(f => {
       const has = !f.id || (u.frame || []).includes(f.id);
-      return `<button type="button" class="${p.frame === f.id ? 'on' : ''}" data-pfr="${f.id}" ${has ? '' : 'disabled'}><span class="pava sm${f.id ? ' fr-' + f.id : ''}">${e_(initials(myNick()))}</span>${has ? f.name : '???'}</button>`;
+      return `<button type="button" class="${p.frame === f.id ? 'on' : ''}" data-pfr="${f.id}" ${has ? '' : 'disabled'}><span class="pava sm${f.id ? ' fr-' + f.id : ''}">${e_(initials(myNick()))}</span>${has ? t(f.name) : '???'}</button>`;
     }).join('');
     const titles = [['', 'Без титула'], ...Object.entries(TITLES)].map(([id, n]) => {
       const has = !id || (u.title || []).includes(id);
-      return `<button type="button" class="${p.title === id ? 'on' : ''}" data-pti="${id}" ${has ? '' : 'disabled'}>${has ? e_(n) : '???'}</button>`;
+      return `<button type="button" class="${p.title === id ? 'on' : ''}" data-pti="${id}" ${has ? '' : 'disabled'}>${has ? e_(t(n)) : '???'}</button>`;
     }).join('');
     const mogs = (typeof MOGNUL_SETS !== 'undefined' ? MOGNUL_SETS : []).map(m => {
       const has = (u.mog || []).includes(m.id);
-      return `<button type="button" class="${p.mog === m.id ? 'on' : ''}" data-pmg="${m.id}" ${has ? '' : 'disabled'}>${has ? e_(m.name) : '???'}${has ? `<span class="ph">«${e_(mogText(m.id))}»</span>` : ''}</button>`;
+      return `<button type="button" class="${p.mog === m.id ? 'on' : ''}" data-pmg="${m.id}" ${has ? '' : 'disabled'}>${has ? e_(t(m.name)) : '???'}${has ? `<span class="ph">«${e_(t(mogText(m.id)))}»</span>` : ''}</button>`;
     }).join('');
     return `<h3>Рамки аватара</h3><div class="pcoll">${frames}</div>
       <h3>Титул</h3><div class="pcoll">${titles}</div>
@@ -431,14 +432,14 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
   function badge() {
     const o = $('over');
     if (!o || o.hidden || o.querySelector('.pbadge')) return;
-    const t = myTitle();
-    o.insertAdjacentHTML('afterbegin', `<div class="pbadge">${avaHTML(false)}<div class="pn"><b>${e_(myNick())}</b>${t ? `<small>${e_(t)}</small>` : ''}</div></div>`);
+    const ttl = myTitle();
+    o.insertAdjacentHTML('afterbegin', `<div class="pbadge">${avaHTML(false)}<div class="pn"><b>${e_(myNick())}</b>${ttl ? `<small>${e_(t(ttl))}</small>` : ''}</div></div>`);
   }
   function decorateLeaders(root) {
     root.querySelectorAll('.lbrow.me .nm:not(.pdeco)').forEach(nm => {
       nm.classList.add('pdeco');
-      const t = myTitle();
-      nm.innerHTML = `${avaHTML(true)}<span>${nm.innerHTML}${t && !nm.querySelector('small') ? `<small>${e_(t)}</small>` : ''}</span>`;
+      const ttl = myTitle();
+      nm.innerHTML = `${avaHTML(true)}<span>${nm.innerHTML}${ttl && !nm.querySelector('small') ? `<small>${e_(t(ttl))}</small>` : ''}</span>`;
     });
   }
 
@@ -483,7 +484,7 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
           const s = state(), lv = levelOf(s.xp);
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'mi pass'; b.dataset.go = 'pass';
-          b.innerHTML = `<b>Пропуск 🎟 ур. ${lv.L}</b><small>${lv.L >= 30 ? 'Сезон закрыт на максимум!' : `${lv.into}/${lv.next} XP · след.: ${e_(rewardName(...levels(s.k)[lv.L]))}`}</small>`;
+          b.innerHTML = `<b>${t('Пропуск 🎟 ур. {n}', { n: lv.L })}</b><small>${lv.L >= 30 ? t('Сезон закрыт на максимум!') : t('{a}/{b} XP · след.: {r}', { a: lv.into, b: lv.next, r: e_(rewardName(...levels(s.k)[lv.L])) })}</small>`;
           const after = g.querySelector('[data-go="online"]');
           if (after && after.nextSibling) g.insertBefore(b, after.nextSibling); else g.appendChild(b);
         }
@@ -494,7 +495,7 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
     BUS.on('collection:open', () => {
       try {
         const pi = $('pageIn');
-        const ach = [...pi.querySelectorAll('h3')].find(h => /Достижения/.test(h.textContent));
+        const ach = [...pi.querySelectorAll('h3')].find(h => /Достижения/.test(h.textContent) || h.textContent.trim() === I18N.tr('Достижения'));
         const html = collExtra();
         if (ach) ach.insertAdjacentHTML('beforebegin', html); else pi.insertAdjacentHTML('beforeend', html);
         paintSeasonPrev(pi);
@@ -513,7 +514,7 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
       const box = document.querySelector('.m4over h2');
       if (box && !m4last) {
         m4last = true;
-        const won = /НЕ ДУРАК/.test(box.textContent);
+        const won = /НЕ ДУРАК/.test(box.textContent) || (I18N.lang === 'en' && box.textContent.indexOf(I18N.tr('НЕ ДУРАК')) >= 0);
         gameXP(won, false, null);
       } else if (!box) m4last = false;
     }).observe(document.body, { childList: true, subtree: true });

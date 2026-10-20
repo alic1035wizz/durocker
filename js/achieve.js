@@ -5,7 +5,7 @@
 
 (() => {
   [['a-wall', 'Каменная стена'], ['a-flush', 'Флеш-рояль'], ['a-detective', 'Детектив'], ['a-streak', 'Огонь серии'], ['a-veteran', 'Ветеран'], ['a-legend', 'Легенда']]
-    .forEach(([id, name]) => { if (!BACKS.some(b => b.id === id)) BACKS.push({ id, name }); });
+    .forEach(([id, name]) => { if (!BACKS.some(b => b.id === id)) BACKS.push({ id, name: t(name) }); });
 
   const T = () => STATS.st().tot, S = () => STATS.st();
   const modeN = k => (T().byMode[k] || { n: 0 }).n, modeW = k => (T().byMode[k] || { w: 0 }).w;
@@ -73,7 +73,7 @@
   const META = {};
   L.forEach(([id, name, desc, secret, reward, title, chk, progress]) => {
     if (have.has(id)) return;
-    const a = { id, name, desc, reward: reward || null, secret: !!secret, title: title || null, _chk: chk };
+    const a = { id, name: t(name), desc: t(desc), reward: reward || null, secret: !!secret, title: title ? t(title) : null, _chk: chk };
     if (progress) a.progress = progress;
     ACHS.push(a); META[id] = a;
   });
@@ -83,8 +83,8 @@
   /* ---------- попап ---------- */
   /* компактная всплывашка в общей очереди toast: «🏆 Название · награда» */
   function pop(a) {
-    const extra = a.title ? ` · титул «${a.title}»` : a.reward ? ' · награда' : '';
-    toast(`🏆 ${a.name}${extra}`, 2600, { ach: true });
+    const extra = a.title ? ' · ' + t('титул «{title}»', { title: t(a.title) }) : a.reward ? ' · ' + t('награда') : '';
+    toast(`🏆 ${t(a.name)}${extra}`, 2600, { ach: true });
   }
 
   /* ---------- проверка ---------- */

@@ -90,7 +90,7 @@ function grant(id) {
   const a = ACHS.find(x => x.id === id);
   if (a && a.reward) Object.entries(a.reward).forEach(([k, v]) => unlock(k, v));
   saveProg();
-  toast(`🏆 ${a.name}${a.reward ? ' — открыта награда' : ''}`);
+  toast(`🏆 ${t(a.name)}${a.reward ? t(' — открыта награда') : ''}`);
 }
 
 /* ---------- конец партии: статистика, достижения, карьера, ежедневная ---------- */
@@ -122,7 +122,7 @@ function onGameOver() {
     if (MODE.kind === 'career' && MODE.stage === p.career) {
       const d = CAREER[bot.district];
       p.career++;
-      if (bot.boss && d.reward) Object.entries(d.reward).forEach(([k, v]) => { if (unlock(k, v)) toast(`🎁 Район «${d.name}» пройден — новая награда`); });
+      if (bot.boss && d.reward) Object.entries(d.reward).forEach(([k, v]) => { if (unlock(k, v)) toast(t('🎁 Район «{n}» пройден — новая награда', { n: t(d.name) })); });
       if (p.career >= CAREER_OPS.length) { p.careerDone = true; grant('career'); }
     }
   }
@@ -139,7 +139,7 @@ function dailySeed(day) { let h = 2166136261; for (const ch of 'durocker' + day)
 function dailyCard(day) {
   const r = prog().daily[day];
   if (!r) return '';
-  return `ДурКер #${dailyNumber(day)} ${r.won ? '✅ не дурак' : '🃏 дурак'}\nмогнул ×${r.mognul} · ходов ${r.turns}${r.won ? '' : ` · осталось ${r.left}`}\nalic1035wizz.github.io/durocker`;
+  return `${t('ДурКер')} #${dailyNumber(day)} ${r.won ? t('✅ не дурак') : t('🃏 дурак')}\n${t('могнул ×{m} · ходов {n}', { m: r.mognul, n: r.turns })}${r.won ? '' : t(' · осталось {n}', { n: r.left })}\nalic1035wizz.github.io/durocker`;
 }
 
 /* ---------- всплывашка ---------- */
@@ -211,7 +211,7 @@ function settleAbandoned() {
   }
   if (f.kind === 'daily' && f.day) p.daily[f.day] = { won: false, mognul: 0, turns: 0, left: 8, penalty: 10, fled: true };
   saveProg();
-  setTimeout(() => toast('Выход посреди партии — засчитано поражение', 4500), 300);
+  setTimeout(() => toast(t('Выход посреди партии — засчитано поражение'), 4500), 300);
   return true;
 }
 function markLive() {
@@ -231,7 +231,7 @@ function markLive() {
         const p = prog();
         if (p.daily[MODE.day]) {
           MODE = { kind: 'free' };
-          setTimeout(() => toast('Ежедневная раздача — одна попытка в день. Это «Своя игра»', 4000), 300);
+          setTimeout(() => toast(t('Ежедневная раздача — одна попытка в день. Это «Своя игра»'), 4000), 300);
         } else {
           p.daily[MODE.day] = { won: false, mognul: 0, turns: 0, left: 8, penalty: 10, live: true };
           saveProg();

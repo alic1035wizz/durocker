@@ -52,11 +52,11 @@ const TR = (() => {
       if (other && !lost && now() - lastSeen > LOST) { lost = true; h.gone(); }
     }, 2000));
   }
-  const failText = 'Не удалось подключиться к серверу игры. Проверь интернет; если включён VPN — попробуй без него (или наоборот).';
+  const failText = () => t('Не удалось подключиться к серверу игры. Проверь интернет; если включён VPN — попробуй без него (или наоборот).');
 
   return {
     linkable: true,
-    unavailableText: 'Не загрузилась библиотека онлайна. Проверь интернет и обнови страницу.',
+    get unavailableText() { return t('Не загрузилась библиотека онлайна. Проверь интернет и обнови страницу.'); },
     available: () => typeof window.mqtt === 'object' || typeof window.mqtt === 'function',
     host(code, hh) {
       this.close(); h = hh; role = 'host'; base = ROOT + code + '/';
@@ -79,13 +79,13 @@ const TR = (() => {
         timers.push(setInterval(() => { if (other) pub('g', 'hb', null, other); }, BEAT));
         watch();
         h.ready();
-      }, () => h.error(failText));
+      }, () => h.error(failText()));
     },
     join(code, nk, hh) {
       this.close(); h = hh; role = 'guest'; base = ROOT + code + '/'; got = false;
       connect(() => {
         listen('g', m => {
-          if (m.t === 'full') { h.error('За этим столом уже играют двое.'); return; }
+          if (m.t === 'full') { h.error(t('За этим столом уже играют двое.')); return; }
           if (other && m.f !== other && now() - lastSeen < LOST) return;
           other = m.f; lastSeen = now();
           if (lost) lost = false;
@@ -98,7 +98,7 @@ const TR = (() => {
         timers.push(setInterval(() => { if (!got) hi(); }, 2000));
         timers.push(setInterval(() => { if (got) pub('h', 'ping', { nick: nk, v: VERSION }); }, BEAT));
         watch();
-      }, () => h.error(failText));
+      }, () => h.error(failText()));
     },
     send(topic, data) { pub(role === 'host' ? 'g' : 'h', topic, data, role === 'host' ? other : undefined); },
     close() {

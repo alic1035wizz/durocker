@@ -85,19 +85,19 @@ const STATS = (() => {
 
   function chart(ms) {
     const W = 300, H = 90, n = ms.length;
-    if (!n) return '<p class="small">Сыграй хотя бы один матч — здесь появится график.</p>';
+    if (!n) return '<p class="small">' + t('Сыграй хотя бы один матч — здесь появится график.') + '</p>';
     let y = 0; const pts = [[0, 0]];
     ms.forEach((m, i) => { y += m.r === 'W' ? 1 : -1; pts.push([i + 1, y]); });
     const ys = pts.map(p => p[1]), lo = Math.min(0, ...ys), hi = Math.max(1, ...ys), sx = W / Math.max(1, n), sy = (H - 16) / (hi - lo || 1);
     const P = p => `${(p[0] * sx).toFixed(1)},${(H - 8 - (p[1] - lo) * sy).toFixed(1)}`;
     const zero = (H - 8 - (0 - lo) * sy).toFixed(1);
     const dots = ms.map((m, i) => `<circle cx="${((i + 1) * sx).toFixed(1)}" cy="${P(pts[i + 1]).split(',')[1]}" r="3" fill="${m.r === 'W' ? '#2e9d5b' : '#d9362f'}"><title>${esc(m.opp)} ${m.score}</title></circle>`).join('');
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Победы минус поражения за последние ${n} матчей">
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('Победы минус поражения за последние {n} матчей', { n })}">
       <line x1="0" x2="${W}" y1="${zero}" y2="${zero}" stroke="rgba(255,255,255,.18)" stroke-dasharray="3 3"/>
       <polyline points="${pts.map(P).join(' ')}" fill="none" stroke="#e8b33c" stroke-width="2"/>${dots}</svg>
-      <p class="small">Линия — победы минус поражения за последние ${n} матчей (зелёная точка — выигран, красная — проигран).</p>`;
+      <p class="small">${t('Линия — победы минус поражения за последние {n} матчей (зелёная точка — выигран, красная — проигран).', { n })}</p>`;
   }
-  const bar = (name, o) => `<div class="bar"><span>${esc(name)}</span><u><i style="width:${wr(o)}%"></i></u><em>${wr(o)}% · ${o.n}</em></div>`;
+  const bar = (name, o) => `<div class="bar"><span>${esc(t(name))}</span><u><i style="width:${wr(o)}%"></i></u><em>${wr(o)}% · ${o.n}</em></div>`;
 
   function open() {
     const s = st(), T = s.tot;
@@ -108,15 +108,15 @@ const STATS = (() => {
     const ms = s.matches.slice(-30);
     const mw = s.matches.filter(m => m.r === 'W').length;
     const titles = typeof ACH_TITLES === 'function' ? ACH_TITLES() : [];
-    sheet('page', `${head('Профиль')}<div class="prof">
+    sheet('page', `${head(t('Профиль'))}<div class="prof">
       <div class="statrow"><div><b>${T.n}</b><span>партий</span></div><div><b>${wr(T)}%</b><span>побед</span></div><div><b>${s.streak.cur}</b><span>серия</span></div><div><b>${s.streak.best}</b><span>лучшая</span></div></div>
       <div class="statrow"><div><b>${s.matches.length ? Math.round(mw / s.matches.length * 100) + '%' : '—'}</b><span>матчей</span></div><div><b>${T.mog}</b><span>могнул</span></div><div><b>${T.caught}</b><span>шулеров</span></div><div><b>${T.five}</b><span>пятёрок отбито</span></div></div>
-      ${titles.length ? `<h3>Титулы за достижения</h3><div class="chips">${titles.map(t => `<span>🏷 ${esc(t)}</span>`).join('')}</div>` : ''}
+      ${titles.length ? `<h3>${t('Титулы за достижения')}</h3><div class="chips">${titles.map(ti => `<span>🏷 ${esc(t(ti))}</span>`).join('')}</div>` : ''}
       <h3>Последние матчи</h3>${chart(ms)}
       <h3>Против кого</h3><div class="bars">${opps.length ? opps.map(([, o]) => bar(o.name, o)).join('') : '<p class="small">Пока пусто.</p>'}</div>
       <h3>Режимы</h3><div class="bars">${modes.map(([k, o]) => bar(MODE_NAMES[k] || k, o)).join('') || '<p class="small">Пока пусто.</p>'}</div>
-      <h3>Любимые комбинации</h3><div class="chips">${favs.length ? favs.map(([t, n]) => `<span>${esc(TN[t] || '?')} × ${n}</span>`).join('') : '<span>ещё не играл</span>'}</div>
-      <h3>История</h3><div class="hist">${last.map(g => `<div><b>${g.res === 'w' ? '✅' : g.res === 'l' ? '🃏' : '🤝'}</b><span>${new Date(g.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span><span>${esc(MODE_NAMES[g.mode] || g.mode)} · ${esc(g.opp)}</span><span>${g.best >= 0 ? esc(TN[g.best] || '') : ''}${g.mog ? ` · могнул ×${g.mog}` : ''}</span></div>`).join('') || 'Пока пусто.'}</div>
+      <h3>Любимые комбинации</h3><div class="chips">${favs.length ? favs.map(([ty, n]) => `<span>${esc(TN[ty] || '?')} × ${n}</span>`).join('') : '<span>ещё не играл</span>'}</div>
+      <h3>История</h3><div class="hist">${last.map(g => `<div><b>${g.res === 'w' ? '✅' : g.res === 'l' ? '🃏' : '🤝'}</b><span>${new Date(g.t).toLocaleString(I18N.lang === 'en' ? 'en-GB' : 'ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span><span>${esc(t(MODE_NAMES[g.mode] || g.mode))} · ${esc(t(g.opp))}</span><span>${g.best >= 0 ? esc(TN[g.best] || '') : ''}${g.mog ? ` · ${t('могнул ×{n}', { n: g.mog })}` : ''}</span></div>`).join('') || 'Пока пусто.'}</div>
     </div>`);
   }
 

@@ -141,7 +141,7 @@ const M4 = (() => {
     if (!e || withCtx(S, () => cmpE2(e, b.a)) <= 0) return no('Так атака не станет старше');
     if (atkCount(S) + cs.length > S.limit) return no('Стол полон');
     if (undefendedCards(S) + cs.length > S.counts[S.def]) return no('У защитника не хватит карт');
-    return { ok: true, e, type: 'upgrade', why: `Апгрейд: ${b.a.name.toLowerCase()} → ${e.name.toLowerCase()}` };
+    return { ok: true, e, type: 'upgrade', why: t('Апгрейд: {a} → {b}', { a: lcn(b.a.name), b: lcn(e.name) }) };
   }
   /* карта-действие */
   function checkAction(S, seat, c) {
@@ -232,14 +232,32 @@ const M4 = (() => {
   function note(kind, actor, verbs, sep, rest, target) {
     M.ev = { id: ++M.evId, kind, actor, verbs, sep: sep || ' ', rest: rest || '', target };
   }
+  /* название комбинации / карты-действия в нижнем регистре — на текущем языке */
+  const lcn = n => { const e = t(n); return e === n ? n.toLowerCase() : e.toLowerCase(); };
+  /* лента событий приходит русской (по сети и в сравнениях) — переводим при показе, вместе с вложенными названиями */
+  function loc(str) {
+    if (!str || I18N.lang !== 'en') return str;
+    let r = I18N.tr(str);
+    if (!/[А-Яа-яЁё]/.test(r)) return r;
+    const names = [...new Set([...TN, 'Поштучно', ...Object.keys(ACTS).map(k => ACTS[k].name)])].sort((a, b) => b.length - a.length);
+    for (const n of names) {
+      const en = t(n);
+      if (en === n) continue;
+      r = r.split(n).join(en);
+      const lo = n.toLowerCase();
+      if (lo !== n) r = r.split(lo).join(en.toLowerCase());
+    }
+    return r;
+  }
   function evText(ev, seat) {
     if (!ev) return '';
-    if (ev.raw) return ev.raw;
+    if (ev.raw) return loc(ev.raw);
     const me = ev.actor === seat;
-    const who = ev.actor == null ? '' : me ? 'Ты' : M_names()[ev.actor];
-    const verb = ev.verbs ? ev.verbs[me ? 1 : 0] : '';
-    const tg = ev.target == null ? '' : ev.target === seat ? 'тебя' : M_names()[ev.target];
-    const rest = (ev.rest || '').replace('@T', tg);
+    const who = ev.actor == null ? '' : me ? t('Ты') : t(M_names()[ev.actor]);
+    const verb = ev.verbs ? loc(ev.verbs[me ? 1 : 0]) : '';
+    const tg = ev.target == null ? '' : ev.target === seat ? t('тебя') : t(M_names()[ev.target]);
+    let rest = loc(ev.rest || '').replace('@T', tg);
+    if (I18N.lang === 'en' && ev.target === seat) rest = rest.replace(/^you draws\b/, 'you draw');
     return `${who}${ev.sep === ':' ? ': ' : ' '}${verb}${rest ? ' ' + rest : ''}`.trim();
   }
   let namesRef = null;

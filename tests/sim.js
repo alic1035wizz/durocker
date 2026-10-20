@@ -17,6 +17,7 @@ const sandbox = {
   localStorage: { getItem: k => (k in LS ? LS[k] : null), setItem: (k, v) => { LS[k] = String(v); } },
   location: { search: '', hash: '' },
 };
+Object.assign(sandbox, require('./i18n-stub.js'));
 sandbox.window = sandbox; sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
 

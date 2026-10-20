@@ -29,7 +29,8 @@ const UI4 = (() => {
   const OPT_KEY = 'durocker-m4opt';
   function opts() { let o = null; try { o = JSON.parse(load(OPT_KEY)); } catch (e) {} return Object.assign({ to: 2, set: 'full', sharper: false }, o || {}); }
   function saveOpts(o) { store(OPT_KEY, JSON.stringify(o)); }
-  const FMT = { 1: 'одна партия', 2: 'до 2 побед', 3: 'до 3 побед' };
+  const FMT = { get 1() { return t('одна партия'); }, get 2() { return t('до 2 побед'); }, get 3() { return t('до 3 побед'); } };
+  const dn = n => esc(t(n));   /* имя игрока/бота для показа */
 
   const C = { on: false, mode: null, me: 0, V: null, S: null, sel: new Set(), sort: (() => { try { return load('durocker-sort') === 's' ? 's' : 'r'; } catch (e) { return 'r'; } })(), emo: {}, pick: null, lastEv: 0, lastHype: 0, botT: null, upT: null, tok: 0,
     cfg: null, faces: [], seen: new Set(), log: [], say: {}, voiceAt: 0, cheat: null, cheatTurn: -1, offerLater: false, frozen: false };
@@ -496,19 +497,19 @@ const UI4 = (() => {
     if (!C.on || !V) return;
     const snap = snap4();
     const S = C.S, me = C.me, myTurn = V.phase.who === me && !C.pending, up = canUp();
-    $4('m4title').textContent = (C.mode === 'bots' ? 'КОМПАНИЯ' : 'СТОЛ ' + (NET4.code() || '').toUpperCase()) + ` · ${FMT[V.to] || ''} · партия ${V.games + (V.over != null ? 0 : 1)}`;
+    $4('m4title').textContent = (C.mode === 'bots' ? t('КОМПАНИЯ') : t('СТОЛ {c}', { c: (NET4.code() || '').toUpperCase() })) + ` · ${FMT[V.to] || ''} · ` + t('партия {n}', { n: V.games + (V.over != null ? 0 : 1) });
     renderOpps();
     /* стол */
-    const nm = s => (s === me ? 'Ты' : esc(V.names[s]));
-    const toMe = s => (s === me ? 'тебя' : esc(V.names[s]));
+    const nm = s => (s === me ? t('Ты') : dn(V.names[s]));
+    const toMe = s => (s === me ? t('тебя') : dn(V.names[s]));
     $4('m4dir').innerHTML = V.phase.kind === 'over' ? 'Партия окончена' : `<b>${nm(V.att)}</b> → <b>${s2(V.def)}</b>${V.table.length ? ` · ${M4.atkCount(S)}/${V.limit}` : ''}`;
-    function s2(s) { return s === me ? 'тебя' : esc(V.names[s]); }
+    function s2(s) { return s === me ? t('тебя') : dn(V.names[s]); }
     void toMe;
     const fresh = new Set();
     $4('m4bats').innerHTML = S.table.map(b => {
       const row = (e, cls) => `<div class="row ${cls}">${withT(() => e.cards.map(c => { const k = cls + c.n; const nw = !C.seen.has(k); fresh.add(k); return nw ? cardHTML(c).replace('class="card', 'class="card new') : cardHTML(c); }).join(''))}</div>`;
-      return `<div class="m4b ${b.d ? '' : 'open'}"><span class="lbl">${esc(b.a.name)}${b.d ? ' → ' + esc(b.d.name) : ''}</span>${row(b.a, 'atk')}${b.d ? row(b.d, 'def') : ''}</div>`;
-    }).join('') || `<div class="lbl" style="color:var(--muted);font-weight:700">${V.phase.kind === 'attack' ? (V.att === me ? 'Твой ход — выбери карты' : `${esc(V.names[V.att])} ходит…`) : ''}</div>`;
+      return `<div class="m4b ${b.d ? '' : 'open'}"><span class="lbl">${esc(t(b.a.name))}${b.d ? ' → ' + esc(t(b.d.name)) : ''}</span>${row(b.a, 'atk')}${b.d ? row(b.d, 'def') : ''}</div>`;
+    }).join('') || `<div class="lbl" style="color:var(--muted);font-weight:700">${V.phase.kind === 'attack' ? (V.att === me ? 'Твой ход — выбери карты' : t('{n} ходит…', { n: dn(V.names[V.att]) })) : ''}</div>`;
     C.seen = fresh;
     $4('m4grave').innerHTML = V.grave ? `бито<br>${V.grave}` : '';
     const trump = mkCard(V.trumpN);
@@ -523,7 +524,7 @@ const UI4 = (() => {
       voiceFor(V); emoFor(V);
     }
     if (V.hype && V.hype.id !== C.lastHype) { C.lastHype = V.hype.id; showHype4(V.hype); }
-    $4('m4log').innerHTML = `<div class="sc">${[...Array(V.N).keys()].map(s => `${s === me ? 'Ты' : esc(V.names[s])} ${V.wins[s]}`).join(' · ')} · ${FMT[V.to]}</div>` + C.log.slice(-7).map(t => `<div>${esc(t)}</div>`).join('');
+    $4('m4log').innerHTML = `<div class="sc">${[...Array(V.N).keys()].map(s => `${s === me ? t('Ты') : dn(V.names[s])} ${V.wins[s]}`).join(' · ')} · ${FMT[V.to]}</div>` + C.log.slice(-7).map(t => `<div>${esc(t)}</div>`).join('');
     /* подсказка и кнопки */
     const cs = selCards(), k = V.phase.kind;
     const act1 = cs.length === 1 && cs[0].action ? cs[0] : null;
@@ -533,24 +534,24 @@ const UI4 = (() => {
     const tr = myTurn && k === 'defend' && cs.length && !act1 ? M4.checkTransfer(S, me, cs) : { ok: false };
     let tx = '', cls = '';
     if (V.over != null) tx = 'Партия окончена';
-    else if (up && cs.length) { tx = r && r.ok ? `<b>${esc(r.why)}</b>` : esc((r && r.why) || 'Так атака не станет старше'); cls = r && r.ok ? 'gold' : 'no'; }
-    else if (!myTurn) tx = C.pending ? 'Отправляем…' : `<b>${esc(V.names[V.phase.who] || '')}</b> думает…${up ? ' Можешь докинуть к своей атаке.' : ''}`;
-    else if (act1) { tx = `<b>${esc(ACTS[act1.action].name)} ${SU[act1.s]}</b> — ${esc((r && r.why) || ACTS[act1.action].desc(SU[act1.s]))}`; cls = r && r.ok ? 'gold' : 'no'; }
+    else if (up && cs.length) { tx = r && r.ok ? `<b>${esc(I18N.tr(r.why))}</b>` : esc(I18N.tr((r && r.why) || 'Так атака не станет старше')); cls = r && r.ok ? 'gold' : 'no'; }
+    else if (!myTurn) tx = C.pending ? 'Отправляем…' : `<b>${dn(V.names[V.phase.who] || '')}</b> ${t('думает…')}${up ? ' ' + t('Можешь докинуть к своей атаке.') : ''}`;
+    else if (act1) { tx = `<b>${esc(t(ACTS[act1.action].name))} ${SU[act1.s]}</b> — ${esc(I18N.tr((r && r.why) || ACTS[act1.action].desc(SU[act1.s])))}`; cls = r && r.ok ? 'gold' : 'no'; }
     else if (cs.length) {
       const e = r && r.e ? r.e : M4.withCtx(S, () => ev(cs));
-      tx = `${e ? '<b>' + esc(e.name) + '</b> — ' : ''}${esc((tr.ok && (!r || !r.ok || r.type === 'transfer')) ? tr.why : (r && r.why) || (e ? '' : 'не комбинация'))}`;
+      tx = `${e ? '<b>' + esc(t(e.name)) + '</b> — ' : ''}${esc(I18N.tr((tr.ok && (!r || !r.ok || r.type === 'transfer')) ? tr.why : (r && r.why) || (e ? '' : 'не комбинация')))}`;
       cls = (r && r.ok) || tr.ok ? ((tr.ok && !(r && r.ok && r.type === 'play')) || (r && r.ok && r.why === 'Перекрытие!') ? 'gold' : 'ok') : 'no';
     } else {
       const ob = M4.openBattle(S), full = V.rules && V.rules.over;
-      tx = k === 'attack' ? `Ходи на <b>${s2(V.def)}</b>: одиночкой или комбинацией, до ${Math.min(V.limit, V.counts[V.def])} карт.`
-        : k === 'defend' ? `Крой <b>${esc(ob.a.name.toLowerCase())}</b> тем же числом карт и старше${full && ob.a.n >= 2 && ob.a.n < 5 ? ` (или перекрой ${ob.a.n + 1})` : ''}${V.N > 2 && V.rules.transfer ? ' — или переведи на ' + nm(M4.nextActive(S, me)) : ''}.`
+      tx = k === 'attack' ? t('Ходи на {d}: одиночкой или комбинацией, до {n} карт.', { d: '<b>' + s2(V.def) + '</b>', n: Math.min(V.limit, V.counts[V.def]) })
+        : k === 'defend' ? t('Крой {c} тем же числом карт и старше', { c: '<b>' + esc(t(ob.a.name).toLowerCase()) + '</b>' }) + (full && ob.a.n >= 2 && ob.a.n < 5 ? ' ' + t('(или перекрой {n})', { n: ob.a.n + 1 }) : '') + (V.N > 2 && V.rules.transfer ? ' — ' + t('или переведи на {n}', { n: nm(M4.nextActive(S, me)) }) : '') + '.'
         : k === 'throw' ? `Подкинь комбинацию с номиналом со стола — или «Бито».`
-        : k === 'addtake' ? `<b>${nm(V.def)}</b> берёт — докинь вдогонку или «Хватит».` : '';
+        : k === 'addtake' ? t('{n} берёт — докинь вдогонку или «Хватит».', { n: '<b>' + nm(V.def) + '</b>' }) : '';
     }
     $4('m4tx').innerHTML = tx;
     $4('m4info').className = 'm4info ' + cls;
     const chg = V.rules && V.rules.charge ? `<button type="button" class="chg" id="m4chg">${pips(me)}${V.offer ? '<b style="color:var(--gold)">выбрать!</b>' : 'заряд'}</button>` : '';
-    $4('m4me').innerHTML = `<span>Ты ${dots(V.wins[me], V.to)} · штраф ${V.pens[me]}</span><span class="badges">${chg}${badge(me)}<span>на руке ${V.hand.length}</span></span>`;
+    $4('m4me').innerHTML = `<span>${t('Ты')} ${dots(V.wins[me], V.to)} · ${t('штраф {n}', { n: V.pens[me] })}</span><span class="badges">${chg}${badge(me)}<span>${t('на руке {n}', { n: V.hand.length })}</span></span>`;
     /* рука */
     const hand = sortHand(S.hand);
     $4('m4hand').innerHTML = withT(() => hand.map((c, i) => `<div class="slot ${C.sel.has(c.n) ? 'sel' : ''}" data-s="${c.action ? 'a' : c.joker ? 'j' : c.s}" style="--i:${i}">${cardHTML(c)}</div>`).join(''));
@@ -567,7 +568,7 @@ const UI4 = (() => {
     } else if (up && cs.length) main = B('gold', 'upgrade', 'Апгрейд', !!(r && r.ok));
     $4('m4alt').innerHTML = alt; $4('m4main').innerHTML = main;
     $4('m4pick').disabled = (!myTurn && !up) || V.over != null;
-    $4('m4pick').textContent = C.pick && C.pick.i >= 0 && C.pick.list[C.pick.i] && C.pick.list[C.pick.i].e.cards.every(c => C.sel.has(c.n)) ? `⟳ ${C.pick.i + 1}/${C.pick.list.length}` : '⟳ Подбор';
+    $4('m4pick').textContent = C.pick && C.pick.i >= 0 && C.pick.list[C.pick.i] && C.pick.list[C.pick.i].e.cards.every(c => C.sel.has(c.n)) ? `⟳ ${C.pick.i + 1}/${C.pick.list.length}` : t('⟳ Подбор');
     $4('m4sort').textContent = C.sort === 'r' ? 'Ранги' : 'Масти';
     renderOffer();
     renderOver();
@@ -671,7 +672,7 @@ const UI4 = (() => {
     el.dataset.k = key;
     el.innerHTML = `<div class="m4offer"><div class="box"><h3>ЗАРЯД ПОЛНЫЙ!<br>ВЫБЕРИ КАРТУ</h3><div class="ch">${o.kinds.map(k => {
       const c = { action: k, s: o.s, id: 'o' + k, n: -1, r: 16 };
-      return `<button type="button" data-pick4="${k}">${withT(() => cardHTML(c))}<span>${ACTS[k].name} ${SU[o.s]}</span><em>${esc(ACTS[k].desc(SU[o.s]))}</em></button>`;
+      return `<button type="button" data-pick4="${k}">${withT(() => cardHTML(c))}<span>${t(ACTS[k].name)} ${SU[o.s]}</span><em>${esc(ACTS[k].desc(SU[o.s]))}</em></button>`;
     }).join('')}</div><button type="button" class="later" id="m4later">Выберу позже</button></div></div>`;
     try { AU.play('action'); } catch (e) {}
   }
@@ -685,23 +686,23 @@ const UI4 = (() => {
       if ((won || (V.matchDone && V.matchWinner === me))) try { VFX.confetti(); } catch (e) {}
     }
     const order = [...Array(V.N).keys()].sort((a, b) => V.wins[b] - V.wins[a] || V.pens[a] - V.pens[b]);
-    const rows = order.map(s => `<tr class="${s === V.over ? 'loser' : s === V.winner ? 'win' : ''}"><td><span class="who">${ava(s)}<span>${s === me ? 'Ты' : esc(V.names[s])}${s === V.over ? ' — дурак' : s === V.winner ? ' — вышел первым' : ''}</span></span></td><td class="w">${dots(V.wins[s], V.to)}</td><td class="p">штраф ${V.pens[s]}</td></tr>`).join('');
+    const rows = order.map(s => `<tr class="${s === V.over ? 'loser' : s === V.winner ? 'win' : ''}"><td><span class="who">${ava(s)}<span>${s === me ? t('Ты') : dn(V.names[s])}${s === V.over ? ' — ' + t('дурак') : s === V.winner ? ' — ' + t('вышел первым') : ''}</span></span></td><td class="w">${dots(V.wins[s], V.to)}</td><td class="p">${t('штраф {n}', { n: V.pens[s] })}</td></tr>`).join('');
     const host = C.mode !== 'guest';
     let h, sub, deci = '';
     if (V.matchDone) {
       const wn = V.matchWinner;
-      h = wn === me ? 'МАТЧ ТВОЙ!' : `МАТЧ: ${esc(V.names[wn])}`;
-      sub = `${wn === me ? 'Ты' : esc(V.names[wn])} первым набрал ${V.to} ${V.to === 1 ? 'победу' : 'победы'}.`;
+      h = wn === me ? 'МАТЧ ТВОЙ!' : t('МАТЧ: {n}', { n: dn(V.names[wn]) });
+      sub = t('{n} первым набрал {k} {w}.', { n: wn === me ? t('Ты') : dn(V.names[wn]), k: V.to, w: I18N.pl(V.to, ['победу', 'победы', 'побед'], ['win', 'wins']) });
     } else {
       h = draw ? 'НИЧЬЯ' : won ? 'ВЫШЕЛ ПЕРВЫМ!' : lost ? 'ДУРАК!' : 'НЕ ДУРАК';
       sub = draw ? 'Все вышли одновременно — партия не в счёт.'
-        : `${V.winner != null ? (won ? 'Победа в партии твоя.' : `Партию взял ${esc(V.names[V.winner])}.`) : ''} ${lost ? `У тебя осталось карт: +${V.pen} штрафа.` : V.over !== 'draw' ? `Дурак — ${esc(V.names[V.over])}: +${V.pen} штрафа.` : ''}`;
+        : `${V.winner != null ? (won ? t('Победа в партии твоя.') : t('Партию взял {n}.', { n: dn(V.names[V.winner]) })) : ''} ${lost ? t('У тебя осталось карт: +{n} штрафа.', { n: V.pen }) : V.over !== 'draw' ? t('Дурак — {w}: +{n} штрафа.', { w: dn(V.names[V.over]), n: V.pen }) : ''}`;
       const near = [...Array(V.N).keys()].filter(s => V.wins[s] === V.to - 1).length;
       if (V.to > 1 && near >= 2) deci = 'РЕШАЮЩАЯ!';
       else if (V.to > 1 && near === 1) deci = 'МАТЧ-БОЛЛ';
     }
     el.innerHTML = `<div class="m4over"><div class="box"><h2 class="${V.matchDone ? 'big' : ''}">${h}</h2>
-      <p>${sub}</p><table>${rows}</table>${deci ? `<div class="deci">${deci}</div>` : ''}<p class="small" style="color:var(--muted);font-size:12px">Матч: ${FMT[V.to]} · ${V.set === 'full' ? 'полные правила' : 'классика'}</p>
+      <p>${sub}</p><table>${rows}</table>${deci ? `<div class="deci">${deci}</div>` : ''}<p class="small" style="color:var(--muted);font-size:12px">${t('Матч: {f} · {s}', { f: FMT[V.to], s: t(V.set === 'full' ? 'полные правила' : 'классика') })}</p>
       <div class="btns">${host ? `<button class="btn blue" type="button" data-a4="new">${V.matchDone ? 'Реванш' : deci === 'РЕШАЮЩАЯ!' ? 'Решающая партия' : 'Следующая партия'}</button>` : '<span style="color:var(--muted)">Ждём хозяина стола…</span>'}<button class="btn grey" type="button" data-a4="exit">${V.matchDone ? 'Меню' : 'Выйти'}</button></div></div></div>`;
   }
 

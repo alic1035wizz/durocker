@@ -71,7 +71,7 @@ const QUICK = (() => {
     stopNet();
     myN = roll();
     st = { startedAt: Date.now(), busy: false, offerTo: null, offerT: 0, waitShown: false, found: null };
-    render('Подключаемся…');
+    render(t('Подключаемся…'));
     connect(c => {
       if (!st) { try { c.end(true); } catch (e) {} return; }
       cl = c;
@@ -82,7 +82,7 @@ const QUICK = (() => {
       timers.push(setInterval(beat, BEAT));
       timers.push(setInterval(tick, 500));
       render();
-    }, () => { if (st) render('Не удалось подключиться к серверу игры. Проверь интернет или VPN.', true); });
+    }, () => { if (st) render(t('Не удалось подключиться к серверу игры. Проверь интернет или VPN.'), true); });
   }
   function beat() {
     if (!st || !cl) return;
@@ -175,7 +175,7 @@ const QUICK = (() => {
       if (seated) {
         const f = st.found;
         st = null; stopNet(); hide();
-        toast(`⚡ Соперник найден: ${f.nick}${f.r ? ` · ★${f.r} (по его данным)` : ''}`);
+        toast(t('⚡ Соперник найден: {n}', { n: f.nick }) + (f.r ? ' · ' + t('★{r} (по его данным)', { r: f.r }) : ''));
       }
     }, 300);
   }
@@ -211,23 +211,23 @@ const QUICK = (() => {
     const near = now - st.startedAt < 10000;
     let body;
     if (msg) body = `<p class="${err ? 'qerr' : ''}">${esc(msg)}</p>`;
-    else if (st.found) body = `<p class="qfound">Нашли: <b>${esc(st.found.nick)}</b>${st.found.r ? ` · ★${st.found.r} (по его данным)` : ''}</p><p class="qsm">Садимся за стол…</p>`;
-    else if (st.offerTo) body = `<p>Зовём <b>${esc(st.peer ? st.peer.nick : 'соперника')}</b>…</p>`;
-    else body = `<p class="qsm">${near ? 'Ищем соперника твоего уровня' : 'Ищем любого свободного соперника'} · твой рейтинг ★${rating()}</p>
-      <p class="qsm">Сейчас ищут игру: <b>${n + 1}</b></p>`;
+    else if (st.found) body = `<p class="qfound">${t('Нашли: {n}', { n: `<b>${esc(st.found.nick)}</b>` })}${st.found.r ? ' · ' + t('★{r} (по его данным)', { r: st.found.r }) : ''}</p><p class="qsm">${t('Садимся за стол…')}</p>`;
+    else if (st.offerTo) body = `<p>${t('Зовём {n}…', { n: `<b>${esc(st.peer ? st.peer.nick : t('соперника'))}</b>` })}</p>`;
+    else body = `<p class="qsm">${near ? t('Ищем соперника твоего уровня') : t('Ищем любого свободного соперника')} · ${t('твой рейтинг ★{r}', { r: rating() })}</p>
+      <p class="qsm">${t('Сейчас ищут игру: {n}', { n: `<b>${n + 1}</b>` })}</p>`;
     const waitBtns = st.waitShown && !st.found && !st.offerTo
-      ? `<p class="qsm">Пока никого нет. Можно сыграть с ботом или подождать ещё.</p><div class="row"><button class="btn blue" type="button" data-q="bot">Играть с ботом</button><button class="btn orange" type="button" data-q="more">Искать дальше</button></div>` : '';
-    e.innerHTML = `<div class="qin"><h2>⚡ БЫСТРАЯ ИГРА</h2><div class="qspin" aria-hidden="true"><span></span><span></span><span></span></div>
+      ? `<p class="qsm">${t('Пока никого нет. Можно сыграть с ботом или подождать ещё.')}</p><div class="row"><button class="btn blue" type="button" data-q="bot">${t('Играть с ботом')}</button><button class="btn orange" type="button" data-q="more">${t('Искать дальше')}</button></div>` : '';
+    e.innerHTML = `<div class="qin"><h2>${t('⚡ БЫСТРАЯ ИГРА')}</h2><div class="qspin" aria-hidden="true"><span></span><span></span><span></span></div>
       <div class="qtime">${mmss(now - st.startedAt)}</div>${body}${waitBtns}
-      <p class="qsm">Матч до 2 побед · полные правила</p>
-      <button class="btn grey" type="button" data-q="cancel">Отмена</button></div>`;
+      <p class="qsm">${t('Матч до 2 побед · полные правила')}</p>
+      <button class="btn grey" type="button" data-q="cancel">${t('Отмена')}</button></div>`;
     e.hidden = false;
   }
   function hide() { const e = document.getElementById('quickBox'); if (e) e.hidden = true; }
   function showUnavailable() {
     const e = el();
-    e.innerHTML = `<div class="qin"><h2>⚡ БЫСТРАЯ ИГРА</h2><p>Быстрая игра доступна на сайте и в Telegram: <b>@durocker_bot</b>.</p>
-      <button class="btn grey" type="button" data-q="close">Понятно</button></div>`;
+    e.innerHTML = `<div class="qin"><h2>${t('⚡ БЫСТРАЯ ИГРА')}</h2><p>${t('Быстрая игра доступна на сайте и в Telegram: {b}.', { b: '<b>@durocker_bot</b>' })}</p>
+      <button class="btn grey" type="button" data-q="close">${t('Понятно')}</button></div>`;
     e.hidden = false;
   }
 
@@ -253,7 +253,7 @@ const QUICK = (() => {
         if (g && !g.querySelector('[data-go="quick"]')) {
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'mi quick'; b.dataset.go = 'quick';
-          b.innerHTML = available() ? '<b>⚡ Быстрая игра</b><small>Случайный соперник онлайн</small>' : '<b>⚡ Быстрая игра</b><small>На сайте и в Telegram</small>';
+          b.innerHTML = available() ? '<b>' + t('⚡ Быстрая игра') + '</b><small>' + t('Случайный соперник онлайн') + '</small>' : '<b>' + t('⚡ Быстрая игра') + '</b><small>' + t('На сайте и в Telegram') + '</small>';
           const after = g.querySelector('[data-go="career"]');
           if (after && after.nextSibling) g.insertBefore(b, after.nextSibling); else g.appendChild(b);
         }
@@ -266,7 +266,7 @@ const QUICK = (() => {
         const L = document.getElementById('lobbyIn');
         if (L && !NET && available() && !L.querySelector('#quickBtn')) {
           const b = document.createElement('button');
-          b.type = 'button'; b.id = 'quickBtn'; b.className = 'btn gold'; b.textContent = '⚡ Быстрая игра — случайный соперник';
+          b.type = 'button'; b.id = 'quickBtn'; b.className = 'btn gold'; b.textContent = t('⚡ Быстрая игра — случайный соперник');
           b.onclick = () => { const n = document.getElementById('nickIn'); if (n) store('durocker-nick', (n.value.trim() || 'Игрок').slice(0, 16)); $('lobby').hidden = true; start(); };
           const host = L.querySelector('#hostBtn');
           if (host) host.parentNode.insertBefore(b, host); else L.appendChild(b);
@@ -281,7 +281,7 @@ const QUICK = (() => {
     });
     /* рейтинг соперника рядом с ником */
     BUS.on('hud:render', () => {
-      try { if (NET && NET.quick && NET.oppR != null) { const o = $('oppName'); if (o) o.textContent = `${oppName()} · ★${NET.oppR} по его данным`; } } catch (e) {}
+      try { if (NET && NET.quick && NET.oppR != null) { const o = $('oppName'); if (o) o.textContent = t('{n} · ★{r} по его данным', { n: oppName(), r: NET.oppR }); } } catch (e) {}
     });
     /* итог: «Новый соперник»; соперник ушёл — без кода стола, сразу к поиску */
     BUS.on('over', () => {
@@ -291,11 +291,11 @@ const QUICK = (() => {
         const gone = (NET.role === 'host' && NET.started && !NET.connected) || (NET.role === 'guest' && NET.got && !NET.connected);
         if (gone) {
           o.hidden = false;
-          o.innerHTML = `<h2>СОПЕРНИК УШЁЛ</h2><p>${esc(oppName())} отключился.</p><div class="row"><button class="btn gold" type="button" id="qNew">⚡ Новый соперник</button><button class="btn grey" type="button" id="qLeave">Меню</button></div>`;
+          o.innerHTML = `<h2>${t('СОПЕРНИК УШЁЛ')}</h2><p>${t('{n} отключился.', { n: esc(oppName()) })}</p><div class="row"><button class="btn gold" type="button" id="qNew">${t('⚡ Новый соперник')}</button><button class="btn grey" type="button" id="qLeave">${t('Меню')}</button></div>`;
         } else if (G && G.over && SERIES && SERIES.done && !o.querySelector('#qNew')) {
           const row = o.querySelector('.row') || o;
           const b = document.createElement('button');
-          b.type = 'button'; b.id = 'qNew'; b.className = 'btn gold'; b.textContent = '⚡ Новый соперник';
+          b.type = 'button'; b.id = 'qNew'; b.className = 'btn gold'; b.textContent = t('⚡ Новый соперник');
           row.appendChild(b);
         }
         const qn = $('qNew'); if (qn) qn.onclick = () => { leaveTable(); start(); };

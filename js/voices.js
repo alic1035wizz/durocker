@@ -357,10 +357,10 @@ function voiceLine(ev, force) {
   const pick = (pool.length ? pool : list)[Math.floor(Math.random() * (pool.length ? pool : list).length)];
   mem.push(key(pick)); if (mem.length > 3) mem.shift();
   const rude = typeof rudeOn === 'function' && rudeOn();
-  const t = Array.isArray(pick) ? pick[rude ? 1 : 0] : pick;
+  const txt = t(Array.isArray(pick) ? pick[rude ? 1 : 0] : pick);
   /* чуть позже, чтобы не перебить «Беру…»/«Бито» из хода бота */
   setTimeout(() => {
-    say(t);
+    say(txt);
     try { clearTimeout(sayT); sayT = setTimeout(() => $('bubble').classList.remove('on'), 2600); } catch (e) {}
   }, 450);
 }

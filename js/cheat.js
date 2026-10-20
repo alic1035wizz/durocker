@@ -103,8 +103,9 @@ function cheatSeen(info) { CHEAT.seen(info); }
 
 /* фразы для хайпа: [когда это твоё, когда против тебя] */
 if (typeof HYPE !== 'undefined') {
-  HYPE.caught = { rude: ['СПАЛИЛСЯ, С*КА!', 'СПАЛИЛСЯ, С*КА!'], clean: ['ПОЙМАН!', 'ПОЙМАН!'] };
-  HYPE.falsecall = { rude: ['ГОНИШЬ? +2 ТЕБЕ', 'ГОНИШЬ? +2 ТЕБЕ'], clean: ['МИМО! +2 ТЕБЕ', 'МИМО! +2 ТЕБЕ'] };
+  const hy = (a, b) => [t(a), t(b)];
+  HYPE.caught = { rude: hy('СПАЛИЛСЯ, С*КА!', 'СПАЛИЛСЯ, С*КА!'), clean: hy('ПОЙМАН!', 'ПОЙМАН!') };
+  HYPE.falsecall = { rude: hy('ГОНИШЬ? +2 ТЕБЕ', 'ГОНИШЬ? +2 ТЕБЕ'), clean: hy('МИМО! +2 ТЕБЕ', 'МИМО! +2 ТЕБЕ') };
 }
 /* новая партия — старое окно закрываем */
 if (typeof newGame === 'function') {

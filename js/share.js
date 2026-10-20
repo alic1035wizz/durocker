@@ -75,14 +75,14 @@ const SHARE = (() => {
     try { closeSheets(); } catch (e) {}
     const d = load();
     if (!d.best) { say('Сегодня ещё нет момента — могни кого-нибудь 😏', 3500); return; }
-    const m = d.best.m;
+    const m = d.best.m, dnm = t(String(m.defName || '')), anm = t(String(m.attName || '')).toLowerCase(), phr = m.phrase ? I18N.tr(m.phrase) : '';
     let cv;
-    try { cv = postcardCanvas({ title: 'МОМЕНТ ДНЯ', phrase: m.phrase || (m.mognul ? 'МОГНУЛ!' : 'ТЫ НЕ ДУРАК!'), m: { name: m.defName, cards: m.def, vs: m.att, vsName: m.attName } }); }
+    try { cv = postcardCanvas({ title: t('МОМЕНТ ДНЯ'), phrase: phr || t(m.mognul ? 'МОГНУЛ!' : 'ТЫ НЕ ДУРАК!'), m: { name: dnm, cards: m.def, vs: m.att, vsName: t(String(m.attName || '')) } }); }
     catch (e) { say('Не удалось собрать открытку', 3000); return; }
     const url = cv.toDataURL('image/png'), exp = exportable();
-    const text = `Момент дня в ДурКере: ${m.defName} против ${String(m.attName || '').toLowerCase()}! https://t.me/durocker_bot`;
+    const text = t('Момент дня в ДурКере: {d} против {a}! https://t.me/durocker_bot', { d: dnm, a: anm });
     const box = document.createElement('div'); box.className = 'shw'; box.id = 'momentWin';
-    box.innerHTML = `<h3>🌟 МОМЕНТ ДНЯ · ${E(day())}</h3><img alt="Момент дня" src="${url}"><p>${E(m.defName)} на ${E(String(m.attName || '').toLowerCase())}${m.phrase ? ' · ' + E(m.phrase) : ''}</p>
+    box.innerHTML = `<h3>🌟 МОМЕНТ ДНЯ · ${E(day())}</h3><img alt="Момент дня" src="${url}"><p>${E(dnm)} ${t('на')} ${E(anm)}${phr ? ' · ' + E(phr) : ''}</p>
       <div class="row">${exp ? '<button class="btn gold" type="button" data-mm="share">Поделиться</button>' : ''}<button class="btn orange" type="button" data-mm="circle">🎞 Кружок</button><button class="btn grey" type="button" data-mm="close">Закрыть</button></div>`;
     document.body.appendChild(box);
     box.onclick = e => {
@@ -103,7 +103,7 @@ const SHARE = (() => {
       const g = document.querySelector('#menuIn .menugrid'); if (!g || g.querySelector('[data-go="moment"]')) return;
       const d = load();
       const b = document.createElement('button'); b.type = 'button'; b.className = 'mi'; b.dataset.go = 'moment';
-      b.innerHTML = `<b>Момент дня 🌟</b><small>${d.best ? E(d.best.m.defName) + ' — поделись в чат' : 'самая сильная комбинация дня'}</small>`;
+      b.innerHTML = `<b>Момент дня 🌟</b><small>${d.best ? E(t('{n} — поделись в чат', { n: t(String(d.best.m.defName || '')) })) : t('самая сильная комбинация дня')}</small>`;
       const ref = g.querySelector('[data-go="profile"]');
       g.insertBefore(b, ref || null);
     } catch (e) {}

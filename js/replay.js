@@ -5,6 +5,8 @@
 
 const REPLAY = (() => {
   const W = 720, DUR = 5200, FPS = 30;
+  /* в кадрах t — время, поэтому перевод зовём как tt; имена/фразы хранятся русскими, переводим при показе */
+  const tt = (s, v) => I18N.t(s, v), L = s => I18N.tr(String(s || '')), nmT = s => tt(String(s || ''));
   let moments = [], forG = null, lastHype = null;
 
   const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
@@ -72,7 +74,7 @@ const REPLAY = (() => {
     /* подпись атаки */
     const la = ease((t - 0.15) / 0.5);
     x.globalAlpha = la; x.font = '600 24px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.85)';
-    x.fillText(`${m.opp}: ${String(m.attName || '').toLowerCase()}`, W / 2, 112); x.globalAlpha = 1;
+    x.fillText(`${nmT(m.opp)}: ${nmT(m.attName).toLowerCase()}`, W / 2, 112); x.globalAlpha = 1;
     /* карты атаки влетают сверху */
     const aw = m.att.length > 3 ? 92 : 110;
     m.att.forEach((n, i) => {
@@ -91,7 +93,7 @@ const REPLAY = (() => {
     });
     /* название комбинации защиты */
     const ln = ease((t - 2.0) / 0.4);
-    if (ln > 0) { x.globalAlpha = ln; x.font = '900 34px "Arial Black", Arial, sans-serif'; x.fillStyle = '#ffe14a'; x.fillText(String(m.defName || '').toUpperCase(), W / 2, 538); x.globalAlpha = 1; }
+    if (ln > 0) { x.globalAlpha = ln; x.font = '900 34px "Arial Black", Arial, sans-serif'; x.fillStyle = '#ffe14a'; x.fillText(nmT(m.defName).toUpperCase(), W / 2, 538); x.globalAlpha = 1; }
     /* вспышка */
     const fl = t - 1.9;
     if (fl > 0 && fl < 0.35) { x.fillStyle = `rgba(255,248,220,${0.55 * (1 - fl / 0.35)})`; x.fillRect(-20, -20, W + 40, W + 40); }
@@ -99,11 +101,11 @@ const REPLAY = (() => {
     const hp = t - 2.5;
     if (hp > 0 && m.phrase) {
       const s = hp < 0.35 ? 0.4 + 0.9 * back(hp / 0.35) : 1 + Math.sin((hp - 0.35) * 5) * 0.02;
-      title(x, m.phrase, 604, 56, -0.1, s, Math.min(1, hp / 0.15));
+      title(x, L(m.phrase), 604, 56, -0.1, s, Math.min(1, hp / 0.15));
     }
     /* подпись */
-    x.font = '700 22px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.9)'; x.fillText(`${m.me} vs ${m.opp}`, W / 2, 664);
-    x.font = '600 19px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('ДурКер · t.me/durocker_bot', W / 2, 692);
+    x.font = '700 22px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.9)'; x.fillText(`${nmT(m.me)} vs ${nmT(m.opp)}`, W / 2, 664);
+    x.font = '600 19px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText(tt('ДурКер · t.me/durocker_bot'), W / 2, 692);
     x.restore();
   }
   /* drawCardOn смотрит на G.T для козырной рамки — на время кадра подставляем козырь момента */
@@ -164,7 +166,7 @@ const REPLAY = (() => {
     drawFace(x, after ? F.opS : F.opN, 324, 88, 84, '#d9362f', 0.4 + 0.6 * back(pi));
     x.font = '900 24px "Arial Black", Arial, sans-serif'; x.fillStyle = '#ffe14a'; x.globalAlpha = Math.min(1, pi); x.fillText('VS', R, 88);
     x.font = '700 15px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.92)';
-    x.fillText(String(m.me || '').slice(0, 12), 156, 142); x.fillText(String(m.opp || '').slice(0, 12), 324, 142); x.globalAlpha = 1;
+    x.fillText(nmT(m.me).slice(0, 12), 156, 142); x.fillText(nmT(m.opp).slice(0, 12), 324, 142); x.globalAlpha = 1;
     /* атака влетает сверху */
     const aw = m.att.length > 3 ? 54 : 64;
     m.att.forEach((n, i) => {
@@ -180,15 +182,16 @@ const REPLAY = (() => {
     if (hit > 0 && hit < 0.35) { x.fillStyle = `rgba(255,248,220,${0.55 * (1 - hit / 0.35)})`; x.fillRect(-20, -20, CW + 40, CW + 40); }
     /* название комбинации и фраза */
     const nm = ease((t - 3.8) / 0.4);
-    if (nm > 0) { x.globalAlpha = nm; let sz = 30; const txt = String(m.defName || '').toUpperCase(); do { x.font = `900 ${sz}px "Arial Black", Arial, sans-serif`; sz -= 2; } while (x.measureText(txt).width > 330 && sz > 14); x.fillStyle = '#ffe14a'; x.fillText(txt, R, 392); x.globalAlpha = 1; }
+    if (nm > 0) { x.globalAlpha = nm; let sz = 30; const txt = nmT(m.defName).toUpperCase(); do { x.font = `900 ${sz}px "Arial Black", Arial, sans-serif`; sz -= 2; } while (x.measureText(txt).width > 330 && sz > 14); x.fillStyle = '#ffe14a'; x.fillText(txt, R, 392); x.globalAlpha = 1; }
     const hp = t - 5.0;
     if (hp > 0 && m.phrase) {
       const sc = hp < 0.35 ? 0.4 + 0.9 * back(hp / 0.35) : 1 + Math.sin((hp - 0.35) * 5) * 0.02;
       x.save(); x.globalAlpha = Math.min(1, hp / 0.15); x.translate(R, 426); x.rotate(-0.06); x.scale(sc, sc);
-      let sz = 32; do { x.font = `900 ${sz}px "Arial Black", Arial, sans-serif`; sz -= 2; } while (x.measureText(m.phrase).width > 280 && sz > 14);
-      x.lineJoin = 'round'; x.lineWidth = 8; x.strokeStyle = '#000'; x.strokeText(m.phrase, 0, 0); x.fillStyle = '#ffe14a'; x.fillText(m.phrase, 0, 0); x.restore();
+      const ph = L(m.phrase);
+      let sz = 32; do { x.font = `900 ${sz}px "Arial Black", Arial, sans-serif`; sz -= 2; } while (x.measureText(ph).width > 280 && sz > 14);
+      x.lineJoin = 'round'; x.lineWidth = 8; x.strokeStyle = '#000'; x.strokeText(ph, 0, 0); x.fillStyle = '#ffe14a'; x.fillText(ph, 0, 0); x.restore();
     }
-    x.font = '800 17px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('ДурКер', R, 458);
+    x.font = '800 17px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText(tt('ДурКер'), R, 458);
     /* золотое кольцо по краю круга */
     x.setTransform(1, 0, 0, 1, 0, 0); x.lineWidth = 8; x.strokeStyle = '#eab54b'; x.beginPath(); x.arc(R, R, R - 4, 0, Math.PI * 2); x.stroke();
     x.restore();
@@ -280,7 +283,7 @@ const REPLAY = (() => {
         loop();
       }
     };
-    const text = `${m.phrase || 'Мой лучший момент'} — играю в ДурКер: https://t.me/durocker_bot`;
+    const text = tt('{p} — играю в ДурКер: https://t.me/durocker_bot', { p: L(m.phrase) || tt('Мой лучший момент') });
     const ext = () => (blob && /mp4/.test(blob.type) ? 'mp4' : 'webm');
     const fname = () => (circle ? 'durker-krug.' : 'durocker.') + ext();
     const start = async () => {
@@ -315,7 +318,7 @@ const REPLAY = (() => {
       if (a === 'close') close();
       else if (a === 'circle') { close(); open(m, 'circle'); }
       else if (a === 'plain') { close(); open(m); }
-      else if (a === 'card') { close(); if (typeof openPostcard === 'function') openPostcard({ title: m.mognul ? 'МОГНУЛ!' : 'ТЫ НЕ ДУРАК!', phrase: m.phrase, m: { name: m.defName, cards: m.def, vs: m.att, vsName: m.attName } }); }
+      else if (a === 'card') { close(); if (typeof openPostcard === 'function') openPostcard({ title: tt(m.mognul ? 'МОГНУЛ!' : 'ТЫ НЕ ДУРАК!'), phrase: L(m.phrase), m: { name: nmT(m.defName), cards: m.def, vs: m.att, vsName: nmT(m.attName) } }); }
       else if (a === 'save' && blob) {
         const l = document.createElement('a'); l.href = url; l.download = fname(); document.body.appendChild(l); l.click(); l.remove();
       } else if (a === 'share' && blob) sendFile(blob, fname(), text, k);

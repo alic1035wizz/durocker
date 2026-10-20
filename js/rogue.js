@@ -241,7 +241,7 @@ const ROGUE = (() => {
   let last = null, tipId = '';
   const chipBtn = (id, on) => {
     const c = chipOf(id), r = RAR[c.r];
-    return `<button type="button" class="rgchip${on ? ' on' : ''}" style="--rc:${r.col}" data-rgchip="${id}" title="${escH(c.name + ' — ' + c.desc)}"><span>${c.ico}</span>${escH(c.name)}</button>`;
+    return `<button type="button" class="rgchip${on ? ' on' : ''}" style="--rc:${r.col}" data-rgchip="${id}" title="${escH(t(c.name) + ' — ' + t(c.desc))}"><span>${c.ico}</span>${escH(t(c.name))}</button>`;
   };
   function body(html) {
     if (typeof sheet === 'function') sheet('page', html);
@@ -256,33 +256,33 @@ const ROGUE = (() => {
     const idx = R ? R.i : 0;
     const path = BOSSES.map((b, k) => {
       const st = R && k < R.i ? 'done' : R && k === R.i ? 'cur' : 'lock';
-      return `<li class="rgnode ${st}"><span class="rgn">${k + 1}</span>${ava(b)}<small>${escH(b.name.split(' ').pop())}</small></li>`;
+      return `<li class="rgnode ${st}"><span class="rgn">${k + 1}</span>${ava(b)}<small>${escH(t(b.name).split(' ').pop())}</small></li>`;
     }).join('');
     const b = BOSSES[idx];
-    const chipsHTML = R && R.chips.length ? `<div class="rgchips">${R.chips.map(id => chipBtn(id, id === tipId)).join('')}</div>` : `<p class="rgnone">${R ? 'Фишек пока нет — первая будет после первого босса.' : ''}</p>`;
-    const el = body(`${typeof head === 'function' ? head('🌙 Ночь в казино') : ''}
-      <p class="rgsub">Восемь боссов подряд, по одной партии на каждого. Проиграл бой — ночь окончена. После каждой победы выбираешь одну из трёх фишек, и она остаётся до конца ночи.</p>
-      <div class="rgbest"><div><b>${s.best}/${TOTAL}</b><span>рекорд</span></div><div><b>${s.clears}</b><span>пройдено ночей</span></div><div><b>${s.runs}</b><span>ночей сыграно</span></div></div>
+    const chipsHTML = R && R.chips.length ? `<div class="rgchips">${R.chips.map(id => chipBtn(id, id === tipId)).join('')}</div>` : `<p class="rgnone">${R ? t('Фишек пока нет — первая будет после первого босса.') : ''}</p>`;
+    const el = body(`${typeof head === 'function' ? head(t('🌙 Ночь в казино')) : ''}
+      <p class="rgsub">${t('Восемь боссов подряд, по одной партии на каждого. Проиграл бой — ночь окончена. После каждой победы выбираешь одну из трёх фишек, и она остаётся до конца ночи.')}</p>
+      <div class="rgbest"><div><b>${s.best}/${TOTAL}</b><span>${t('рекорд')}</span></div><div><b>${s.clears}</b><span>${t('пройдено ночей')}</span></div><div><b>${s.runs}</b><span>${t('ночей сыграно')}</span></div></div>
       <ol class="rgpath">${path}</ol>
-      <div class="rgcur">${ava(b, true)}<div><h3>${R ? `Бой ${idx + 1}/${TOTAL}: ` : 'Первый бой: '}${escH(b.name)}</h3><div class="rgrule">${escH(b.rule)}</div></div><p>${escH(b.info)}</p></div>
+      <div class="rgcur">${ava(b, true)}<div><h3>${R ? t('Бой {i}/{n}: ', { i: idx + 1, n: TOTAL }) : t('Первый бой: ')}${escH(t(b.name))}</h3><div class="rgrule">${escH(t(b.rule))}</div></div><p>${escH(t(b.info))}</p></div>
       ${chipsHTML}
-      <p class="rgtip" id="rgTip">${R && R.chips.length ? 'Нажми на фишку — увидишь, что она делает.' : 'Награды: за 4/8 — рубашка «Ночная смена», за 8/8 — «Король ночи».'}</p>
-      <button type="button" class="wkgo" id="rgGo">${R ? 'В бой' : 'Начать ночь'}</button>
-      ${R ? '<button type="button" class="rgghost" id="rgQuit">Сдаться</button>' : ''}`);
+      <p class="rgtip" id="rgTip">${R && R.chips.length ? t('Нажми на фишку — увидишь, что она делает.') : t('Награды: за 4/8 — рубашка «Ночная смена», за 8/8 — «Король ночи».')}</p>
+      <button type="button" class="wkgo" id="rgGo">${R ? t('В бой') : t('Начать ночь')}</button>
+      ${R ? '<button type="button" class="rgghost" id="rgQuit">' + t('Сдаться') + '</button>' : ''}`);
     if (!el) return;
     el.querySelectorAll('[data-rgchip]').forEach(x => {
       x.onclick = () => {
-        const c = chipOf(x.dataset.rgchip), t = document.getElementById('rgTip');
+        const c = chipOf(x.dataset.rgchip), tip = document.getElementById('rgTip');
         tipId = c.id;
         el.querySelectorAll('[data-rgchip]').forEach(y => y.classList.toggle('on', y === x));
-        if (t) t.innerHTML = `<b>${c.ico} ${escH(c.name)}</b> · ${RAR[c.r].n.toLowerCase()}<br>${escH(c.desc)}`;
+        if (tip) tip.innerHTML = `<b>${c.ico} ${escH(t(c.name))}</b> · ${t(RAR[c.r].n).toLowerCase()}<br>${escH(t(c.desc))}`;
       };
     });
     const go = document.getElementById('rgGo');
     if (go) go.onclick = () => { if (!R) { const s2 = store(); s2.run = newRun(); save(s2); } fight(); };
     const q = document.getElementById('rgQuit');
     if (q) q.onclick = () => {
-      if (!q.dataset.sure) { q.dataset.sure = '1'; q.textContent = 'Точно сдаться? Фишки пропадут'; return; }
+      if (!q.dataset.sure) { q.dataset.sure = '1'; q.textContent = t('Точно сдаться? Фишки пропадут'); return; }
       const s2 = store(); s2.best = Math.max(s2.best, s2.run ? s2.run.i : 0); s2.runs++; s2.run = null; save(s2); open();
     };
   }
@@ -292,10 +292,10 @@ const ROGUE = (() => {
     if (!R || !R.pending || !R.pending.length) return open();
     const cards = R.pending.map((id, k) => {
       const c = chipOf(id), r = RAR[c.r];
-      return `<button type="button" class="rgcard" style="--rc:${r.col};--k:${k}" data-rgpick="${id}"><em>${r.n}</em><span class="ico">${c.ico}</span><b>${escH(c.name)}</b><span>${escH(c.desc)}</span></button>`;
+      return `<button type="button" class="rgcard" style="--rc:${r.col};--k:${k}" data-rgpick="${id}"><em>${t(r.n)}</em><span class="ico">${c.ico}</span><b>${escH(t(c.name))}</b><span>${escH(t(c.desc))}</span></button>`;
     }).join('');
-    const el = body(`${typeof head === 'function' ? head('Фишка на ночь') : ''}
-      <p class="rgsub">Бой ${R.i}/${TOTAL} выигран. Выбери одну фишку — она будет работать до конца забега.${R.chips.length ? ` Уже есть: ${R.chips.map(id => chipOf(id).ico).join(' ')}` : ''}</p>
+    const el = body(`${typeof head === 'function' ? head(t('Фишка на ночь')) : ''}
+      <p class="rgsub">${t('Бой {i}/{n} выигран. Выбери одну фишку — она будет работать до конца забега.', { i: R.i, n: TOTAL })}${R.chips.length ? ' ' + t('Уже есть: {x}', { x: R.chips.map(id => chipOf(id).ico).join(' ') }) : ''}</p>
       <div class="rgcards" id="rgCards">${cards}</div>`);
     if (!el) return;
     el.querySelectorAll('[data-rgpick]').forEach(x => {
@@ -319,28 +319,29 @@ const ROGUE = (() => {
     o.dataset.rg = key;
     const s = store();
     const chips = (last.chips || []).map(id => chipOf(id).ico).join(' ');
+    const t_ = window.t;
     let h, t, btns;
-    const menu = '<button class="btn grey" type="button" id="rgMenu">Меню</button>';
+    const menu = '<button class="btn grey" type="button" id="rgMenu">' + t_('Меню') + '</button>';
     if (last.kind === 'win') {
-      h = 'БОСС ПОВЕРЖЕН!';
-      t = `Бой ${last.beaten}/${TOTAL} за тобой. Дальше — ${BOSSES[last.beaten].name}: ${BOSSES[last.beaten].short}. Выбери фишку.`;
-      btns = '<button class="btn gold" type="button" id="rgNext">Выбрать фишку</button>' + menu;
+      h = t_('БОСС ПОВЕРЖЕН!');
+      t = t_('Бой {i}/{n} за тобой. Дальше — {name}: {short}. Выбери фишку.', { i: last.beaten, n: TOTAL, name: t_(BOSSES[last.beaten].name), short: t_(BOSSES[last.beaten].short) });
+      btns = '<button class="btn gold" type="button" id="rgNext">' + t_('Выбрать фишку') + '</button>' + menu;
     } else if (last.kind === 'clear') {
-      h = 'НОЧЬ ПРОЙДЕНА 8/8';
-      t = 'Шулер повержен, казино твоё. Рубашки «Ночная смена» и «Король ночи» — в коллекции.';
-      btns = '<button class="btn gold" type="button" id="rgNext">Новая ночь</button>' + menu;
+      h = t_('НОЧЬ ПРОЙДЕНА 8/8');
+      t = t_('Шулер повержен, казино твоё. Рубашки «Ночная смена» и «Король ночи» — в коллекции.');
+      btns = '<button class="btn gold" type="button" id="rgNext">' + t_('Новая ночь') + '</button>' + menu;
     } else if (last.kind === 'saved') {
-      h = 'СТРАХОВКА СРАБОТАЛА';
-      t = `🧷 Поражение прощено, фишка сгорела. Переигрываем бой ${last.reached}/${TOTAL} с тем же боссом.`;
-      btns = '<button class="btn gold" type="button" id="rgNext">Переиграть бой</button>' + menu;
+      h = t_('СТРАХОВКА СРАБОТАЛА');
+      t = t_('🧷 Поражение прощено, фишка сгорела. Переигрываем бой {i}/{n} с тем же боссом.', { i: last.reached, n: TOTAL });
+      btns = '<button class="btn gold" type="button" id="rgNext">' + t_('Переиграть бой') + '</button>' + menu;
     } else if (last.kind === 'draw') {
-      h = 'НИЧЬЯ';
-      t = 'Оба скинули карты разом. Бой не засчитан — переигрываем.';
-      btns = '<button class="btn gold" type="button" id="rgNext">Переиграть бой</button>' + menu;
+      h = t_('НИЧЬЯ');
+      t = t_('Оба скинули карты разом. Бой не засчитан — переигрываем.');
+      btns = '<button class="btn gold" type="button" id="rgNext">' + t_('Переиграть бой') + '</button>' + menu;
     } else {
-      h = 'НОЧЬ ОКОНЧЕНА';
-      t = `Дошёл до ${last.reached}/${TOTAL}: ${BOSSES[last.reached - 1].name} оказался сильнее. Лучший результат — ${s.best}/${TOTAL}.`;
-      btns = '<button class="btn gold" type="button" id="rgNext">Новая ночь</button>' + menu;
+      h = t_('НОЧЬ ОКОНЧЕНА');
+      t = t_('Дошёл до {i}/{n}: {name} оказался сильнее. Лучший результат — {best}/{n}.', { i: last.reached, n: TOTAL, name: t_(BOSSES[last.reached - 1].name), best: s.best });
+      btns = '<button class="btn gold" type="button" id="rgNext">' + t_('Новая ночь') + '</button>' + menu;
     }
     o.innerHTML = `<h2>${h}</h2><p>${escH(t)}</p>${chips ? `<div class="rgovr">${escH(chips)}</div>` : ''}<div class="row">${btns}</div>`;
     const nx = document.getElementById('rgNext');
@@ -375,12 +376,12 @@ const ROGUE = (() => {
     if (res === 'win') {
       R.i++;
       const late = msg => setTimeout(() => { try { toast(msg, 3500); } catch (e) {} }, 3000);
-      if (R.i === 4 && unlock('back', 'rg4')) late('🎁 Рубашка «Ночная смена» — твоя!');
+      if (R.i === 4 && unlock('back', 'rg4')) late(t('🎁 Рубашка «{n}» — твоя!', { n: t('Ночная смена') }));
       if (R.i >= TOTAL) {
         s.best = TOTAL; s.clears++; s.runs++;
         const chips = R.chips.slice(); s.run = null; last = { kind: 'clear', chips };
-        if (unlock('back', 'rg4')) late('🎁 Рубашка «Ночная смена» — твоя!');
-        if (unlock('back', 'rg8')) late('🎁 Рубашка «Король ночи» — твоя!');
+        if (unlock('back', 'rg4')) late(t('🎁 Рубашка «{n}» — твоя!', { n: t('Ночная смена') }));
+        if (unlock('back', 'rg8')) late(t('🎁 Рубашка «{n}» — твоя!', { n: t('Король ночи') }));
       } else {
         s.best = Math.max(s.best, R.i);
         R.pending = roll3(R.chips); last = { kind: 'win', beaten: R.i, chips: R.chips.slice() };
@@ -410,7 +411,7 @@ const ROGUE = (() => {
     BUS.hook('newGame', (next) => {
       if (MODE && MODE.kind === 'rogue' && !(typeof NET !== 'undefined' && NET)) {
         /* перезагрузка или «Ещё раз» без забега — не пускаем в бой мимо экрана забега */
-        if (!allowStart || !getRun()) { MODE = { kind: 'free' }; try { loadSeries(); toast('Ночь в казино — в меню. Это «Своя игра»'); } catch (e) {} }
+        if (!allowStart || !getRun()) { MODE = { kind: 'free' }; try { loadSeries(); toast(t('Ночь в казино — в меню. Это «Своя игра»')); } catch (e) {} }
         allowStart = false;
       }
       const r = next();
@@ -446,12 +447,12 @@ const ROGUE = (() => {
     BUS.on('hud:render', () => {
       try {
         if (isRogue()) {
-          const to = document.getElementById('scTo'); if (to) to.textContent = 'одна партия';
+          const to = document.getElementById('scTo'); if (to) to.textContent = t('одна партия');
           const mb = document.getElementById('modeBox'), b = BOSSES[MODE.i] || BOSSES[0];
           if (mb) {
-            const ico = myChips().map(id => { const c = chipOf(id); return `<span class="rgico" title="${escH(c.name + ' — ' + c.desc)}">${c.ico}</span>`; }).join('');
+            const ico = myChips().map(id => { const c = chipOf(id); return `<span class="rgico" title="${escH(t(c.name) + ' — ' + t(c.desc))}">${c.ico}</span>`; }).join('');
             const eye = (G && G.rgEye ? G.B.filter(c => G.rgEye.includes(c.id)) : []).map(cardName).join(' ');
-            mb.innerHTML = `<span>🌙 Ночь · бой ${(MODE.i | 0) + 1}/${TOTAL}</span><span class="boss">${escH(b.short)}</span>${ico}${eye ? `<span class="rgeye">👁 ${escH(eye)}</span>` : ''}`;
+            mb.innerHTML = `<span>${t('🌙 Ночь · бой {i}/{n}', { i: (MODE.i | 0) + 1, n: TOTAL })}</span><span class="boss">${escH(t(b.short))}</span>${ico}${eye ? `<span class="rgeye">👁 ${escH(eye)}</span>` : ''}`;
           }
         }
       } catch (e) {}
@@ -462,7 +463,7 @@ const ROGUE = (() => {
         if (g && !g.querySelector('[data-go="rogue"]')) {
           const s = store(), R = s.run, bt = document.createElement('button');
           bt.type = 'button'; bt.className = 'mi rg'; bt.dataset.go = 'rogue';
-          bt.innerHTML = `<b>🌙 Ночь в казино</b><small>${R ? (R.pending && R.pending.length ? 'выбери фишку' : `бой ${R.i + 1}/${TOTAL} · фишек ${R.chips.length}`) : '8 боссов подряд'} · рекорд ${s.best}/${TOTAL}</small>`;
+          bt.innerHTML = `<b>${t('🌙 Ночь в казино')}</b><small>${R ? (R.pending && R.pending.length ? t('выбери фишку') : t('бой {i}/{n} · фишек {c}', { i: R.i + 1, n: TOTAL, c: R.chips.length })) : t('8 боссов подряд')} · ${t('рекорд {b}/{n}', { b: s.best, n: TOTAL })}</small>`;
           const after = g.querySelector('[data-go="weekly"]') || g.querySelector('[data-go="daily"]');
           if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
         }

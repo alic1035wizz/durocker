@@ -43,29 +43,30 @@ const ACC = (() => {
     setTimeout(() => { el.textContent = msg; }, 30);
   }
   const lc = s => String(s || '').toLowerCase();
-  const rankWord = r => ({ 11: 'валет', 12: 'дама', 13: 'король', 14: 'туз' })[r] || String(r);
+  const rankWord = r => t(({ 11: 'валет', 12: 'дама', 13: 'король', 14: 'туз' })[r] || String(r));
   const suitGen = ['пик', 'червей', 'бубен', 'треф'];
   function spoken(c) {
     if (!c) return '';
-    if (c.joker) return 'джокер';
-    if (c.action) return `карта-действие «${ACTS[c.action].name}» масти ${suitGen[c.s] || ''}`;
-    return `${rankWord(c.r)} ${suitGen[c.s]}`;
+    if (c.joker) return t('джокер');
+    if (c.action) return t('карта-действие «{name}» масти {suit}', { name: t(ACTS[c.action].name), suit: t(suitGen[c.s] || '') });
+    return I18N.lang === 'en' ? `${rankWord(c.r)} of ${t(suitGen[c.s])}` : `${rankWord(c.r)} ${suitGen[c.s]}`;
   }
-  const oppN = () => { try { return oppName(); } catch (e) { return 'Соперник'; } };
+  const oppN = () => { try { return oppName(); } catch (e) { return t('Соперник'); } };
+  const oppT = () => t(oppN());
   function sayFx(d) {
-    const o = d.o || {}, me = o.actor === 'p', who = me ? 'Ты' : oppN(), big = lc(o.big);
+    const o = d.o || {}, me = o.actor === 'p', who = me ? t('Ты') : oppT(), big = lc(t(o.big));
     switch (o.what) {
-      case 'attack': return `${who} ${me ? 'атакуешь' : 'атакует'}: ${big}`;
-      case 'throw': return `${who} ${me ? 'подкидываешь' : 'подкидывает'}: ${big}`;
-      case 'addtake': return `${who} ${me ? 'подкидываешь вдогонку' : 'подкидывает вдогонку'}: ${big}`;
-      case 'defend': return `${who} ${me ? 'покрыл' : 'покрыл'}: ${big}`;
-      case 'takes': return me ? 'Ты берёшь карты' : `${oppN()} берёт карты`;
-      case 'bito': return 'Бито';
-      case 'transfer': return me ? 'Ты перевёл атаку' : `${oppN()} перевёл атаку тебе`;
-      case 'charged': return `${who} ${me ? 'получил' : 'получил'} карту-действие`;
-      case 'action': return `${who} ${me ? 'сыграл' : 'сыграл'} карту-действие «${ACTS[o.act] ? ACTS[o.act].name : ''}»`;
-      case 'trump': return 'Козырь определён';
-      case 'hype': return o.key === 'mognul' ? (me ? 'Могнул! Соперник получает штраф' : 'Тебя могнули: тебе штраф') : '';
+      case 'attack': return me ? t('Ты атакуешь: {big}', { big }) : t('{who} атакует: {big}', { who, big });
+      case 'throw': return me ? t('Ты подкидываешь: {big}', { big }) : t('{who} подкидывает: {big}', { who, big });
+      case 'addtake': return me ? t('Ты подкидываешь вдогонку: {big}', { big }) : t('{who} подкидывает вдогонку: {big}', { who, big });
+      case 'defend': return me ? t('Ты покрыл: {big}', { big }) : t('{who} покрыл: {big}', { who, big });
+      case 'takes': return me ? t('Ты берёшь карты') : t('{who} берёт карты', { who });
+      case 'bito': return t('Бито');
+      case 'transfer': return me ? t('Ты перевёл атаку') : t('{who} перевёл атаку тебе', { who });
+      case 'charged': return me ? t('Ты получил карту-действие') : t('{who} получил карту-действие', { who });
+      case 'action': { const an = t(ACTS[o.act] ? ACTS[o.act].name : ''); return me ? t('Ты сыграл карту-действие «{name}»', { name: an }) : t('{who} сыграл карту-действие «{name}»', { who, name: an }); }
+      case 'trump': return t('Козырь определён');
+      case 'hype': return o.key === 'mognul' ? (me ? t('Могнул! Соперник получает штраф') : t('Тебя могнули: тебе штраф')) : '';
     }
     return '';
   }
@@ -73,8 +74,8 @@ const ACC = (() => {
     try {
       if (!G || G.over || !G.phase) return '';
       const k = G.phase.kind;
-      if (G.phase.who === 'p') return ({ attack: 'Твой ход: атакуй', defend: 'Отбивайся', throw: 'Можешь подкинуть или сказать «Бито»', addtake: 'Можно подкинуть вдогонку' })[k] || 'Твой ход';
-      if (G.phase.who === 'b') return `${oppN()} думает`;
+      if (G.phase.who === 'p') return t(({ attack: 'Твой ход: атакуй', defend: 'Отбивайся', throw: 'Можешь подкинуть или сказать «Бито»', addtake: 'Можно подкинуть вдогонку' })[k] || 'Твой ход');
+      if (G.phase.who === 'b') return t('{who} думает', { who: oppT() });
     } catch (e) {}
     return '';
   }
@@ -82,7 +83,7 @@ const ACC = (() => {
   BUS.on('turn', d => announce(sayTurn(d)));
   BUS.on('over', d => {
     if (!d || !d.over) return;
-    announce(d.over === 'p' ? `Партия окончена. Ты победил. Штраф сопернику ${d.penalty != null ? d.penalty : ''}` : `Партия окончена. Ты проиграл. Штраф тебе ${d.penalty != null ? d.penalty : ''}`);
+    { const pen = d.penalty != null ? d.penalty : ''; announce(d.over === 'p' ? t('Партия окончена. Ты победил. Штраф сопернику {n}', { n: pen }) : t('Партия окончена. Ты проиграл. Штраф тебе {n}', { n: pen })); }
   });
   BUS.on('say', d => announce(d.text));
   BUS.hook('toast', (next, args) => { try { announce(String(args[0] || '')); } catch (e) {} return next(); });
@@ -103,7 +104,7 @@ const ACC = (() => {
       try { c = (G && G.P || []).find(x => x.id === card.dataset.id); } catch (e) {}
       s.setAttribute('role', 'button');
       s.setAttribute('tabindex', i === rov ? '0' : '-1');
-      s.setAttribute('aria-label', spoken(c) || 'карта');
+      s.setAttribute('aria-label', spoken(c) || t('карта'));
       s.setAttribute('aria-pressed', s.classList.contains('sel') ? 'true' : 'false');
     });
   }
@@ -125,7 +126,7 @@ const ACC = (() => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault(); e.stopPropagation();
         const card = s.querySelector('.card');
-        if (card && typeof toggleCard === 'function') { toggleCard(card.dataset.id); labelHand(); announce(spoken((G.P || []).find(x => x.id === card.dataset.id)) + (s.classList.contains('sel') ? ': выбрана' : ': снята')); }
+        if (card && typeof toggleCard === 'function') { toggleCard(card.dataset.id); labelHand(); announce(spoken((G.P || []).find(x => x.id === card.dataset.id)) + (s.classList.contains('sel') ? t(': выбрана') : t(': снята'))); }
       }
     });
     queue();
@@ -136,22 +137,22 @@ const ACC = (() => {
   const pct = v => Math.round(v * 100);
   function soundBlock() {
     return `<div class="accblock" id="accSound">
-      <label class="vol"><span>Громкость музыки</span><input type="range" id="accMV" min="0" max="100" value="${pct(AU.mvol)}" aria-label="Громкость музыки"><output id="accMVo">${pct(AU.mvol)}%</output></label>
-      <label class="vol"><span>Громкость эффектов</span><input type="range" id="accSV" min="0" max="100" value="${pct(AU.svol)}" aria-label="Громкость эффектов"><output id="accSVo">${pct(AU.svol)}%</output></label>
+      <label class="vol"><span>${t('Громкость музыки')}</span><input type="range" id="accMV" min="0" max="100" value="${pct(AU.mvol)}" aria-label="${t('Громкость музыки')}"><output id="accMVo">${pct(AU.mvol)}%</output></label>
+      <label class="vol"><span>${t('Громкость эффектов')}</span><input type="range" id="accSV" min="0" max="100" value="${pct(AU.svol)}" aria-label="${t('Громкость эффектов')}"><output id="accSVo">${pct(AU.svol)}%</output></label>
     </div>`;
   }
   function accBlock() {
     const canVib = !!(navigator.vibrate || (typeof TGA !== 'undefined' && TGA && TGA.HapticFeedback));
     return `<div class="accblock" id="accBlock">
-      <h3>Вибрация</h3>
-      ${tg('accBuzz', 'Вибро-отклик на победу, проигрыш, «могнул» и сундук', load('durocker-buzz') !== '0', canVib ? '' : 'На этом устройстве вибрация недоступна: она работает на Android и в Telegram.')}
-      <h3>Доступность</h3>
-      ${tg('accCb', 'Для дальтоников: масти различаются узором, цвета без красного и зелёного', !!st.cb)}
-      <div class="seg" id="accTs" role="group" aria-label="Размер текста">${[[0, 'Текст A'], [1, 'A+'], [2, 'A++']].map(([k, n]) => `<button type="button" data-ts="${k}" class="${(st.ts | 0) === k ? 'on' : ''}" aria-pressed="${(st.ts | 0) === k}">${n}</button>`).join('')}</div>
-      ${tg('accBig', 'Крупные кнопки', !!st.big)}
-      ${tg('accHc', 'Высокий контраст', !!st.hc)}
-      ${tg('accFl', 'Меньше вспышек и тряски', !!st.flash)}
-      ${tg('accSr', 'Озвучивать ходы для скринридера', !!st.sr, 'Рука доступна с клавиатуры: Tab, стрелки, Enter или Пробел.')}
+      <h3>${t('Вибрация')}</h3>
+      ${tg('accBuzz', t('Вибро-отклик на победу, проигрыш, «могнул» и сундук'), load('durocker-buzz') !== '0', canVib ? '' : t('На этом устройстве вибрация недоступна: она работает на Android и в Telegram.'))}
+      <h3>${t('Доступность')}</h3>
+      ${tg('accCb', t('Для дальтоников: масти различаются узором, цвета без красного и зелёного'), !!st.cb)}
+      <div class="seg" id="accTs" role="group" aria-label="${t('Размер текста')}">${[[0, 'Текст A'], [1, 'A+'], [2, 'A++']].map(([k, n]) => `<button type="button" data-ts="${k}" class="${(st.ts | 0) === k ? 'on' : ''}" aria-pressed="${(st.ts | 0) === k}">${t(n)}</button>`).join('')}</div>
+      ${tg('accBig', t('Крупные кнопки'), !!st.big)}
+      ${tg('accHc', t('Высокий контраст'), !!st.hc)}
+      ${tg('accFl', t('Меньше вспышек и тряски'), !!st.flash)}
+      ${tg('accSr', t('Озвучивать ходы для скринридера'), !!st.sr, t('Рука доступна с клавиатуры: Tab, стрелки, Enter или Пробел.'))}
     </div>`;
   }
   function paintRange(el) { el.style.setProperty('--p', el.value + '%'); }
@@ -172,7 +173,7 @@ const ACC = (() => {
     bind('accBig', v => set('big', v ? 1 : 0));
     bind('accHc', v => set('hc', v ? 1 : 0));
     bind('accFl', v => set('flash', v ? 1 : 0));
-    bind('accSr', v => { set('sr', v ? 1 : 0); if (v) announce('Озвучка ходов включена'); });
+    bind('accSr', v => { set('sr', v ? 1 : 0); if (v) announce(t('Озвучка ходов включена')); });
     const ts = document.getElementById('accTs');
     if (ts) ts.onclick = e => {
       const b = e.target.closest('[data-ts]'); if (!b) return;

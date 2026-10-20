@@ -38,9 +38,9 @@ function startCode() {
 }
 /* позвать друга: в Телеграме — выбор чата, на телефоне — системное «Поделиться», иначе копируем ссылку */
 function shareInvite(code, btn) {
-  const link = inviteLink(code), text = `Го в ДурКер! Стол ${code.toUpperCase()}`;
+  const link = inviteLink(code), text = t('Го в ДурКер! Стол {c}', { c: code.toUpperCase() });
   if (TGA && TGA.openTelegramLink) { TGA.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text)); return; }
-  if (navigator.share) { navigator.share({ title: 'ДурКер', text, url: link }).catch(() => {}); return; }
+  if (navigator.share) { navigator.share({ title: t('ДурКер'), text, url: link }).catch(() => {}); return; }
   copyText(link, btn);
 }
 

@@ -137,11 +137,11 @@ html.ev-april .hand{transition:transform .35s}
     if (!id) return;
     css(); de.classList.add(LIST[id].cls); de.dataset.event = id;
     deco(id); particles(id);
-    if (id === 'april' && typeof HYPE !== 'undefined') Object.entries(APRIL_HYPE).forEach(([k, v]) => { if (HYPE[k]) { HYPE[k].rude = v.slice(); HYPE[k].clean = v.slice(); } });
+    if (id === 'april' && typeof HYPE !== 'undefined') Object.entries(APRIL_HYPE).forEach(([k, v]) => { if (HYPE[k]) { HYPE[k].rude = v.map(x => t(x)); HYPE[k].clean = v.map(x => t(x)); } });
     registerBacks();
   }
   function registerBacks() {
-    try { ['ny', 'halloween'].forEach(k => { const b = LIST[k].boss.back; if (!BACKS.some(x => x.id === b.id)) BACKS.push({ id: b.id, name: b.name }); }); } catch (e) {}
+    try { ['ny', 'halloween'].forEach(k => { const b = LIST[k].boss.back; if (!BACKS.some(x => x.id === b.id)) BACKS.push({ id: b.id, name: t(b.name) }); }); } catch (e) {}
   }
 
   /* ---------- боссы ---------- */
@@ -165,7 +165,7 @@ html.ev-april .hand{transition:transform .35s}
     BUS.on('game:over', () => {
       try {
         const b = boss();
-        if (fight && b && G && G.over === 'p' && unlock('back', b.back.id)) setTimeout(() => { try { toast(`🎁 Рубашка «${b.back.name}» — твоя!`, 3500); } catch (e) {} }, 3000);
+        if (fight && b && G && G.over === 'p' && unlock('back', b.back.id)) setTimeout(() => { try { toast(t('🎁 Рубашка «{name}» — твоя!', { name: t(b.back.name) }), 3500); } catch (e) {} }, 3000);
       } catch (e) {}
     });
     BUS.on('game:start', () => { if (cur === 'april') flip(); });
@@ -174,7 +174,7 @@ html.ev-april .hand{transition:transform .35s}
         const b = boss(), g = document.querySelector('#menuIn .menugrid');
         if (b && g && !g.querySelector('[data-go="event"]')) {
           const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mi ev'; bt.dataset.go = 'event';
-          bt.innerHTML = `<b>${escH(LIST[cur].name)}: ${escH(b.name)}</b><small>${escH(b.short)} · награда — рубашка «${escH(b.back.name)}»</small>`;
+          bt.innerHTML = `<b>${escH(t(LIST[cur].name))}: ${escH(t(b.name))}</b><small>${escH(t(b.short))} · ${escH(t('награда — рубашка «{name}»', { name: t(b.back.name) }))}</small>`;
           const after = g.querySelector('[data-go="daily"]');
           if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
         }
@@ -201,8 +201,8 @@ html.ev-april .hand{transition:transform .35s}
     if (!anchor || document.getElementById('stEvents')) return;
     const lab = anchor.closest('label') || anchor.parentElement;
     const wrap = document.createElement('div');
-    wrap.innerHTML = `<h3>Праздничные темы</h3>${typeof toggleHTML === 'function' ? toggleHTML('stEvents', 'Новый год, Хэллоуин, 1 апреля, 23 февраля, 8 марта', enabled()) : ''}
-      <p class="small">Снег, тыквы, шутки и особые боссы в праздничные даты (по Москве).</p>`;
+    wrap.innerHTML = `<h3>${t('Праздничные темы')}</h3>${typeof toggleHTML === 'function' ? toggleHTML('stEvents', t('Новый год, Хэллоуин, 1 апреля, 23 февраля, 8 марта'), enabled()) : ''}
+      <p class="small">${t('Снег, тыквы, шутки и особые боссы в праздничные даты (по Москве).')}</p>`;
     lab.parentNode.insertBefore(wrap, lab.nextSibling);
     const t = document.getElementById('stEvents');
     if (t) t.onchange = e => { wr('durocker-events', e.target.checked ? '1' : '0'); apply(); };

@@ -92,11 +92,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
   /* ---------- плашка «ставка» ---------- */
   function paintTag() {
     const bar = $n('chBar'); if (!bar) return;
-    let t = $n('nbTag');
+    let tg = $n('nbTag');
     const o = S.ob, live = o && (o.st === 'live' || o.st === 'settling');
-    if (!live) { if (t) t.remove(); return; }
-    if (!t) { t = document.createElement('span'); t.id = 'nbTag'; t.className = 'chtag bet'; bar.appendChild(t); }
-    t.textContent = `🎲 ставка ${o.amt}`;
+    if (!live) { if (tg) tg.remove(); return; }
+    if (!tg) { tg = document.createElement('span'); tg.id = 'nbTag'; tg.className = 'chtag bet'; bar.appendChild(tg); }
+    tg.textContent = t('🎲 ставка {n}', { n: o.amt });
   }
 
   /* ---------- предложение ставки (хозяин) ---------- */
@@ -107,13 +107,13 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
     if (o && o.code !== NET.code) forfeit('другой стол');
     if (S.ob && S.ob.code === NET.code) { if (S.ob.st === 'offer') send('bet', { k: 'offer', id: S.ob.id, amt: S.ob.amt }); return; }
     if (!sel) return;
-    if (C().calm()) { say('🌙 Спокойный режим: ставки сегодня отключены', 3500); return; }
-    if (C().get() < sel) { say('Не хватает фишек на ставку — играем без неё', 3500); return; }
+    if (C().calm()) { say(t('🌙 Спокойный режим: ставки сегодня отключены'), 3500); return; }
+    if (C().get() < sel) { say(t('Не хватает фишек на ставку — играем без неё'), 3500); return; }
     S.ob = { id: rid(), code: NET.code, role: 'host', amt: sel, paid: 0, st: 'offer', t: Date.now() };
     save();
     send('bet', { k: 'offer', id: S.ob.id, amt: S.ob.amt });
-    say(`🎲 Ставка ${sel} 🪙 предложена — ждём ответа`, 3000);
-    setT('offer', () => { if (S.ob && S.ob.st === 'offer') { clearOb(); say('Соперник не ответил на ставку — играем без неё', 3500); } }, 25000);
+    say(t('🎲 Ставка {n} 🪙 предложена — ждём ответа', { n: sel }), 3000);
+    setT('offer', () => { if (S.ob && S.ob.st === 'offer') { clearOb(); say(t('Соперник не ответил на ставку — играем без неё'), 3500); } }, 25000);
   }
 
   /* ---------- входящая ставка (гость) ---------- */
@@ -124,20 +124,20 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
     const calm = C().calm(), can = C().get() >= m.amt;
     if (calm || !can || (typeof SERIES !== 'undefined' && SERIES && SERIES.games > 0)) {
       send('bet', { k: 'no', id: m.id });
-      say(calm ? '🌙 Спокойный режим: от ставки отказался' : !can ? `Хозяин предложил ставку ${m.amt} 🪙 — не хватает фишек` : 'Ставка опоздала — матч уже идёт', 4000);
+      say(calm ? t('🌙 Спокойный режим: от ставки отказался') : !can ? t('Хозяин предложил ставку {n} 🪙 — не хватает фишек', { n: m.amt }) : t('Ставка опоздала — матч уже идёт'), 4000);
       return;
     }
     S.ob = { id: m.id, code: NET.code, role: 'guest', amt: m.amt, paid: 0, st: 'ask', t: Date.now() };
     save();
     const w = document.createElement('div'); w.id = 'nbAsk'; w.className = 'chdw';
-    w.innerHTML = `<div class="chdbl" role="dialog" aria-label="Ставка"><h3>🎲 СТАВКА</h3>
-      <p>${E(NET.oppNick || 'Хозяин')} предлагает сыграть матч на <b>${m.amt}</b> 🪙<br><span class="m">выиграешь +${m.amt} · проиграешь −${m.amt} · у тебя ${C().get()} 🪙</span></p>
-      <div class="row"><button class="btn gold" type="button" id="nbYes">Принять</button><button class="btn grey" type="button" id="nbNo">Без ставки</button></div></div>`;
+    w.innerHTML = `<div class="chdbl" role="dialog" aria-label="${t('Ставка')}"><h3>${t('🎲 СТАВКА')}</h3>
+      <p>${t('{who} предлагает сыграть матч на {a} 🪙', { who: E(NET.oppNick || t('Хозяин')), a: `<b>${m.amt}</b>` })}<br><span class="m">${t('выиграешь +{a} · проиграешь −{l} · у тебя {c} 🪙', { a: m.amt, l: m.amt, c: C().get() })}</span></p>
+      <div class="row"><button class="btn gold" type="button" id="nbYes">${t('Принять')}</button><button class="btn grey" type="button" id="nbNo">${t('Без ставки')}</button></div></div>`;
     document.body.appendChild(w);
     const done = () => { clrT('ask'); w.remove(); };
-    $n('nbYes').onclick = () => { done(); S.ob.st = 'await'; save(); send('bet', { k: 'ok', id: m.id }); setT('await', () => { if (S.ob && S.ob.st === 'await') { clearOb(); say('Ставка не состоялась', 3000); } }, 10000); };
+    $n('nbYes').onclick = () => { done(); S.ob.st = 'await'; save(); send('bet', { k: 'ok', id: m.id }); setT('await', () => { if (S.ob && S.ob.st === 'await') { clearOb(); say(t('Ставка не состоялась'), 3000); } }, 10000); };
     $n('nbNo').onclick = () => { done(); send('bet', { k: 'no', id: m.id }); clearOb(); };
-    setT('ask', () => { if ($n('nbAsk')) { w.remove(); send('bet', { k: 'no', id: m.id }); clearOb(); say('Ставка отклонена — время вышло', 3000); } }, 20000);
+    setT('ask', () => { if ($n('nbAsk')) { w.remove(); send('bet', { k: 'no', id: m.id }); clearOb(); say(t('Ставка отклонена — время вышло'), 3000); } }, 20000);
   }
 
   /* ---------- входящие сообщения ---------- */
@@ -151,23 +151,23 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
       const o = S.ob; if (!o || o.id !== m.id) return;
       if (m.k === 'go' && o.st === 'await') {
         clrT('await');
-        if (!C().spend(o.amt)) { send('bet', { k: 'no', id: o.id }); clearOb(); say('Не хватило фишек — ставка отменена', 3000); return; }
+        if (!C().spend(o.amt)) { send('bet', { k: 'no', id: o.id }); clearOb(); say(t('Не хватило фишек — ставка отменена'), 3000); return; }
         o.st = 'live'; o.paid = o.amt; save(); paintTag(); snd('combo');
-        say(`🎲 Играем на ${o.amt} 🪙`, 3000);
+        say(t('🎲 Играем на {n} 🪙', { n: o.amt }), 3000);
       }
       if (m.k === 'no') { clearOb(); }
       return;
     }
     if (r === 'host') {
       const o = S.ob; if (!o || o.id !== m.id) return;
-      if (m.k === 'no' && o.st === 'offer') { clrT('offer'); clearOb(); say('Соперник отказался от ставки — играем без неё', 3500); return; }
+      if (m.k === 'no' && o.st === 'offer') { clrT('offer'); clearOb(); say(t('Соперник отказался от ставки — играем без неё'), 3500); return; }
       if (m.k === 'ok' && o.st === 'offer') {
         clrT('offer');
         const late = typeof SERIES !== 'undefined' && SERIES && SERIES.games > 0;
-        if (late || !C().spend(o.amt)) { send('bet', { k: 'no', id: o.id }); clearOb(); say(late ? 'Ставка опоздала — играем без неё' : 'Не хватило фишек на ставку', 3500); return; }
+        if (late || !C().spend(o.amt)) { send('bet', { k: 'no', id: o.id }); clearOb(); say(late ? t('Ставка опоздала — играем без неё') : t('Не хватило фишек на ставку'), 3500); return; }
         o.st = 'live'; o.paid = o.amt; save(); paintTag(); snd('combo');
         send('bet', { k: 'go', id: o.id });
-        say(`🎲 Играем на ${o.amt} 🪙`, 3000);
+        say(t('🎲 Играем на {n} 🪙', { n: o.amt }), 3000);
       }
     }
   }
@@ -183,12 +183,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
     dbl = { key, n, mine: null, theirs: (peerDbl[key] || null), t: Date.now() };
     const can = C().get() >= o.amt && !C().calm();
     const w = document.createElement('div'); w.id = 'nbDbl'; w.className = 'chdw';
-    const w2 = NET && NET.oppNick ? E(NET.oppNick) : 'соперник';
-    w.innerHTML = `<div class="chdbl" role="dialog" aria-label="Удвоить ставку"><h3>🎲 УДВОИТЬ?</h3>
-      <p>Счёт ${SERIES.w.p}:${SERIES.w.b} — решающая партия.<br>Ставка ${o.amt} → <b>${o.amt * 2}</b> 🪙 (нужно согласие обоих)<br><span class="m" id="nbDblSt">${can ? `ответ у ${w2} — 10 секунд` : 'не хватает фишек на удвоение'}</span></p>
-      <div class="row"><button class="btn gold" type="button" id="nbDy" ${can ? '' : 'disabled'}>Удвоить ×2</button><button class="btn grey" type="button" id="nbDn">Как есть</button></div></div>`;
+    const w2 = NET && NET.oppNick ? E(NET.oppNick) : t('соперник');
+    w.innerHTML = `<div class="chdbl" role="dialog" aria-label="${t('Удвоить ставку')}"><h3>${t('🎲 УДВОИТЬ?')}</h3>
+      <p>${t('Счёт {p}:{b} — решающая партия.', { p: SERIES.w.p, b: SERIES.w.b })}<br>${t('Ставка {a} →', { a: o.amt })} <b>${o.amt * 2}</b> 🪙 ${t('(нужно согласие обоих)')}<br><span class="m" id="nbDblSt">${can ? t('ответ у {w} — 10 секунд', { w: w2 }) : t('не хватает фишек на удвоение')}</span></p>
+      <div class="row"><button class="btn gold" type="button" id="nbDy" ${can ? '' : 'disabled'}>${t('Удвоить ×2')}</button><button class="btn grey" type="button" id="nbDn">${t('Как есть')}</button></div></div>`;
     document.body.appendChild(w);
-    const pick = a => { if (!dbl || dbl.mine) return; dbl.mine = a; send('dbl', { id: o.id, n, a }); const st = $n('nbDblSt'); if (st && a === 'y') st.textContent = 'ждём ответа соперника…'; resolveDbl(); if (a === 'n') closeDbl(); };
+    const pick = a => { if (!dbl || dbl.mine) return; dbl.mine = a; send('dbl', { id: o.id, n, a }); const st = $n('nbDblSt'); if (st && a === 'y') st.textContent = t('ждём ответа соперника…'); resolveDbl(); if (a === 'n') closeDbl(); };
     $n('nbDy').onclick = () => pick('y');
     $n('nbDn').onclick = () => pick('n');
     if (!can) { dbl.mine = 'n'; send('dbl', { id: o.id, n, a: 'n' }); }
@@ -210,9 +210,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
     const o = S.ob, key = dbl.key; dbl = null; closeDbl();
     if (!o || o.st !== 'live') return;
     if (out === 'double') {
-      if (C().spend(o.amt)) { o.paid += o.amt; o.amt *= 2; save(); paintTag(); snd('combo'); say(`🎲 Ставка удвоена: ${o.amt} 🪙`, 3500); }
-      else say('Не хватило фишек на удвоение — остаёмся при своих', 3500);
-    } else say('Остаёмся при своих', 2500);
+      if (C().spend(o.amt)) { o.paid += o.amt; o.amt *= 2; save(); paintTag(); snd('combo'); say(t('🎲 Ставка удвоена: {n} 🪙', { n: o.amt }), 3500); }
+      else say(t('Не хватило фишек на удвоение — остаёмся при своих'), 3500);
+    } else say(t('Остаёмся при своих'), 2500);
     delete peerDbl[key];
   }
   function onDbl(raw) {
@@ -248,9 +248,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
     const plan = NBC.settle({ id, role: o.role, amt: o.amt, paid: o.paid, w: o.w }, peerRes[id] || null);
     S.ob = null; save(); delete peerRes[id]; paintTag();
     let text;
-    if (plan.kind === 'win') { const r = C().payout(plan.stake, plan.profit); text = `🎲 Ставка выиграна: +${plan.profit} 🪙${r.paid ? ` (${r.paid} — Торгашу в счёт займа)` : ''}`; snd('win'); try { VFX.confetti(); } catch (e) {} }
-    else if (plan.kind === 'refund') { C().refund(plan.pay); text = plan.why === 'mismatch' ? `🎲 Итоги ставки не сошлись — ${plan.pay} 🪙 возвращены обоим` : `🎲 Ставка ${plan.pay} 🪙 возвращена`; }
-    else text = `🎲 Ставка ${o.paid} 🪙 проиграна`;
+    if (plan.kind === 'win') { const r = C().payout(plan.stake, plan.profit); text = t('🎲 Ставка выиграна: +{n} 🪙', { n: plan.profit }) + (r.paid ? ' ' + t('({n} — Торгашу в счёт займа)', { n: r.paid }) : ''); snd('win'); try { VFX.confetti(); } catch (e) {} }
+    else if (plan.kind === 'refund') { C().refund(plan.pay); text = plan.why === 'mismatch' ? t('🎲 Итоги ставки не сошлись — {n} 🪙 возвращены обоим', { n: plan.pay }) : t('🎲 Ставка {n} 🪙 возвращена', { n: plan.pay }); }
+    else text = t('🎲 Ставка {n} 🪙 проиграна', { n: o.paid });
     lastNote = { id, text, t: Date.now() };
     say(text, 5000); decorate();
   }
@@ -262,7 +262,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
     const burned = o.paid > 0;
     if (burned && !S.settled.includes(o.id)) S.settled.push(o.id);
     S.ob = null; save(); paintTag();
-    if (burned) say(`Выход из матча со ставкой (${why}) — ${o.paid} 🪙 сгорели`, 5000);
+    if (burned) say(t('Выход из матча со ставкой ({why}) — {n} 🪙 сгорели', { why: t(why), n: o.paid }), 5000);
   }
 
   /* ---------- экран итога ---------- */
@@ -284,10 +284,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof B
     const c = C(), chips = c ? c.get() : 0, calm = c ? c.calm() : false;
     if (sel > chips || calm) sel = 0;
     const box = document.createElement('div'); box.id = 'nbBox';
-    box.innerHTML = `<div class="small">Ставка 🪙 <span style="opacity:.7">баланс ${chips}</span></div>
-      <div class="cbets" id="nbSeg">${[0, ...NBC.BETS].map(b => `<button type="button" data-nb="${b}" class="${b === sel ? 'on' : ''}" ${b > chips || (calm && b) ? 'disabled' : ''}>${b === 0 ? 'Без' : b}</button>`).join('')}</div>
-      <p class="small">${calm ? '🌙 Спокойный режим: ночью и после трёх проигрышей подряд ставки выключены.' : 'Гость сам решает, принять ли ставку. Выиграл матч — забираешь обе ставки; вышел посреди матча — ставка сгорает.'}</p>
-      ${chips === 0 && c && !c.state().debt ? '<button class="btn orange" type="button" id="nbLoan">🧔 Займ у Торгаша: 200 🪙</button>' : ''}`;
+    box.innerHTML = `<div class="small">${t('Ставка 🪙')} <span style="opacity:.7">${t('баланс {n}', { n: chips })}</span></div>
+      <div class="cbets" id="nbSeg">${[0, ...NBC.BETS].map(b => `<button type="button" data-nb="${b}" class="${b === sel ? 'on' : ''}" ${b > chips || (calm && b) ? 'disabled' : ''}>${b === 0 ? t('Без') : b}</button>`).join('')}</div>
+      <p class="small">${calm ? t('🌙 Спокойный режим: ночью и после трёх проигрышей подряд ставки выключены.') : t('Гость сам решает, принять ли ставку. Выиграл матч — забираешь обе ставки; вышел посреди матча — ставка сгорает.')}</p>
+      ${chips === 0 && c && !c.state().debt ? '<button class="btn orange" type="button" id="nbLoan">' + t('🧔 Займ у Торгаша: 200 🪙') + '</button>' : ''}`;
     bo.after(box);
     $n('nbSeg').onclick = e => {
       const b = e.target.closest('[data-nb]'); if (!b || b.disabled) return;

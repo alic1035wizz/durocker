@@ -59,7 +59,7 @@ const LB = (() => {
     }
     saveLocal(d);
     try { if (typeof BUS !== 'undefined') BUS.emit('lb:record', { won, pts: w.pts, week: d.wk && d.wk.p }); } catch (e) {}
-    if (won) setTimeout(() => { try { toast(`🏆 +${w.pts} ${w.pts === 1 ? 'очко' : w.pts < 5 ? 'очка' : 'очков'} в таблицу лидеров`, 2600); } catch (e) {} }, 2200);
+    if (won) setTimeout(() => { try { toast(t('🏆 +{n} {w} в таблицу лидеров', { n: w.pts, w: w.pts === 1 ? t('очко') : w.pts < 5 ? t('очка') : t('очков') }), 2600); } catch (e) {} }, 2200);
     publishSoon();
   }
 
@@ -192,7 +192,7 @@ const LB = (() => {
   }
   const titleCareer = e => {
     if (e.cd) return 'Прошёл карьеру 🏆';
-    try { const st = CAREER_OPS[Math.min(e.c, CAREER_OPS.length - 1)]; return `Район «${CAREER[st.district].name}» · этап ${e.c + 1}`; } catch (x) { return `Этап ${e.c + 1}`; }
+    try { const st = CAREER_OPS[Math.min(e.c, CAREER_OPS.length - 1)]; return t('Район «{d}» · этап {n}', { d: t(CAREER[st.district].name), n: e.c + 1 }); } catch (x) { return t('Этап {n}', { n: e.c + 1 }); }
   };
   function lists() {
     const me = mine(), s = stats(), my = { ...me, r: s.r, w: s.w, g: s.g, o: s.o, id: pid() };
@@ -213,10 +213,10 @@ const LB = (() => {
   function rowHTML(e, i, myId, kind) {
     const medal = ['🥇', '🥈', '🥉'][i] || String(i + 1);
     let sub = '', sc = '';
-    if (kind === 'rate') { sub = `${e.ttl ? '👑 ' + e.ttl + ' · ' : ''}побед ${e.w} из ${e.g}${e.o ? ` · онлайн ${e.o}` : ''}`; sc = `${e.r}`; }
-    else if (kind === 'daily') { sub = e.d.res === 'win' ? `выиграл · сопернику +${e.d.pen}` : `проиграл · себе +${e.d.pen}`; sc = e.d.res === 'win' ? '✓' : '✗'; }
+    if (kind === 'rate') { sub = `${e.ttl ? '👑 ' + I18N.tr(e.ttl) + ' · ' : ''}${t('побед {w} из {g}', { w: e.w, g: e.g })}${e.o ? ' · ' + t('онлайн {n}', { n: e.o }) : ''}`; sc = `${e.r}`; }
+    else if (kind === 'daily') { sub = e.d.res === 'win' ? t('выиграл · сопернику +{n}', { n: e.d.pen }) : t('проиграл · себе +{n}', { n: e.d.pen }); sc = e.d.res === 'win' ? '✓' : '✗'; }
     else { sub = titleCareer(e); sc = e.cd ? '🏆' : `${e.c + 1}`; }
-    return `<li class="lbrow${e.id === myId ? ' me' : ''}${i < 3 ? ' top' + (i + 1) : ''}"><span class="pl">${medal}</span><span class="nm">${escH(e.n)}${e.id === myId ? ' (ты)' : ''}<small>${escH(sub)}</small></span><span class="sc">${sc}</span></li>`;
+    return `<li class="lbrow${e.id === myId ? ' me' : ''}${i < 3 ? ' top' + (i + 1) : ''}"><span class="pl">${medal}</span><span class="nm">${escH(t(e.n))}${e.id === myId ? ' ' + t('(ты)') : ''}<small>${escH(sub)}</small></span><span class="sc">${sc}</span></li>`;
   }
   function placeOf(list, id) { const i = list.findIndex(e => e.id === id); return i < 0 ? 0 : i + 1; }
   function render() {
@@ -253,14 +253,14 @@ const LB = (() => {
     if (sh) sh.onclick = () => share(place, tab, sh);
   }
   function share(place, kind, btn) {
-    const what = kind === 'daily' ? `в сегодняшней раздаче` : kind === 'career' ? 'в карьере' : `в рейтинге (${local().r} очков)`;
-    const text = `Я на ${place} месте ${what} в ДурКере! Сможешь обогнать?`;
+    const what = kind === 'daily' ? t('в сегодняшней раздаче') : kind === 'career' ? t('в карьере') : t('в рейтинге ({n} очков)', { n: local().r });
+    const text = t('Я на {p} месте {w} в ДурКере! Сможешь обогнать?', { p: place, w: what });
     const url = 'https://t.me/durocker_bot';
     const tga = typeof TGA !== 'undefined' && TGA;
     if (tga && tga.openTelegramLink) { tga.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text)); return; }
-    if (navigator.share) { navigator.share({ title: 'ДурКер', text, url }).catch(() => {}); return; }
-    const t = text + ' ' + url;
-    if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { btn.textContent = 'Скопировано'; }, () => {});
+    if (navigator.share) { navigator.share({ title: t('ДурКер'), text, url }).catch(() => {}); return; }
+    const full = text + ' ' + url;
+    if (navigator.clipboard) navigator.clipboard.writeText(full).then(() => { btn.textContent = 'Скопировано'; }, () => {});
   }
   async function open() {
     css();
@@ -301,7 +301,7 @@ const LB = (() => {
             const b = document.createElement('button');
             b.type = 'button'; b.className = 'mi'; b.dataset.go = 'leaders';
             const d = local();
-            b.innerHTML = `<b>Лидеры 🏆</b><small>${d.r ? `У тебя ${d.r} очков` : 'Рейтинг, дейли, карьера'}</small>`;
+            b.innerHTML = `<b>Лидеры 🏆</b><small>${d.r ? t('У тебя {n} очков', { n: d.r }) : 'Рейтинг, дейли, карьера'}</small>`;
             const after = g.querySelector('[data-go="online"]');
             if (after && after.nextSibling) g.insertBefore(b, after.nextSibling); else g.appendChild(b);
           }

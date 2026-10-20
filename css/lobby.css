@@ -122,3 +122,8 @@
 }
 @media (prefers-reduced-motion:reduce){.lb-play::after,.lb-go,.lb-chest,.lb-more{animation:none}}
 html[data-speed="off"] .lb-play::after,html[data-speed="off"] .lb-go,html[data-speed="off"] .lb-chest{animation:none}
+
+/* переключатель языка RU / EN в шапке лобби */
+.lb-lang{display:inline-flex;flex:none;border:var(--border-gold);border-radius:var(--r-pill);overflow:hidden;background:rgba(0,0,0,.4)}
+.lb-lang button{min-height:36px;min-width:40px;padding:0 var(--s2);border:0;background:transparent;color:var(--muted,#b9c4bf);font:inherit;font-size:var(--t-small);font-weight:800;letter-spacing:.04em;cursor:pointer}
+.lb-lang button.on{background:var(--gold);color:#2a1d05;cursor:default}

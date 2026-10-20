@@ -21,11 +21,11 @@ const NET4 = (() => {
     const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('mt', code); return u.toString();
   }
   function share4(code, btn) {
-    const link = link4(code), text = `Го в ДурКер компанией! Стол ${code.toUpperCase()}`;
+    const link = link4(code), text = t('Го в ДурКер компанией! Стол {code}', { code: code.toUpperCase() });
     try {
       if (typeof TGA !== 'undefined' && TGA && TGA.openTelegramLink) { TGA.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text)); return; }
     } catch (e) {}
-    if (navigator.share) { navigator.share({ title: 'ДурКер', text, url: link }).catch(() => {}); return; }
+    if (navigator.share) { navigator.share({ title: t('ДурКер'), text, url: link }).catch(() => {}); return; }
     try { copyText(link, btn); } catch (e) {}
   }
   const seatOf = pid => N.seats.findIndex(s => s.pid === pid);
@@ -73,7 +73,7 @@ const NET4 = (() => {
   function lobby() {
     if (!N) return;
     const host = N.role === 'host';
-    const seats = N.seats.map((s, i) => `<div class="seat"><span class="ava" style="background:${i ? '#3b6db8' : '#d9a03c'}">${esc(s.nick.slice(0, 2).toUpperCase())}</span><b>${esc(s.nick)}</b>${i === 0 ? ' · хозяин' : ''}</div>`).join('');
+    const seats = N.seats.map((s, i) => `<div class="seat"><span class="ava" style="background:${i ? '#3b6db8' : '#d9a03c'}">${esc(s.nick.slice(0, 2).toUpperCase())}</span><b>${esc(s.nick)}</b>${i === 0 ? ' · ' + t('хозяин') : ''}</div>`).join('');
     const empty = Math.max(0, (host ? N.want : 4) - N.seats.length);
     const bots = Array.from({ length: empty }, () => '<div class="seat off"><span class="ava" style="background:#5b6d68">🤖</span>место для друга — или сядет бот</div>').join('');
     try {
@@ -83,10 +83,10 @@ const NET4 = (() => {
           <button class="btn green" type="button" id="m4share" ${N.ready ? '' : 'disabled'}>Позвать друзей ссылкой</button></div>
           <div class="m4pick"><button class="btn ${N.want === 3 ? 'gold' : 'grey'}" type="button" data-w="3">Втроём</button><button class="btn ${N.want === 4 ? 'gold' : 'grey'}" type="button" data-w="4">Вчетвером</button></div>
           <div class="m4setup" id="m4netopt">${UI4.setupHTML({ to: N.to || 2, set: N.set || 'full' }, true)}</div>
-          <button class="btn blue" type="button" id="m4start" ${N.ready && N.seats.length >= 2 ? '' : 'disabled'}>Начать${N.seats.length < N.want ? ' (пустые места — боты)' : ''}</button>
+          <button class="btn blue" type="button" id="m4start" ${N.ready && N.seats.length >= 2 ? '' : 'disabled'}>${t('Начать')}${N.seats.length < N.want ? ' ' + t('(пустые места — боты)') : ''}</button>
           <p class="small" style="color:var(--muted)">Партию ведёт твой телефон: не закрывай вкладку.</p>
           <button class="btn grey" type="button" id="m4close">Закрыть стол</button>`
-        : `${N.to ? `<p style="text-align:center"><b>${esc(UI4.FMT[N.to] || '')}</b> · ${N.set === 'full' ? 'полные правила' : 'классика'}</p>` : ''}<div class="status"><span class="wait">${N.got ? 'Ждём, пока хозяин начнёт…' : 'Подключаемся к столу…'}</span></div><button class="btn grey" type="button" id="m4close">Выйти</button>`}`);
+        : `${N.to ? `<p style="text-align:center"><b>${esc(UI4.FMT[N.to] || '')}</b> · ${t(N.set === 'full' ? 'полные правила' : 'классика')}</p>` : ''}<div class="status"><span class="wait">${N.got ? 'Ждём, пока хозяин начнёт…' : 'Подключаемся к столу…'}</span></div><button class="btn grey" type="button" id="m4close">Выйти</button>`}`);
       const sh = $4('m4share'); if (sh) sh.onclick = () => share4(N.code, sh);
       const st = $4('m4start'); if (st) st.onclick = start;
       $4('m4close').onclick = () => { leave(); closeSheets(); };

@@ -9,6 +9,8 @@
 'use strict';
 const STORY = (() => {
   const D = STORY_DATA;
+  /* t() может отсутствовать (тесты в node) */
+  const TT = (s, v) => (typeof t === 'function' ? t(s, v) : (v ? String(s).replace(/\{(\w+)\}/g, (m, n) => (n in v ? v[n] : m)) : s));
   const KEY = 'durker-story';
   const W = typeof window !== 'undefined' ? window : globalThis;
   const rd = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -34,7 +36,7 @@ const STORY = (() => {
   const temper = id => (D.DOSSIER[id] && D.DOSSIER[id].temper) || 'warm';
 
   function relLabel(r) {
-    return r <= -4 ? 'Заклятый враг' : r <= -2 ? 'Недруг' : r <= 1 ? 'Знакомый' : r <= 3 ? 'Уважает' : 'Приятель';
+    return TT(r <= -4 ? 'Заклятый враг' : r <= -2 ? 'Недруг' : r <= 1 ? 'Знакомый' : r <= 3 ? 'Уважает' : 'Приятель');
   }
   const relTier = r => (r <= -2 ? 'enemy' : r >= 2 ? 'friend' : 'neutral');
 
@@ -97,7 +99,7 @@ const STORY = (() => {
     const r = typeof rnd === 'number' ? rnd : Math.random();
     const line = arr[Math.floor(r * arr.length) % arr.length];
     mm.push(line); if (mm.length > 5) mm.shift();
-    return sub(line, id);
+    return sub(TT(line), id);
   }
 
   /* что сказать перед матчем */
@@ -126,8 +128,8 @@ const STORY = (() => {
   function checkRewards() {
     try {
       const f = friends(), n = NEIGHBORS().length;
-      if (f >= 3 && unlock('back', 'st-friend')) toast('🤝 Друг двора — открыта рубашка');
-      if (n && f >= n && unlock('back', 'st-all')) toast('🏠 Свой в каждом дворе — открыта рубашка');
+      if (f >= 3 && unlock('back', 'st-friend')) toast(TT('🤝 Друг двора — открыта рубашка'));
+      if (n && f >= n && unlock('back', 'st-all')) toast(TT('🏠 Свой в каждом дворе — открыта рубашка'));
     } catch (e) {}
   }
 
@@ -171,25 +173,25 @@ const STORY = (() => {
   function duelCard(id, then, extraTag) {
     const d = D.DOSSIER[id], m = mem(id), sit = sitBefore(id);
     const line = pickLine(id, sit);
-    const district = (typeof currentBot === 'function' && MODE && MODE.kind === 'career' && typeof CAREER !== 'undefined') ? (() => { try { const b = currentBot(); return `РАЙОН ${b.district + 1} · ${CAREER[b.district].name.toUpperCase()}`; } catch (e) { return ''; } })() : (modeKind() === 'weekly' ? 'БОСС НЕДЕЛИ' : '');
+    const district = (typeof currentBot === 'function' && MODE && MODE.kind === 'career' && typeof CAREER !== 'undefined') ? (() => { try { const b = currentBot(); return TT('РАЙОН {n} · {name}', { n: b.district + 1, name: TT(CAREER[b.district].name).toUpperCase() }); } catch (e) { return ''; } })() : (modeKind() === 'weekly' ? TT('БОСС НЕДЕЛИ') : '');
     const first = !m.met;
-    const rec = first ? 'первая встреча' : `встреч ${m.met} · ты ${m.mw}:${m.ml} · последний ${m.last}`;
+    const rec = first ? TT('первая встреча') : TT('встреч {n} · ты {w}:{l} · последний {last}', { n: m.met, w: m.mw, l: m.ml, last: m.last });
     const emo = sit === 'cocky' || sit === 'grudge' ? 'smug' : sit === 'revenge' ? 'angry' : 'neutral';
     const el = openOv(`
       <span class="sov-tag">${E(extraTag || district)}</span>
       <div class="sov-por">${por(id, emo)}</div>
-      <h2 class="sov-name">${E(d.nick)}</h2>
-      <div class="sov-sub">${E(d.manner)}</div>
-      ${first ? `<p class="sov-bio">${E(d.bio)}</p>` : ''}
+      <h2 class="sov-name">${E(TT(d.nick))}</h2>
+      <div class="sov-sub">${E(TT(d.manner))}</div>
+      ${first ? `<p class="sov-bio">${E(TT(d.bio))}</p>` : ''}
       <div class="sov-quote" id="sovQuote"><span class="sov-q"></span><i class="sov-cur"></i></div>
       <div class="sov-meta"><div class="sov-rel">${relBar(m.rel)}<b>${E(relLabel(m.rel))}</b></div><small>${E(rec)}</small></div>
-      ${first ? `<div class="sov-chips"><span class="chip">не любит: ${E(lc(d.hates))}</span><span class="chip gold">слабость: ${E(lc(d.weak))}</span></div>` : ''}
+      ${first ? `<div class="sov-chips"><span class="chip">${E(TT('не любит: {x}', { x: lc(TT(d.hates)) }))}</span><span class="chip gold">${E(TT('слабость: {x}', { x: lc(TT(d.weak)) }))}</span></div>` : ''}
       <div class="row sov-row"><button class="btn primary lg" type="button" id="sovGo">В бой</button></div>
       <button class="btn ghost sm sov-off" type="button" id="sovOff">Не показывать карточки</button>`, 'sov-duel');
     let done = false;
     const go = () => { if (done) return; done = true; closeOv(); try { then(); } catch (e) { console.error(e); } };
     el.querySelector('#sovGo').onclick = e => { e.stopPropagation(); go(); };
-    el.querySelector('#sovOff').onclick = e => { e.stopPropagation(); state().off = true; save(); try { toast('Карточки выключены — вернуть можно в «Знакомствах»'); } catch (er) {} go(); };
+    el.querySelector('#sovOff').onclick = e => { e.stopPropagation(); state().off = true; save(); try { toast(TT('Карточки выключены — вернуть можно в «Знакомствах»')); } catch (er) {} go(); };
     el.onclick = e => { if (e.target === el) go(); };
     onKey = e => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); go(); } };
     document.addEventListener('keydown', onKey, true);
@@ -220,13 +222,13 @@ const STORY = (() => {
       inn.innerHTML = `
         <span class="sov-tag">${E(tag)}</span>
         <div class="sov-por ${who ? '' : 'narr'}">${who ? por(who, s.emo || 'neutral') : '<b class="sov-ph">🃏</b>'}</div>
-        <h2 class="sov-name">${E(d ? d.nick : 'Рассказчик')}</h2>
+        <h2 class="sov-name">${E(d ? TT(d.nick) : TT('Рассказчик'))}</h2>
         <div class="sov-quote ${who ? '' : 'narrq'}"><span class="sov-q"></span><i class="sov-cur"></i></div>
         <div class="sov-dots">${list.map((_, k) => `<i class="${k === i ? 'on' : k < i ? 'was' : ''}"></i>`).join('')}</div>
-        <div class="row sov-row"><button class="btn ${last ? 'primary lg' : 'blue'}" type="button" id="sovNext">${last ? E(doneLabel || 'Дальше') : 'Дальше ▸'}</button></div>
-        ${last ? '' : '<button class="btn ghost sm" type="button" id="sovSkip">Пропустить</button>'}`;
+        <div class="row sov-row"><button class="btn ${last ? 'primary lg' : 'blue'}" type="button" id="sovNext">${last ? E(TT(doneLabel || 'Дальше')) : TT('Дальше ▸')}</button></div>
+        ${last ? '' : '<button class="btn ghost sm" type="button" id="sovSkip">' + TT('Пропустить') + '</button>'}`;
       typing = true;
-      fin = typeInto(inn.querySelector('.sov-q'), (who ? '«' + s.t + '»' : s.t), inn.querySelector('.sov-cur'));
+      fin = typeInto(inn.querySelector('.sov-q'), (who ? '«' + TT(s.t) + '»' : TT(s.t)), inn.querySelector('.sov-cur'));
       const to = setTimeout(() => { typing = false; }, noMotion() ? 0 : Math.min(2500, 22 * s.t.length + 50));
       inn.querySelector('#sovNext').onclick = e => { e.stopPropagation(); adv(); };
       const sk = inn.querySelector('#sovSkip'); if (sk) sk.onclick = e => { e.stopPropagation(); close(); };
@@ -264,8 +266,8 @@ const STORY = (() => {
     const tg = pg.querySelector('#stCards'); if (tg) tg.onclick = () => { s.off = !s.off; save(); openStory(); };
   }
   function nameFor(id) {
-    try { const o = CAREER_OPS.find(x => x.id === id); if (o) return o.name; } catch (e) {}
-    return (D.DOSSIER[id] || {}).nick || id;
+    try { const o = CAREER_OPS.find(x => x.id === id); if (o) return TT(o.name); } catch (e) {}
+    return TT((D.DOSSIER[id] || {}).nick || id);
   }
   function listHTML(ids, seen) {
     const s = state(), f = friends(), nb = NEIGHBORS().length;
@@ -275,31 +277,31 @@ const STORY = (() => {
       if (!ok) {
         const unlocked = (() => { try { const idx = CAREER_OPS.findIndex(o => o.id === id); return idx >= 0 && idx <= prog().career; } catch (e) { return false; } })();
         if (!unlocked) return '';
-        return `<button type="button" class="stp" data-sid="${E(id)}"><span class="stp-p">${por(id, 'neutral')}</span><span class="stp-t"><b>${E(nameFor(id))}</b><small>ещё не играли</small></span></button>`;
+        return `<button type="button" class="stp" data-sid="${E(id)}"><span class="stp-p">${por(id, 'neutral')}</span><span class="stp-t"><b>${E(nameFor(id))}</b><small>${TT('ещё не играли')}</small></span></button>`;
       }
       return `<button type="button" class="stp" data-sid="${E(id)}"><span class="stp-p">${por(id, m.rel >= 2 ? 'smug' : m.rel <= -2 ? 'angry' : 'neutral')}</span>
-        <span class="stp-t"><b>${E(d.nick)}</b><span class="stp-r">${relBar(m.rel)}<em>${E(relLabel(m.rel))}</em></span><small>матчей ${m.met} · ты ${m.mw}:${m.ml}${m.last ? ' · последний ' + E(m.last) : ''}</small></span></button>`;
+        <span class="stp-t"><b>${E(TT(d.nick))}</b><span class="stp-r">${relBar(m.rel)}<em>${E(relLabel(m.rel))}</em></span><small>${E(TT('матчей {n} · ты {w}:{l}', { n: m.met, w: m.mw, l: m.ml }))}${m.last ? ' · ' + E(TT('последний {last}', { last: m.last })) : ''}</small></span></button>`;
     }).join('');
-    const rewards = `<div class="sov-rew"><span class="chip ${f >= 3 ? 'gold' : ''}">🤝 Друг двора: ${Math.min(f, 3)}/3 приятелей</span><span class="chip ${nb && f >= nb ? 'gold' : ''}">🏠 Свой в каждом дворе: ${f}/${nb}</span></div>
-      <small class="small">Приятель — отношение +5. Оно растёт от упорных матчей и разных сюрпризов, и падает, если поймать шулера за руку.</small>`;
-    return `${head('Знакомства')}
-      <div class="sov-sum"><span class="chip">Знакомых: ${metN}</span><span class="chip gold">Приятелей: ${ids.filter(id => mem(id).rel >= 2).length}</span><span class="chip">Врагов: ${ids.filter(id => mem(id).rel <= -2).length}</span></div>
+    const rewards = `<div class="sov-rew"><span class="chip ${f >= 3 ? 'gold' : ''}">${E(TT('🤝 Друг двора: {n}/3 приятелей', { n: Math.min(f, 3) }))}</span><span class="chip ${nb && f >= nb ? 'gold' : ''}">${E(TT('🏠 Свой в каждом дворе: {n}/{total}', { n: f, total: nb }))}</span></div>
+      <small class="small">${TT('Приятель — отношение +5. Оно растёт от упорных матчей и разных сюрпризов, и падает, если поймать шулера за руку.')}</small>`;
+    return `${head(TT('Знакомства'))}
+      <div class="sov-sum"><span class="chip">${TT('Знакомых: {n}', { n: metN })}</span><span class="chip gold">${TT('Приятелей: {n}', { n: ids.filter(id => mem(id).rel >= 2).length })}</span><span class="chip">${TT('Врагов: {n}', { n: ids.filter(id => mem(id).rel <= -2).length })}</span></div>
       ${rewards}
-      <h3>Соперники</h3><div class="stlist">${rows || '<p class="small">Сыграй первый матч в карьере — и соперники начнут запоминать тебя.</p>'}</div>
-      <button type="button" class="btn ghost sm" id="stCards">Карточки перед матчем: ${s.off ? 'выкл' : 'вкл'}</button>`;
+      <h3>${TT('Соперники')}</h3><div class="stlist">${rows || '<p class="small">' + TT('Сыграй первый матч в карьере — и соперники начнут запоминать тебя.') + '</p>'}</div>
+      <button type="button" class="btn ghost sm" id="stCards">${TT('Карточки перед матчем: {x}', { x: TT(s.off ? 'выкл' : 'вкл') })}</button>`;
   }
   function detailHTML(id) {
     const d = D.DOSSIER[id], m = mem(id);
     if (!d) return listHTML(allIds(), x => mem(x).met > 0);
     const emo = m.rel >= 2 ? 'smug' : m.rel <= -2 ? 'angry' : 'neutral';
-    return `${head(E(d.nick))}
+    return `${head(E(TT(d.nick)))}
       <div class="sov-por big">${por(id, emo)}</div>
       <div class="sov-meta"><div class="sov-rel">${relBar(m.rel)}<b>${E(relLabel(m.rel))}</b></div>
-        <small>${m.met ? `Матчей: ${m.met} · ты выиграл ${m.mw}, проиграл ${m.ml}${m.last ? ' · последний счёт ' + E(m.last) : ''}` : 'Ещё не играли'}</small></div>
-      <p>${E(d.bio)}</p>
-      <div class="sov-chips"><span class="chip">манера: ${E(lc(d.manner))}</span><span class="chip">не любит: ${E(lc(d.hates))}</span><span class="chip gold">слабость: ${E(lc(d.weak))}</span></div>
-      ${m.met ? `<small class="small">Могнул его: ${m.mog} · поймал шулером: ${m.caught} · партий ${m.gw}:${m.gl}</small>` : ''}
-      <button type="button" class="btn blue" id="stBack">◂ К списку</button>`;
+        <small>${m.met ? TT('Матчей: {n} · ты выиграл {w}, проиграл {l}', { n: m.met, w: m.mw, l: m.ml }) + (m.last ? ' · ' + E(TT('последний счёт {last}', { last: m.last })) : '') : TT('Ещё не играли')}</small></div>
+      <p>${E(TT(d.bio))}</p>
+      <div class="sov-chips"><span class="chip">${E(TT('манера: {x}', { x: lc(TT(d.manner)) }))}</span><span class="chip">${E(TT('не любит: {x}', { x: lc(TT(d.hates)) }))}</span><span class="chip gold">${E(TT('слабость: {x}', { x: lc(TT(d.weak)) }))}</span></div>
+      ${m.met ? `<small class="small">${TT('Могнул его: {a} · поймал шулером: {b} · партий {w}:{l}', { a: m.mog, b: m.caught, w: m.gw, l: m.gl })}</small>` : ''}
+      <button type="button" class="btn blue" id="stBack">${TT('◂ К списку')}</button>`;
   }
 
   /* ---------- подключение к игре ---------- */
@@ -313,7 +315,7 @@ const STORY = (() => {
     document.head.appendChild(st);
   };
   function wire() {
-    try { [['st-friend', 'Друг двора'], ['st-all', 'Свой в каждом дворе'], ['st-champ', 'Король казино']].forEach(([id, name]) => { if (!BACKS.some(b => b.id === id)) BACKS.push({ id, name }); }); } catch (e) {}
+    try { [['st-friend', 'Друг двора'], ['st-all', 'Свой в каждом дворе'], ['st-champ', 'Король казино']].forEach(([id, name]) => { if (!BACKS.some(b => b.id === id)) BACKS.push({ id, name: TT(name) }); }); } catch (e) {}
     rewardCSS();
 
     /* вход в режим: сюжетная вставка района и карточка соперника перед матчем */
@@ -330,7 +332,7 @@ const STORY = (() => {
       const afterIntro = () => { if (state().off) go(); else duelCard(id, go); };
       if (m.kind === 'career' && dist >= 0 && !state().intro[dist] && D.DISTRICTS[dist]) {
         state().intro[dist] = 1; save();
-        scenes(D.DISTRICTS[dist].intro, `РАЙОН ${dist + 1} · ${D.DISTRICTS[dist].name.toUpperCase()}`, afterIntro, 'Начать');
+        scenes(D.DISTRICTS[dist].intro, TT('РАЙОН {n} · {name}', { n: dist + 1, name: TT(D.DISTRICTS[dist].name).toUpperCase() }), afterIntro, 'Начать');
         return;
       }
       afterIntro();
@@ -369,8 +371,8 @@ const STORY = (() => {
         const h = o.querySelector('h2');
         if (!el) { el = document.createElement('div'); el.className = 'stline'; if (h && h.parentNode === o) h.after(el); else o.insertBefore(el, o.querySelector('p') || o.firstChild); }
         const d = D.DOSSIER[r.id];
-        const rel = r.relUp ? `<span class="stl-rel ${r.relUp > 0 ? 'up' : 'down'}">${r.relUp > 0 ? '▲ отношение растёт' : '▼ отношение падает'}</span>` : '';
-        el.innerHTML = `<b>${E(d.nick)}:</b> <span>«${E(r.line)}»</span>${rel}`;
+        const rel = r.relUp ? `<span class="stl-rel ${r.relUp > 0 ? 'up' : 'down'}">${r.relUp > 0 ? TT('▲ отношение растёт') : TT('▼ отношение падает')}</span>` : '';
+        el.innerHTML = `<b>${E(TT(d.nick))}:</b> <span>«${E(r.line)}»</span>${rel}`;
       } catch (e) { console.warn('[STORY]', e); }
     });
 
@@ -383,11 +385,11 @@ const STORY = (() => {
         if (s.cut[dist]) return;
         s.cut[dist] = 1; save();
         const dd = D.DISTRICTS[dist];
-        const tag = `РАЙОН ${dist + 1} · ${dd.name.toUpperCase()} ПРОЙДЕН`;
+        const tag = TT('РАЙОН {n} · {name} ПРОЙДЕН', { n: dist + 1, name: TT(dd.name).toUpperCase() });
         setTimeout(() => {
           const fin = () => { if (dist === D.DISTRICTS.length - 1) {
-            try { if (unlock('back', 'st-champ')) toast('👑 Путь пройден — открыта рубашка'); } catch (e) {}
-            scenes(D.FINALE, 'ФИНАЛ · С ПОДЪЕЗДА В КАЗИНО', null, 'Конец главы');
+            try { if (unlock('back', 'st-champ')) toast(TT('👑 Путь пройден — открыта рубашка')); } catch (e) {}
+            scenes(D.FINALE, TT('ФИНАЛ · С ПОДЪЕЗДА В КАЗИНО'), null, 'Конец главы');
           } };
           if (dd.outro && dd.outro.length) scenes(dd.outro, tag, fin, 'Дальше'); else fin();
         }, noMotion() ? 200 : 900);
@@ -412,7 +414,7 @@ const STORY = (() => {
         const f = friends(), n = allIds().filter(id => mem(id).met > 0).length;
         const bt = document.createElement('button');
         bt.type = 'button'; bt.className = 'mi'; bt.dataset.go = 'story';
-        bt.innerHTML = `<b>🤝 Знакомства</b><small>${n ? `знакомых ${n} · приятелей ${f}` : 'соперники запоминают тебя'}</small>`;
+        bt.innerHTML = `<b>${TT('🤝 Знакомства')}</b><small>${n ? TT('знакомых {n} · приятелей {f}', { n, f }) : TT('соперники запоминают тебя')}</small>`;
         g.appendChild(bt);
       } catch (e) {}
     });

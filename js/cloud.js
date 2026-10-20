@@ -197,13 +197,13 @@ const CLOUD = (() => {
 `;
     document.head.appendChild(s);
   }
-  const nameOf = (st, id) => { const p = st.players.find(x => x.pid === id); return p ? p.nick : '—'; };
+  const nameOf = (st, id) => { const p = st.players.find(x => x.pid === id); return p ? t(p.nick) : '—'; };
   function render() {
     if (!openNow) return;
     const el = $('pageIn');
     if (!el) return;
     let body = '';
-    if (!on()) body = `<p class="tnote">Турниры работают через облако ДурКер — оно пока не подключено${url ? ' или не отвечает' : ''}. Сыграть с другом можно в «Онлайн».</p>`;
+    if (!on()) body = `<p class="tnote">${url ? t('Турниры работают через облако ДурКер — оно пока не подключено или не отвечает. Сыграть с другом можно в «Онлайн».') : t('Турниры работают через облако ДурКер — оно пока не подключено. Сыграть с другом можно в «Онлайн».')}</p>`;
     else if (cur) body = bracket(cur);
     else {
       const l = tours();
@@ -232,19 +232,19 @@ const CLOUD = (() => {
       for (let i = 0; i < need; i++) {
         const m = ms[i];
         if (!m) { cells.push('<div class="tm"><div>—</div><div>—</div></div>'); continue; }
-        const line = p => `<div class="${m.winner === p ? 'w' : ''}"><span>${escH(nameOf(st, p))}${p === id ? ' (ты)' : ''}</span><span>${m.winner === p ? '✓' : ''}</span></div>`;
+        const line = p => `<div class="${m.winner === p ? 'w' : ''}"><span>${escH(nameOf(st, p))}${p === id ? ' ' + t('(ты)') : ''}</span><span>${m.winner === p ? '✓' : ''}</span></div>`;
         cells.push(`<div class="tm${m.a === id || m.b === id ? ' me' : ''}">${line(m.a)}${line(m.b)}</div>`);
       }
-      cols.push(`<div class="tcol"><h4>${r === rounds ? 'Финал' : r === rounds - 1 && rounds > 1 ? 'Полуфинал' : 'Раунд ' + r}</h4>${cells.join('')}</div>`);
+      cols.push(`<div class="tcol"><h4>${r === rounds ? 'Финал' : r === rounds - 1 && rounds > 1 ? 'Полуфинал' : t('Раунд {n}', { n: r })}</h4>${cells.join('')}</div>`);
     }
     const mine = myMatch(st), waiting = st.status === 'open';
-    const wait = waiting ? `<p class="tnote">Ждём игроков: ${st.players.length} из ${st.size}. ${st.players.map(p => escH(p.nick)).join(', ')}</p>` : '';
-    const champ = st.status === 'done' ? `<div class="tchamp">👑 Чемпион: ${escH(nameOf(st, st.winner))}</div>` : '';
+    const wait = waiting ? `<p class="tnote">${t('Ждём игроков: {a} из {b}.', { a: st.players.length, b: st.size })} ${st.players.map(p => escH(p.nick)).join(', ')}</p>` : '';
+    const champ = st.status === 'done' ? `<div class="tchamp">${t('👑 Чемпион: {n}', { n: escH(nameOf(st, st.winner)) })}</div>` : '';
     const mineM = st.matches.find(m => m.status === 'pending' && (m.a === id || m.b === id));
     const pend = mineM && !mine ? '<p class="tnote">Ждём, пока соперник подтвердит итог матча.</p>' : '';
     return `<h3>${escH(st.name)} · ${escH(st.code.toUpperCase())}</h3>${wait}${champ}
       ${st.matches.length ? `<div class="tbr">${cols.join('')}</div>` : ''}
-      ${mine ? `<button type="button" class="tb g" id="tPlay" style="width:100%">⚔️ Играть мой матч — против ${escH(nameOf(st, mine.a === id ? mine.b : mine.a))}</button>` : ''}${pend}
+      ${mine ? `<button type="button" class="tb g" id="tPlay" style="width:100%">${t('⚔️ Играть мой матч — против {n}', { n: escH(nameOf(st, mine.a === id ? mine.b : mine.a)) })}</button>` : ''}${pend}
       <div class="tjoin"><button type="button" class="tb" id="tShare">Позвать в турнир</button><button type="button" class="tb s" id="tBack">Назад</button></div>`;
   }
   function inviteURL(code) {
@@ -252,10 +252,10 @@ const CLOUD = (() => {
     const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('tj', code); return u.toString();
   }
   function share(st) {
-    const link = inviteURL(st.code), text = `Го в турнир ДурКер «${st.name}»! Код ${st.code.toUpperCase()}`;
+    const link = inviteURL(st.code), text = t('Го в турнир ДурКер «{n}»! Код {c}', { n: st.name, c: st.code.toUpperCase() });
     const tga = typeof TGA !== 'undefined' && TGA;
     if (tga && tga.openTelegramLink) { tga.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text)); return; }
-    if (navigator.share) { navigator.share({ title: 'ДурКер', text, url: link }).catch(() => {}); return; }
+    if (navigator.share) { navigator.share({ title: t('ДурКер'), text, url: link }).catch(() => {}); return; }
     if (navigator.clipboard) navigator.clipboard.writeText(text + ' ' + link).then(() => { msg = 'Ссылка скопирована'; render(); }, () => {});
   }
   async function create(size, name) {

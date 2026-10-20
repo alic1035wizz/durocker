@@ -416,7 +416,7 @@ const PORTRAITS = (() => {
     return `<svg class="pt" viewBox="0 0 100 100" data-e="${EMOS.includes(o.emo) ? o.emo : 'neutral'}" data-id="${esc(id)}" aria-hidden="true" focusable="false" style="--pt-d:${delay}s">${s}</svg>`;
   }
   const svg = (key, o) => svgFor(key, o);
-  const nameOf = id => NAMES[id] || id;
+  const nameOf = id => t(NAMES[id] || id);
 
   /* ---------------- стили ---------------- */
   const CSS = `

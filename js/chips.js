@@ -10,6 +10,8 @@
   const E = s => (typeof esc === 'function' ? esc(String(s)) : String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
   const calm = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   const night = () => { const h = new Date().getHours(); return h >= 23 || h < 6; };
+  const mx = x => (I18N.lang === 'en' ? String(x) : String(x).replace('.', ','));
+  const LOC = () => (I18N.lang === 'en' ? 'en-US' : 'ru-RU');
   const say = (t, ms) => { try { toast(t, ms); } catch (e) {} };
   const snd = n => { try { AU.play(n); } catch (e) {} };
 
@@ -133,14 +135,14 @@
   let lastShown = null;
   function paint(fx) {
     const bar = ensureBar(); if (!bar) return;
-    $c('chNum').textContent = chips.toLocaleString('ru-RU');
+    $c('chNum').textContent = chips.toLocaleString(LOC());
     const pill = $c('chPill');
     if (fx && lastShown !== null && lastShown !== chips) { pill.classList.remove('up', 'down'); void pill.offsetWidth; pill.classList.add(fx); }
     lastShown = chips;
     const b = $c('chBet'), live = st.bet && st.bet.amt > 0 && !NET && MODE.kind === 'free' && st.bet.k === safeKey();
-    b.hidden = !live; if (live) b.textContent = '🎲 ставка ' + st.bet.amt;
+    b.hidden = !live; if (live) b.textContent = t('🎲 ставка {n}', { n: st.bet.amt });
     const f = $c('chFire'), m = streakMult(st.streak);
-    f.hidden = st.streak < 1; $c('chFireN').textContent = st.streak; $c('chFireM').textContent = m > 1 ? '×' + String(m).replace('.', ',') : '';
+    f.hidden = st.streak < 1; $c('chFireN').textContent = st.streak; $c('chFireM').textContent = m > 1 ? '×' + mx(m) : '';
     f.classList.remove('out');
   }
   function safeKey() { try { return seriesKey(); } catch (e) { return null; } }
@@ -161,14 +163,14 @@
     const b = dailyBonus(n);
     st.daily = { d: k, n };
     addChips(b); saveMeta();
-    say(`🪙 Бонус дня: +${b}${n > 1 ? ` · ${n}-й день подряд` : ''}${n < 5 ? '' : ' · максимум'}`, 4200);
+    say(t('🪙 Бонус дня: +{b}', { b }) + (n > 1 ? ' · ' + t('{n}-й день подряд', { n }) : '') + (n < 5 ? '' : ' · ' + t('максимум')), 4200);
   }
 
   /* ---------- займ у Торгаша ---------- */
   function takeLoan() {
     if (chips > 0 || st.debt > 0) return false;
     st.debt = LOAN; addChips(LOAN); saveMeta();
-    say('🧔 Торгаш: «Держи 200. Отдашь с выигрыша — я не тороплюсь».', 4500);
+    say(t('🧔 Торгаш: «Держи 200. Отдашь с выигрыша — я не тороплюсь».'), 4500);
     return true;
   }
 
@@ -179,7 +181,7 @@
     const k = safeKey(); if (!k) return;
     const b = st.bet;
     if (b) { /* матч не начат: стартовая ставка возвращается, начатый и брошенный — сгорает */
-      if (b.seen > 0) say('Матч брошен — ставка сгорела', 3000);
+      if (b.seen > 0) say(t('Матч брошен — ставка сгорела'), 3000);
       else addChips(b.amt);
       st.bet = null;
     }
@@ -187,7 +189,7 @@
     if (amt > 0) {
       addChips(-amt);
       st.bet = { k, amt, base: amt, seen: 0, offered: false };
-      say(`🎲 Ставка ${amt} 🪙 принята`, 2500);
+      say(t('🎲 Ставка {n} 🪙 принята', { n: amt }), 2500);
     }
     saveMeta(); paint();
   }
@@ -206,14 +208,14 @@
     const matchWon = done && w.p >= to, matchLost = done && w.b >= to;
     const L = { lines: [], delta: 0, done, won: matchWon, lost: matchLost, chest: null, out: false, streak: st.streak, mult: 1, amt: 0, loanPaid: 0, bot: !NET && MODE.kind === 'free' };
     let gain = 0;
-    if (!draw && won && !done) { const g = gameReward(); gain += g; L.lines.push(['Победа в партии', g]); }
+    if (!draw && won && !done) { const g = gameReward(); gain += g; L.lines.push([t('Победа в партии'), g]); }
     if (done) {
       st.matches++;
       if (matchWon) {
         st.streak++; st.best = Math.max(st.best, st.streak); st.lossRun = 0;
         L.streak = st.streak; L.mult = streakMult(st.streak);
         const base = matchReward(to), r = Math.round(base * L.mult);
-        gain += r; L.lines.push([`Победа в матче${L.mult > 1 ? ` ×${String(L.mult).replace('.', ',')} 🔥` : ''}`, r]);
+        gain += r; L.lines.push([t('Победа в матче') + (L.mult > 1 ? ` ×${mx(L.mult)} 🔥` : ''), r]);
         try { if (L.mult > 1 && typeof PASS !== 'undefined' && PASS.add) PASS.add(Math.round(50 * (L.mult - 1)), 'серия 🔥', true); } catch (e) {}
       } else if (matchLost) {
         if (st.streak > 0) { L.out = true; fireOut(); }
@@ -233,12 +235,12 @@
           const bm = botTier().ai === 'sharper' ? 1.5 : 1;
           const prof = Math.round(b.amt * bm * L.mult);
           addChips(b.amt);                       /* ставка возвращается */
-          gain += prof; L.lines.push([`Ставка ${b.amt}${bm > 1 ? ' ×1,5 (Шулер)' : ''}`, prof]);
-        } else if (matchLost) { L.delta -= b.amt; L.lines.push([`Ставка ${b.amt} проиграна`, -b.amt]); }
+          gain += prof; L.lines.push([t('Ставка {n}', { n: b.amt }) + (bm > 1 ? ' ×' + mx(1.5) + ' (' + t('Шулер') + ')' : ''), prof]);
+        } else if (matchLost) { L.delta -= b.amt; L.lines.push([t('Ставка {n} проиграна', { n: b.amt }), -b.amt]); }
         st.bet = null; st.lastBase = b.base;
       }
     } else if (st.bet) st.bet.seen = SERIES.games;
-    if (gain > 0) { const r = income(gain); L.delta += r.net; L.loanPaid = r.paid; if (r.paid) L.lines.push(['Торгашу в счёт займа', -r.paid]); }
+    if (gain > 0) { const r = income(gain); L.delta += r.net; L.loanPaid = r.paid; if (r.paid) L.lines.push([t('Торгашу в счёт займа'), -r.paid]); }
     st.last = L; saveMeta(); paint();
   }
   function rollRarity(rarePlus) {
@@ -281,15 +283,15 @@
     else if (res.type === 'dup') income(res.n);
     st.chestOpened = (st.chestOpened || 0) + 1; saveMeta(); paint();
     let name, sub;
-    if (res.type === 'chips') { name = `+${res.n} 🪙`; sub = 'Фишки в кошелёк'; }
-    else if (res.type === 'item') { name = `${ICON[res.kind]} ${itemName(res.kind, res.id)}`; sub = `${KIND_RU[res.kind]} — открыто, смотри в «Коллекции»`; }
-    else { name = `+${res.n} 🪙`; sub = `${KIND_RU[res.kind]} «${itemName(res.kind, res.id)}» уже есть — обменяли на фишки`; }
+    if (res.type === 'chips') { name = `+${res.n} 🪙`; sub = t('Фишки в кошелёк'); }
+    else if (res.type === 'item') { name = `${ICON[res.kind]} ${t(itemName(res.kind, res.id))}`; sub = t('{k} — открыто, смотри в «Коллекции»', { k: t(KIND_RU[res.kind]) }); }
+    else { name = `+${res.n} 🪙`; sub = t('{k} «{n}» уже есть — обменяли на фишки', { k: t(KIND_RU[res.kind]), n: t(itemName(res.kind, res.id)) }); }
     const ov = document.createElement('div');
     ov.className = 'chov shake'; ov.id = 'chOv'; ov.style.setProperty('--rc', R.c);
     ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Сундук');
     ov.innerHTML = `<div class="chrays"></div><div class="chcore" aria-hidden="true">🎁</div>
-      <div class="chres"><span class="rar">${R.n}</span><div class="nm">${E(name)}</div><div class="sub">${E(sub)}</div></div>
-      <button class="btn gold chtake" type="button" id="chTake">Забрать</button><div class="chflash"></div>`;
+      <div class="chres"><span class="rar">${t(R.n)}</span><div class="nm">${E(name)}</div><div class="sub">${E(sub)}</div></div>
+      <button class="btn gold chtake" type="button" id="chTake">${t('Забрать')}</button><div class="chflash"></div>`;
     document.body.appendChild(ov);
     snd('deal');
     let done = false;
@@ -300,8 +302,8 @@
       snd(r === 'common' ? 'combo' : 'win');
       try { if (r !== 'common') VFX.confetti(); } catch (e) {}
     };
-    const t = setTimeout(reveal, calm() ? 150 : 1300);
-    ov.querySelector('.chcore').onclick = () => { clearTimeout(t); reveal(); };
+    const tm = setTimeout(reveal, calm() ? 150 : 1300);
+    ov.querySelector('.chcore').onclick = () => { clearTimeout(tm); reveal(); };
     $c('chTake').onclick = () => { ov.remove(); try { showOver(); } catch (e) {} const pg = $c('page'); if (pg && !pg.hidden) openChips(); };
   }
 
@@ -311,24 +313,24 @@
     const next = claimed ? dailyBonus(n + 1) : dailyBonus(n);
     const toChest = 3 - (st.matches % 3);
     const mult = streakMult(st.streak);
-    const chestList = st.chests.length ? `<button class="btn chchest" type="button" id="chOpen">🎁 Открыть сундук (${st.chests.length})</button>` : '';
-    const loan = chips === 0 && st.debt === 0 ? `<button class="btn orange" type="button" id="chLoan">🧔 Займ у Торгаша: 200 🪙</button><p class="small">Без процентов. Вернёшь с выигрыша — половина каждой победы, пока долг не закроется.</p>` : '';
-    sheet('page', `${head('Фишки 🪙')}
-      <div class="cbig">${chips.toLocaleString('ru-RU')} 🪙</div>
-      ${st.debt ? `<p class="small" style="text-align:center">Долг Торгашу: <b>${st.debt}</b> (возвращается с выигрышей)</p>` : ''}
+    const chestList = st.chests.length ? `<button class="btn chchest" type="button" id="chOpen">🎁 ${t('Открыть сундук')} (${st.chests.length})</button>` : '';
+    const loan = chips === 0 && st.debt === 0 ? `<button class="btn orange" type="button" id="chLoan">${t('🧔 Займ у Торгаша: 200 🪙')}</button><p class="small">${t('Без процентов. Вернёшь с выигрыша — половина каждой победы, пока долг не закроется.')}</p>` : '';
+    sheet('page', `${head(t('Фишки 🪙'))}
+      <div class="cbig">${chips.toLocaleString(LOC())} 🪙</div>
+      ${st.debt ? `<p class="small" style="text-align:center">${t('Долг Торгашу: {d} (возвращается с выигрышей)', { d: `<b>${st.debt}</b>` })}</p>` : ''}
       ${loan}${chestList}
-      <div class="cbox"><b>🔥 Серия побед: ${st.streak}</b>${mult > 1 ? ` — фишки и опыт пропуска ×${String(mult).replace('.', ',')}` : ''}
-        <table class="ctab"><tr><td>2 победы подряд</td><td>×1,2</td></tr><tr><td>4 победы подряд</td><td>×1,5</td></tr><tr><td>7 побед подряд</td><td>×2</td></tr></table>
-        <div class="m small">Рекорд: ${st.best}. Поражение гасит огонь.</div></div>
-      <div class="cbox"><b>Сундуки</b><div class="small">Каждый 3-й матч — сундук. Каждый 10-й сундук — гарантированно редкий или лучше. До следующего: ${toChest} ${toChest === 1 ? 'матч' : 'матча'}.</div></div>
-      <div class="cbox"><b>Бонус дня</b><div class="small">${claimed ? `Сегодня получено: ${dailyBonus(n)} 🪙 (${n}-й день подряд). Завтра ${next} 🪙.` : `Сегодня ${dailyBonus(n)} 🪙.`} Растёт до 300 🪙 за каждый день подряд.</div></div>
-      <div class="cbox"><b>Сколько платят</b>
+      <div class="cbox"><b>${t('🔥 Серия побед: {n}', { n: st.streak })}</b>${mult > 1 ? ' — ' + t('фишки и опыт пропуска ×{m}', { m: mx(mult) }) : ''}
+        <table class="ctab"><tr><td>${t('2 победы подряд')}</td><td>×${mx(1.2)}</td></tr><tr><td>${t('4 победы подряд')}</td><td>×${mx(1.5)}</td></tr><tr><td>${t('7 побед подряд')}</td><td>×2</td></tr></table>
+        <div class="m small">${t('Рекорд: {n}. Поражение гасит огонь.', { n: st.best })}</div></div>
+      <div class="cbox"><b>${t('Сундуки')}</b><div class="small">${t('Каждый 3-й матч — сундук. Каждый 10-й сундук — гарантированно редкий или лучше. До следующего: {n} {w}.', { n: toChest, w: I18N.pl(toChest, ['матч', 'матча', 'матчей'], ['match', 'matches']) })}</div></div>
+      <div class="cbox"><b>${t('Бонус дня')}</b><div class="small">${claimed ? t('Сегодня получено: {a} 🪙 ({n}-й день подряд). Завтра {x} 🪙.', { a: dailyBonus(n), n, x: next }) : t('Сегодня {a} 🪙.', { a: dailyBonus(n) })} ${t('Растёт до 300 🪙 за каждый день подряд.')}</div></div>
+      <div class="cbox"><b>${t('Сколько платят')}</b>
         <table class="ctab">
-          <tr><td>Партия: Студент / Валера / Шулер</td><td>5 / 10 / 15</td></tr>
-          <tr><td>Матч: Студент / Валера / Шулер</td><td>20 / 40 / 80</td></tr>
-          <tr><td>Босс карьеры</td><td>×1,5</td></tr>
-          <tr><td>Ставка на матч с ботом</td><td>+ставка (×1,5 с Шулером) / −ставка</td></tr></table>
-        <div class="small">Фишки — только игровые: купить их нельзя, платных сундуков нет. Ставки — до баланса.</div></div>`);
+          <tr><td>${t('Партия: Студент / Валера / Шулер')}</td><td>5 / 10 / 15</td></tr>
+          <tr><td>${t('Матч: Студент / Валера / Шулер')}</td><td>20 / 40 / 80</td></tr>
+          <tr><td>${t('Босс карьеры')}</td><td>×${mx(1.5)}</td></tr>
+          <tr><td>${t('Ставка на матч с ботом')}</td><td>${t('+ставка (×1,5 с Шулером) / −ставка')}</td></tr></table>
+        <div class="small">${t('Фишки — только игровые: купить их нельзя, платных сундуков нет. Ставки — до баланса.')}</div></div>`);
     const o = $c('chOpen'); if (o) o.onclick = () => { closeAll(); openChest(); };
     const l = $c('chLoan'); if (l) l.onclick = () => { takeLoan(); openChips(); };
   }
@@ -347,7 +349,7 @@
     if (!s || !s.w || s.done) return;
     if (s.w.b + 1 >= (s.to || 2)) {
       st.bet = null; if (st.streak > 0) fireOut(); st.streak = 0; st.lossRun++; saveMeta(); paint();
-      say('Выход посреди партии — матч проигран, ставка сгорела', 4500);
+      say(t('Выход посреди партии — матч проигран, ставка сгорела'), 4500);
     } else b.seen = (s.games || 0) + 1;
   }
   BUS.on('game:start:before', () => { try { preForfeit(); } catch (e) { console.error('[chips]', e); } });
@@ -359,7 +361,7 @@
       if (g) {
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'mi'; b.dataset.go = 'chips';
-        b.innerHTML = `<b>Фишки 🪙 ${chips.toLocaleString('ru-RU')}</b><small>${st.streak ? '🔥 серия ' + st.streak + ' · ' : ''}${st.chests.length ? '🎁 сундук ждёт · ' : ''}ставки, сундуки, бонус дня</small>`;
+        b.innerHTML = `<b>${t('Фишки 🪙 {n}', { n: chips.toLocaleString(LOC()) })}</b><small>${st.streak ? t('🔥 серия {n}', { n: st.streak }) + ' · ' : ''}${st.chests.length ? t('🎁 сундук ждёт') + ' · ' : ''}${t('ставки, сундуки, бонус дня')}</small>`;
         const ref = g.querySelector('[data-go="profile"]');
         g.insertBefore(b, ref || null);
       }
@@ -371,7 +373,7 @@
       const L = $c('lobbyIn');
       if (L && $c('hostBtn') && !$c('chLobbyNote')) {
         const p = document.createElement('p'); p.className = 'small'; p.id = 'chLobbyNote';
-        p.textContent = '🪙 За онлайн-матч платят фишками (40 за победу в матче). Хозяин стола может предложить ставку — гость вправе отказаться.';
+        p.textContent = t('🪙 За онлайн-матч платят фишками (40 за победу в матче). Хозяин стола может предложить ставку — гость вправе отказаться.');
         L.appendChild(p);
       }
     } catch (e) {}
@@ -388,10 +390,10 @@
     const root = $c('botsIn'); if (!root || $c('chBetSeg')) return;
     const sel = clampBet(st.sel);
     const box = document.createElement('div');
-    box.innerHTML = `<h3>Ставка 🪙 <span class="small" style="text-transform:none;letter-spacing:0">баланс ${chips}</span></h3>
-      <div class="cbets" id="chBetSeg">${BETS.map(b => `<button type="button" data-b="${b}" class="${b === sel ? 'on' : ''}" ${b > chips ? 'disabled' : ''}>${b === 0 ? 'Без' : b}</button>`).join('')}</div>
-      <p class="small">Выиграл матч: +ставка (×1,5 против Шулера, плюс бонус серии). Проиграл: −ставка. Ставка делается на новый матч; фишки игровые, купить их нельзя.</p>
-      ${chips === 0 && !st.debt ? '<button class="btn orange" type="button" id="chLoan2">🧔 Займ у Торгаша: 200 🪙</button>' : ''}`;
+    box.innerHTML = `<h3>${t('Ставка 🪙')} <span class="small" style="text-transform:none;letter-spacing:0">${t('баланс {n}', { n: chips })}</span></h3>
+      <div class="cbets" id="chBetSeg">${BETS.map(b => `<button type="button" data-b="${b}" class="${b === sel ? 'on' : ''}" ${b > chips ? 'disabled' : ''}>${b === 0 ? t('Без') : b}</button>`).join('')}</div>
+      <p class="small">${t('Выиграл матч: +ставка (×1,5 против Шулера, плюс бонус серии). Проиграл: −ставка. Ставка делается на новый матч; фишки игровые, купить их нельзя.')}</p>
+      ${chips === 0 && !st.debt ? '<button class="btn orange" type="button" id="chLoan2">' + t('🧔 Займ у Торгаша: 200 🪙') + '</button>' : ''}`;
     const rules = root.querySelector('h3:nth-of-type(2)');
     root.appendChild(box);
     box.querySelector('#chBetSeg').onclick = e => {
@@ -420,26 +422,26 @@
       const wrap = document.createElement('div');
       wrap.id = 'chDblWrap'; wrap.className = 'chdw';
       const win2 = Math.round(b.amt * 2 * (botTier().ai === 'sharper' ? 1.5 : 1));
-      wrap.innerHTML = `<div class="chdbl" role="dialog" aria-label="Удвоить ставку"><h3>🎲 УДВОИТЬ?</h3><p>Счёт ${w.p}:${w.b} — решающая партия.<br>Ставка ${b.amt} → <b>${b.amt * 2}</b> 🪙<br><span class="m">выиграешь +${win2} · проиграешь −${b.amt * 2}</span></p>
-        <div class="row"><button class="btn gold" type="button" id="chDbl">Удвоить ×2</button><button class="btn grey" type="button" id="chNo">Как есть</button></div></div>`;
+      wrap.innerHTML = `<div class="chdbl" role="dialog" aria-label="${t('Удвоить ставку')}"><h3>${t('🎲 УДВОИТЬ?')}</h3><p>${t('Счёт {p}:{b} — решающая партия.', { p: w.p, b: w.b })}<br>${t('Ставка {a} →', { a: b.amt })} <b>${b.amt * 2}</b> 🪙<br><span class="m">${t('выиграешь +{w} · проиграешь −{l}', { w: win2, l: b.amt * 2 })}</span></p>
+        <div class="row"><button class="btn gold" type="button" id="chDbl">${t('Удвоить ×2')}</button><button class="btn grey" type="button" id="chNo">${t('Как есть')}</button></div></div>`;
       document.body.appendChild(wrap);
-      $c('chDbl').onclick = () => { addChips(-b.amt); b.amt *= 2; b.offered = true; saveMeta(); snd('combo'); paint(); say(`🎲 Ставка удвоена: ${b.amt} 🪙`, 2500); decorateOver(); };
+      $c('chDbl').onclick = () => { addChips(-b.amt); b.amt *= 2; b.offered = true; saveMeta(); snd('combo'); paint(); say(t('🎲 Ставка удвоена: {n} 🪙', { n: b.amt }), 2500); decorateOver(); };
       $c('chNo').onclick = () => { b.offered = true; saveMeta(); decorateOver(); };
       return;
     }
     const dock = document.createElement('div'); dock.id = 'chDock'; dock.className = 'chdock';
     let any = false;
     if (L && (L.lines.length || L.out || L.chest)) {
-      const ln = L.lines.map(([t, v]) => `<div class="ln"><span>${E(t)}</span><b class="${v >= 0 ? 'g' : 'r'}">${v >= 0 ? '+' : '−'}${Math.abs(v)} 🪙</b></div>`).join('');
-      const tail = (L.out ? '<div class="m">🔥 Огонь погас — серия сброшена.</div>' : '') +
-        (L.done && L.won && L.streak >= 2 ? `<div class="m">🔥 Серия: ${L.streak}${L.mult > 1 ? ` (×${String(L.mult).replace('.', ',')})` : ''}</div>` : '') +
-        (L.chest ? `<div class="m">🎁 Сундук за матч: ${RAR[L.chest].n.toLowerCase()}</div>` : '');
+      const ln = L.lines.map(([lbl, v]) => `<div class="ln"><span>${E(lbl)}</span><b class="${v >= 0 ? 'g' : 'r'}">${v >= 0 ? '+' : '−'}${Math.abs(v)} 🪙</b></div>`).join('');
+      const tail = (L.out ? '<div class="m">' + t('🔥 Огонь погас — серия сброшена.') + '</div>' : '') +
+        (L.done && L.won && L.streak >= 2 ? `<div class="m">${t('🔥 Серия: {n}', { n: L.streak })}${L.mult > 1 ? ` (×${mx(L.mult)})` : ''}</div>` : '') +
+        (L.chest ? `<div class="m">${t('🎁 Сундук за матч: {r}', { r: t(RAR[L.chest].n).toLowerCase() })}</div>` : '');
       const note = document.createElement('div'); note.className = 'chnote';
-      note.innerHTML = ln + tail + `<div class="m">Баланс: ${chips.toLocaleString('ru-RU')} 🪙</div>`;
+      note.innerHTML = ln + tail + `<div class="m">${t('Баланс: {n} 🪙', { n: chips.toLocaleString(LOC()) })}</div>`;
       dock.appendChild(note); any = true;
     }
     if (st.chests.length) {
-      const cb = document.createElement('button'); cb.type = 'button'; cb.className = 'btn chchest'; cb.textContent = `🎁 Открыть сундук${st.chests.length > 1 ? ' (' + st.chests.length + ')' : ''}`;
+      const cb = document.createElement('button'); cb.type = 'button'; cb.className = 'btn chchest'; cb.textContent = '🎁 ' + t('Открыть сундук') + (st.chests.length > 1 ? ' (' + st.chests.length + ')' : '');
       cb.onclick = openChest; dock.appendChild(cb); any = true;
     }
     /* «Ещё одну» — только бот, только конец матча, без нажима ночью и после череды поражений */
@@ -447,13 +449,13 @@
       any = true;
       if (night() || st.lossRun >= 3) {
         const m = document.createElement('div'); m.className = 'chnote';
-        m.innerHTML = night() ? '<div class="m">🌙 Поздно уже. Фишки и серия никуда не денутся — продолжим завтра.</div>' : '<div class="m">Три матча подряд мимо — самое время размяться или попить чаю. Ставки подождут.</div>';
+        m.innerHTML = night() ? '<div class="m">' + t('🌙 Поздно уже. Фишки и серия никуда не денутся — продолжим завтра.') + '</div>' : '<div class="m">' + t('Три матча подряд мимо — самое время размяться или попить чаю. Ставки подождут.') + '</div>';
         dock.appendChild(m);
       } else {
         const base = st.lastBase != null ? st.lastBase : st.sel;
         const amt = clampBet(base);
         const m = document.createElement('button'); m.type = 'button'; m.className = 'btn chmore';
-        m.innerHTML = `⚡ ЕЩЁ ОДНУ${amt ? ` <small style="font-weight:600">· ставка ${amt}</small>` : ''}`;
+        m.innerHTML = `⚡ ${t('ЕЩЁ ОДНУ')}${amt ? ` <small style="font-weight:600">${t('· ставка {n}', { n: amt })}</small>` : ''}`;
         m.onclick = () => { killDock(); st.sel = amt; saveMeta(); newGame(); };
         dock.appendChild(m);
       }

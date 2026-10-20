@@ -30,6 +30,11 @@ applySpeed();
 })();
 function setSpeed(m) { store('durocker-speed', m); applySpeed(); }
 
+/* показ: имя соперника и надписи комбинаций на языке интерфейса (данные остаются русскими) */
+const oppD = () => t(oppName());
+const tU = s => t(s).toUpperCase();
+const fxBig = b => { b = String(b || ''); const m = /^АПГРЕЙД: (.+)$/.exec(b); return m ? t('АПГРЕЙД: {n}', { n: t(m[1]) }) : t(b); };
+
 /* ================= эффекты ходов ================= */
 function fx(o) {
   o.id = ++fxId; G.fx = o;
@@ -37,7 +42,7 @@ function fx(o) {
   showFx(o);
 }
 function showFx(o) {
-  const me = o.actor === 'p', opp = oppName();
+  const me = o.actor === 'p', opp = oppD();
   sfxFor(o);
   if (o.what === 'defend' && me && G && G.table) {
     const b = G.table.filter(x => x.d && !x.d.shield).pop();
@@ -46,12 +51,12 @@ function showFx(o) {
   if (o.what === 'hype') return showHype(o.key, me);
   if (o.what === 'charged') {
     if (!me) say('Зарядился!');
-    return banner('ЗАРЯД', `${me ? 'Ты взял' : opp + ' взял'}: ${ACTS[o.act].name} ${SU[o.s]}`, 'gold');
+    return banner('ЗАРЯД', me ? t('Ты взял: {a} {s}', { a: t(ACTS[o.act].name), s: SU[o.s] }) : t('{o} взял: {a} {s}', { o: opp, a: t(ACTS[o.act].name), s: SU[o.s] }), 'gold');
   }
   if (o.what === 'trump') {
-    const c = o.low != null ? mkCard(o.low) : null, t = c ? cardName(c) : '';
-    return banner('КОЗЫРЬ ' + SU[G.T], c ? (me ? `Младший козырь твой: ${t}. Ходи!` : `У соперника ${t}. Он ходит.`)
-      : (me ? 'Козырей нет. Ходи первым.' : 'Козырей нет. Соперник ходит.'), 'gold');
+    const c = o.low != null ? mkCard(o.low) : null, cn = c ? cardName(c) : '';
+    return banner(t('КОЗЫРЬ {s}', { s: SU[G.T] }), c ? (me ? t('Младший козырь твой: {c}. Ходи!', { c: cn }) : t('У соперника {c}. Он ходит.', { c: cn }))
+      : (me ? t('Козырей нет. Ходи первым.') : t('Козырей нет. Соперник ходит.')), 'gold');
   }
   if (o.what === 'bito') return banner('БИТО', '', 'gold');
   if (o.what === 'takes') {
@@ -60,17 +65,17 @@ function showFx(o) {
     return banner(me ? 'БЕРУ' : 'БЕРЁТ!', me ? 'Соперник может подкинуть' : 'Можешь подкинуть вдогонку', 'take');
   }
   if (o.what === 'action') {
-    if (!me) say(ACTS[o.act].name + '!');
+    if (!me) say(t(ACTS[o.act].name) + '!');
     VFX.actionZoom({ action: o.act, s: o.s, id: 'z', n: -1, r: 16 }, me);
     if (o.act === 'trump') setTimeout(() => { const f = $('felt'); f.classList.remove('tpulse'); void f.offsetWidth; f.classList.add('tpulse'); }, 400);
     return;
   }
   if (o.what === 'transfer') { if (!me) say('Перевожу!'); banner('ПЕРЕВОД', me ? 'Теперь отбивается соперник' : 'Атака перешла к тебе', 'gold'); return shake(6); }
   const sub = {
-    attack: me ? 'Твой ход' : `${opp} ходит`, throw: me ? 'Подкидываешь' : `${opp} подкидывает`,
-    defend: me ? 'Покрыл!' : `${opp} кроет`, addtake: me ? 'Вдогонку' : `${opp} вдогонку`,
+    attack: me ? t('Твой ход') : t('{o} ходит', { o: opp }), throw: me ? t('Подкидываешь') : t('{o} подкидывает', { o: opp }),
+    defend: me ? t('Покрыл!') : t('{o} кроет', { o: opp }), addtake: me ? t('Вдогонку') : t('{o} вдогонку', { o: opp }),
   }[o.what] || '';
-  banner(String(o.big || '').toUpperCase(), sub, o.kind);
+  banner(fxBig(o.big).toUpperCase(), sub, o.kind);
   if (o.t >= 5) shake(o.t);
   if (o.t >= 3) VFX.burstFelt(o.t);
 }
@@ -152,7 +157,7 @@ function sortHand(h) {
   return h.slice().sort(G.sort === 'r' ? (a, b) => (!!a.action - !!b.action) || a.r - b.r || a.s - b.s
     : (a, b) => (!!a.action - !!b.action) || (!!a.joker - !!b.joker) || ((a.s === G.T) - (b.s === G.T)) || a.s - b.s || a.r - b.r);
 }
-const shortCards = cs => cs.map(c => (c.joker ? '★' : c.action ? ACTS[c.action].name : rn(c.r) + SU[c.s])).join(' ');
+const shortCards = cs => cs.map(c => (c.joker ? '★' : c.action ? t(ACTS[c.action].name) : rn(c.r) + SU[c.s])).join(' ');
 const pipsHTML = n => [0, 1, 2].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
 
 /* ================= табло ================= */
@@ -160,7 +165,7 @@ function renderHUD() {
   const live = !!NET, bot = currentBot(), av = $('oppAva');
   av.textContent = live ? (NET.oppNick || '?').slice(0, 2).toUpperCase() : bot.face;
   av.style.background = live ? '#3b6db8' : bot.color;
-  $('oppName').textContent = oppName();
+  $('oppName').textContent = oppD();
   $('oppCount').textContent = G && G.B ? `${G.B.length} ${plural(G.B.length)}` : '';
   $('oppDot').hidden = !live; $('oppDot').classList.toggle('off', !!(NET && !NET.connected));
   $('oppBtn').disabled = live || MODE.kind !== 'free';
@@ -170,24 +175,24 @@ function renderHUD() {
   const to = seriesTo(), w = SERIES.w || { p: 0, b: 0 };
   $('scP').textContent = w.p; $('scB').textContent = w.b;
   $('scP').classList.toggle('hot', to > 1 && w.p === to - 1); $('scB').classList.toggle('hot', to > 1 && w.b === to - 1);
-  $('scOpp').textContent = oppName().split(' ').pop();
-  $('scTo').textContent = to === 1 ? `одна партия${SERIES.p || SERIES.b ? ` · штраф ${SERIES.p}:${SERIES.b}` : ''}` : `до ${to} побед · штраф ${SERIES.p}:${SERIES.b}`;
+  $('scOpp').textContent = oppD().split(' ').pop();
+  $('scTo').textContent = to === 1 ? t('одна партия') + (SERIES.p || SERIES.b ? t(' · штраф {p}:{b}', { p: SERIES.p, b: SERIES.b }) : '') : t('до {n} побед · штраф {p}:{b}', { n: to, p: SERIES.p, b: SERIES.b });
   $('scTo').hidden = MODE.kind === 'tutorial';
   /* режим и особые правила */
   const chips = [];
   if (NET) {
-    chips.push(NET.quick ? '⚡ быстрая игра' : `стол ${esc(NET.code.toUpperCase())}`);
+    chips.push(NET.quick ? t('⚡ быстрая игра') : t('стол {c}', { c: esc(NET.code.toUpperCase()) }));
     const f = prog().friends[NET.oppNick];
-    if (f) chips.push(`против ${esc(NET.oppNick)}: ${f.w}–${f.l}`);
-  } else if (MODE.kind === 'career') chips.push(`${esc(CAREER[bot.district].name)} · ${bot.slot + 1}/3`);
-  else if (MODE.kind === 'daily') chips.push(`Ежедневная #${dailyNumber(MODE.day)}`);
-  if (G && G.rules && G.rules.set === 'classic' && (NET || MODE.kind === 'free')) chips.push('Классика');
-  if ((G && G.rules && G.rules.blitz) || (!NET && blitzOn() && MODE.kind === 'free')) chips.push('Блиц');
-  if (!NET && bot.boss && MODE.kind === 'career') chips.push(`<span class="boss">${esc(bossRule(bot.boss))}</span>`);
+    if (f) chips.push(t('против {n}: {w}–{l}', { n: esc(NET.oppNick), w: f.w, l: f.l }));
+  } else if (MODE.kind === 'career') chips.push(`${esc(t(CAREER[bot.district].name))} · ${bot.slot + 1}/3`);
+  else if (MODE.kind === 'daily') chips.push(t('Ежедневная #{n}', { n: dailyNumber(MODE.day) }));
+  if (G && G.rules && G.rules.set === 'classic' && (NET || MODE.kind === 'free')) chips.push(t('Классика'));
+  if ((G && G.rules && G.rules.blitz) || (!NET && blitzOn() && MODE.kind === 'free')) chips.push(t('Блиц'));
+  if (!NET && bot.boss && MODE.kind === 'career') chips.push(`<span class="boss">${esc(t(bossRule(bot.boss)))}</span>`);
   $('modeBox').innerHTML = chips.map(c => c.startsWith('<span') ? c : `<span>${c}</span>`).join('');
   if (G && G.T != null) {
     const red = G.T === 1 || G.T === 2;
-    $('trumpBox').innerHTML = `<b class="s${G.T} ${red ? 'red' : ''}">${SU[G.T]}</b><span>козырь<br>в колоде ${G.deck.length}${G.deck.length ? '' : ' — последний круг'}</span>`;
+    $('trumpBox').innerHTML = `<b class="s${G.T} ${red ? 'red' : ''}">${SU[G.T]}</b><span>${t('козырь')}<br>${t('в колоде {n}', { n: G.deck.length })}${G.deck.length ? '' : t(' — последний круг')}</span>`;
   }
   renderSound();
 }
@@ -207,21 +212,21 @@ function render() {
   $('botHand').innerHTML = G.B.map(c => `<div class="slot">${cardHTML(c, true)}</div>`).join('');
   $('deckcol').innerHTML = `<div class="deck">${G.deck.length > 1 ? '<div class="stack"></div>' : ''}${G.deck.length ? `<div class="trumpcard">${cardHTML(G.trump, false)}</div>` : ''}${G.deck.length > 1 ? `<div class="cnt">${G.deck.length}</div>` : ''}</div>
     <div class="lbl"><b>${SU[G.T]}</b>${G.deck.length}/${52 + ((G.rules && G.rules.jokers) || 2)}</div>`;
-  $('gravecol').innerHTML = `<div class="grave ${G.grave ? '' : 'empty'}" id="grave">${G.grave ? '<i></i>' : ''}</div><div class="lbl">бито ${G.grave}</div>`;
+  $('gravecol').innerHTML = `<div class="grave ${G.grave ? '' : 'empty'}" id="grave">${G.grave ? '<i></i>' : ''}</div><div class="lbl">${t('бито {n}', { n: G.grave })}</div>`;
   const ob = openB(), p = uiPhase();
-  $('battles').innerHTML = G.table.length ? G.table.map(b => `<div class="battle ${b === ob ? 'open' : ''}"><span class="tag">${b.a.name}${b.a.jk ? ' ★' : ''}</span>
+  $('battles').innerHTML = G.table.length ? G.table.map(b => `<div class="battle ${b === ob ? 'open' : ''}"><span class="tag">${t(b.a.name)}${b.a.jk ? ' ★' : ''}</span>
       <div class="row atk">${b.a.cards.map(c => cardHTML(c)).join('')}</div>
       ${b.d ? `<div class="row def">${b.d.cards.map(c => cardHTML(c)).join('')}</div>` : ''}</div>`).join('')
-    : `<div class="empty-felt">${p === 'p_attack' ? 'Выбери карты и ходи' : p === 'over' ? '' : G.phase.who === 'b' ? `${esc(oppName())} думает…` : ''}</div>`;
+    : `<div class="empty-felt">${p === 'p_attack' ? t('Выбери карты и ходи') : p === 'over' ? '' : G.phase.who === 'b' ? t('{n} думает…', { n: esc(oppD()) }) : ''}</div>`;
   const hint = p === 'p_defend' && level() !== 'pro' ? defenseHint() : null;
   const can = hint ? hint.ids : new Set();
   $('hand').innerHTML = sortHand(G.P).map((c, i) => `<div class="slot ${G.sel.has(c.id) ? 'sel' : ''} ${can.has(c.id) ? 'can' : ''}" data-s="${c.action ? 'a' : c.joker ? 'j' : c.s}" style="--i:${i}">${cardHTML(c)}</div>`).join('');
   const mine = G.offer && G.offer.p ? 3 : (G.charge ? G.charge.p : 0);
-  $('myCharge').innerHTML = `${pipsHTML(mine).replace(/<i/g, '<i')}<em>заряд</em>`;
+  $('myCharge').innerHTML = `${pipsHTML(mine).replace(/<i/g, '<i')}<em>${t('заряд')}</em>`;
   $('myCharge').querySelectorAll('i').forEach((i, k) => i.classList.toggle('on', k < mine));
   /* без заряда в наборе правил — полоски заряда не показываем вовсе */
   $('myCharge').hidden = !rule('charge'); $('oppPips').hidden = !rule('charge');
-  $('handInfo').textContent = `на руке ${G.P.length}`;
+  $('handInfo').textContent = t('на руке {n}', { n: G.P.length });
   $('reactBtn').hidden = !NET;
   $('sortR').classList.toggle('on', G.sort === 'r'); $('sortS').classList.toggle('on', G.sort === 's');
   renderCombo(); renderActions(); renderOffer(); layout();
@@ -266,7 +271,7 @@ function pickOptions() {
 function nextPick() {
   if (!G || (!uiPhase().startsWith('p_') && !upPhase())) return;
   const pk = pickOptions();
-  if (!pk.list.length) { G.sel.clear(); update(); toast('Нечего выбрать — ' + (uiPhase() === 'p_defend' ? 'бери' : uiPhase() === 'p_throw' ? 'жми «Бито»' : 'ход только картой-действием')); return; }
+  if (!pk.list.length) { G.sel.clear(); update(); toast(t('Нечего выбрать — ') + (uiPhase() === 'p_defend' ? t('бери') : uiPhase() === 'p_throw' ? t('жми «Бито»') : t('ход только картой-действием'))); return; }
   pk.i = (pk.i + 1) % pk.list.length;
   G.sel = new Set(pk.list[pk.i].map(c => c.id));
   AU.play('select');
@@ -319,7 +324,7 @@ function nearestCombo(cs) {
 }
 function check() { if (G.guest && G.pending) return { ok: false, e: null }; return checkMove('p', selected()); }
 /* цвет плашки: зелёный — можно, красный — нельзя, золотой — особый ход */
-const mineCls = r => (!r || !r.ok ? 'mine no' : /перекрыт|перевест|апгрейд/i.test(r.why || '') ? 'mine gold' : 'mine ok');
+const mineCls = r => (!r || !r.ok ? 'mine no' : /перекрыт|перевест|апгрейд|overcover|transfer|upgrade/i.test(r.why || '') ? 'mine gold' : 'mine ok');
 function plate(cls, label, name) { return `<div class="plate ${cls}"><small>${esc(label)}</small><b>${esc(name)}</b></div>`; }
 function renderCombo() {
   const p = uiPhase(), ob = openB(), el = $('combo'), rh = $('ruleHint'), lv = level();
@@ -330,45 +335,45 @@ function renderCombo() {
   const actSel = p.startsWith('p_') ? selectedAction() : null;
   let html = '', ruleTxt = '';
   if (actSel) {
-    const ar = actSel === 'mixed' ? { ok: false, why: 'Действие играют отдельно' } : checkAction('p', actSel);
-    html = plate('act wide', ar.why || 'Сейчас не сыграть', actSel === 'mixed' ? 'ДЕЙСТВИЕ' : ACTS[actSel.action].name.toUpperCase() + ' ' + SU[actSel.s])
+    const ar = actSel === 'mixed' ? { ok: false, why: t('Действие играют отдельно') } : checkAction('p', actSel);
+    html = plate('act wide', ar.why || t('Сейчас не сыграть'), actSel === 'mixed' ? t('ДЕЙСТВИЕ') : tU(ACTS[actSel.action].name) + ' ' + SU[actSel.s])
       + `<div class="vs ${ar.ok ? 'ok' : 'no'}">${ar.ok ? '✓' : '✗'}</div>`;
     if (actSel !== 'mixed') ruleTxt = ACTS[actSel.action].desc(SU[actSel.s]);
   } else if (p === 'p_defend' && ob) {
     const a = ob.a, n = selected().length;
-    const his = plate('his', `его: ${shortCards(a.cards)}`, a.name.toUpperCase() + (a.jk ? ' ★' : ''));
+    const his = plate('his', t('его: {c}', { c: shortCards(a.cards) }), tU(a.name) + (a.jk ? ' ★' : ''));
     const fix = !r.e && n >= 2 ? nearestCombo(selected()) : null;
-    const mineName = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : fix ? fix.e.name.toUpperCase() : n ? 'НЕ КОМБО' : `${a.n} ${plural(a.n)}`;
-    const mineLbl = n ? (fix ? 'убери ' + fix.drop.map(cardName).join(' ') + ' →' : r.why || '') : 'твой ответ';
+    const mineName = r.e ? tU(r.e.name) + (r.e.jk ? ' ★' : '') : fix ? tU(fix.e.name) : n ? t('НЕ КОМБО') : `${a.n} ${plural(a.n)}`;
+    const mineLbl = n ? (fix ? t('убери {c} →', { c: fix.drop.map(cardName).join(' ') }) : r.why || '') : t('твой ответ');
     html = his + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '×'}</div>` + plate(n ? mineCls(r) : 'idle', mineLbl, mineName);
     const hint = lv !== 'pro' ? defenseHint() : null;
     if (lv === 'novice') {
       ruleTxt = coverRule(a);
-      if (hint && hint.transfer.length) ruleTxt += ' Можно перевести тем же старшинством.';
-      if (hint && hint.acts.length) ruleTxt += ` Подходит: ${hint.acts.map(c => cardName(c)).join(', ')}.`;
-      if (hint && !hint.cover.length && !hint.transfer.length && !hint.acts.length) ruleTxt = 'Нечем крыть — бери.';
+      if (hint && hint.transfer.length) ruleTxt += t(' Можно перевести тем же старшинством.');
+      if (hint && hint.acts.length) ruleTxt += t(' Подходит: {l}.', { l: hint.acts.map(c => cardName(c)).join(', ') });
+      if (hint && !hint.cover.length && !hint.transfer.length && !hint.acts.length) ruleTxt = t('Нечем крыть — бери.');
     }
   } else if (p.startsWith('p_')) {
     const n = selected().length;
-    const label = n ? (r.why || '') : { p_attack: 'твой ход', p_throw: 'подкинь или «Бито»', p_addtake: 'вдогонку или «Хватит»' }[p];
+    const label = n ? (r.why || '') : { p_attack: t('твой ход'), p_throw: t('подкинь или «Бито»'), p_addtake: t('вдогонку или «Хватит»') }[p];
     const fix = !r.e && n >= 2 ? nearestCombo(selected()) : null;
-    const name = r.e ? r.e.name.toUpperCase() + (r.e.jk ? ' ★' : '') : fix ? fix.e.name.toUpperCase() : n ? 'НЕ КОМБО' : 'ВЫБЕРИ КАРТЫ';
-    if (fix) r = { ...r, why: 'убери ' + fix.drop.map(cardName).join(' ') + ' →' };
+    const name = r.e ? tU(r.e.name) + (r.e.jk ? ' ★' : '') : fix ? tU(fix.e.name) : n ? t('НЕ КОМБО') : t('ВЫБЕРИ КАРТЫ');
+    if (fix) r = { ...r, why: t('убери {c} →', { c: fix.drop.map(cardName).join(' ') }) };
     html = plate(n ? mineCls(r) + ' wide' : 'idle wide', label, name) + `<div class="vs ${n ? (r.ok ? 'ok' : 'no') : ''}">${n ? (r.ok ? '✓' : '✗') : '·'}</div>`;
-    if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = 'Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт'
-      + (rule('over') ? ' или перекрывает старшей комбинацией на одну карту больше' : '') + '. Не знаешь, чем ходить, — жми «⟳ Подбор».';
-    if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = 'Подкидывают комбинацией с номиналом со стола'
-      + (rule('typeThrow') ? ' — или любой, если такая комбинация уже сложилась из карт стола (две десятки на столе — подкидывай любую пару).' : '.');
+    if (lv === 'novice' && p === 'p_attack' && !n) ruleTxt = t('Ходи одиночкой, парой, тройкой, двумя парами, каре или пятью картами. Защитник кроет тем же числом карт')
+      + (rule('over') ? t(' или перекрывает старшей комбинацией на одну карту больше') : '') + t('. Не знаешь, чем ходить, — жми «⟳ Подбор».');
+    if (lv === 'novice' && p !== 'p_attack' && !n) ruleTxt = t('Подкидывают комбинацией с номиналом со стола')
+      + (rule('typeThrow') ? t(' — или любой, если такая комбинация уже сложилась из карт стола (две десятки на столе — подкидывай любую пару).') : '.');
   } else if (p === 'over') {
     html = plate('idle wide', 'партия', 'ОКОНЧЕНА');
   } else if (upPhase() && selected().length) {
     const u = checkUpgrade('p', selected());
-    html = plate('his', 'ты атакуешь', ob.a.name.toUpperCase()) + `<div class="vs ${u.ok ? 'ok' : 'no'}">${u.ok ? '✓' : '✗'}</div>`
-      + plate(mineCls(u), u.why || 'не подходит', u.ok ? u.e.name.toUpperCase() : 'АПГРЕЙД');
+    html = plate('his', 'ты атакуешь', tU(ob.a.name)) + `<div class="vs ${u.ok ? 'ok' : 'no'}">${u.ok ? '✓' : '✗'}</div>`
+      + plate(mineCls(u), u.why || 'не подходит', u.ok ? tU(u.e.name) : 'АПГРЕЙД');
   } else {
     html = ob && G.phase.who === 'b' && G.attacker === 'p'
-      ? plate('his', 'ты атакуешь', ob.a.name.toUpperCase()) + '<div class="vs">…</div>' + plate('idle', 'он думает', esc(oppName()))
-      : plate('idle wide', 'ход соперника', esc(oppName()) + '…');
+      ? plate('his', 'ты атакуешь', tU(ob.a.name)) + '<div class="vs">…</div>' + plate('idle', 'он думает', esc(oppD()))
+      : plate('idle wide', 'ход соперника', esc(oppD()) + '…');
   }
   el.innerHTML = html;
   if (ruleTxt) {
@@ -414,7 +419,7 @@ function renderOffer() {
   el.dataset.k = o.kinds.join() + o.s;
   el.innerHTML = `<h3>ЗАРЯД ПОЛНЫЙ!<br>ВЫБЕРИ КАРТУ</h3><div class="cards">${o.kinds.map(k => {
     const c = { action: k, s: o.s, id: 'o' + k, n: -1, r: 16 };
-    return `<button type="button" class="pick" data-pick="${k}">${cardHTML(c)}<span>${ACTS[k].name} ${SU[o.s]}</span><em>${esc(ACTS[k].desc(SU[o.s]))}</em></button>`;
+    return `<button type="button" class="pick" data-pick="${k}">${cardHTML(c)}<span>${t(ACTS[k].name)} ${SU[o.s]}</span><em>${esc(ACTS[k].desc(SU[o.s]))}</em></button>`;
   }).join('')}</div><button type="button" class="later" id="offerLater">Выберу позже</button>`;
   el.hidden = false;
   AU.play('action');
@@ -436,19 +441,19 @@ function showOver() {
   }
   if (NET && NET.role === 'host' && NET.started && !NET.connected) {
     o.hidden = false;
-    o.innerHTML = `<h2>ЖДЁМ</h2><p>${esc(oppName())} отключился. Код стола: <b>${esc(NET.code.toUpperCase())}</b></p><button class="btn grey" type="button" id="leaveBtn">Закрыть стол</button>`;
+    o.innerHTML = `<h2>ЖДЁМ</h2><p>${t('{n} отключился.', { n: esc(oppD()) })} ${t('Код стола:')} <b>${esc(NET.code.toUpperCase())}</b></p><button class="btn grey" type="button" id="leaveBtn">Закрыть стол</button>`;
     $('leaveBtn').onclick = leaveTable; return;
   }
   if (!G.over) { o.hidden = true; return; }
   const fresh = G.overFx !== G.over;
   if (fresh) { G.overFx = G.over; if (G.over === 'p') { AU.play('win'); VFX.confetti(); } else if (G.over === 'b') AU.play('lose'); }
-  const opp = esc(oppName()), pen = G.penalty || 0, lim = seriesTo(), mw = SERIES.w || { p: 0, b: 0 };
+  const opp = esc(oppD()), pen = G.penalty || 0, lim = seriesTo(), mw = SERIES.w || { p: 0, b: 0 };
   let h, s;
   if (G.over === 'draw') { h = 'НИЧЬЯ'; s = 'Оба скинули карты одновременно.'; }
-  else if (G.overWhy === 'time' && G.over === 'p') { h = 'ВРЕМЯ ВЫШЛО!'; s = `У ${opp} кончились часы: +${pen} штрафа ему.`; }
-  else if (G.overWhy === 'time') { h = 'ВРЕМЯ ВЫШЛО!'; s = `Твои часы кончились: +${pen} штрафа.`; }
-  else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = `${opp}: на руке ${pen} ${plural(pen)} — +${pen} штрафа.`; }
-  else { h = 'ДУРАК!'; s = `У тебя на руке ${pen} ${plural(pen)} — +${pen} штрафа.`; }
+  else if (G.overWhy === 'time' && G.over === 'p') { h = 'ВРЕМЯ ВЫШЛО!'; s = t('У {o} кончились часы: +{p} штрафа ему.', { o: opp, p: pen }); }
+  else if (G.overWhy === 'time') { h = 'ВРЕМЯ ВЫШЛО!'; s = t('Твои часы кончились: +{p} штрафа.', { p: pen }); }
+  else if (G.over === 'p') { h = 'ТЫ НЕ ДУРАК!'; s = t('{o}: на руке {n} {w} — +{p} штрафа.', { o: opp, n: pen, w: plural(pen), p: pen }); }
+  else { h = 'ДУРАК!'; s = t('У тебя на руке {n} {w} — +{p} штрафа.', { n: pen, w: plural(pen), p: pen }); }
   let extra = '', btns = '';
   const host = !NET || NET.role === 'host';
   if (MODE.kind === 'daily' && !NET) {
@@ -457,24 +462,24 @@ function showOver() {
   } else {
     if (SERIES.done && lim > 1) {
       const lost = mw.b >= lim;
-      h = lost ? `МАТЧ ПРОИГРАН ${mw.p}:${mw.b}` : `МАТЧ ТВОЙ ${mw.p}:${mw.b}`;
-      s = (G.over === 'p' ? 'Партия за тобой — и весь матч.' : `${opp} забрал партию и матч.`) + (pen ? ` Штраф за партию +${pen}.` : '');
-      if (!lost && !NET && MODE.kind === 'career') s += ' Следующий соперник открыт в карьере.';
+      h = lost ? t('МАТЧ ПРОИГРАН {p}:{b}', { p: mw.p, b: mw.b }) : t('МАТЧ ТВОЙ {p}:{b}', { p: mw.p, b: mw.b });
+      s = (G.over === 'p' ? t('Партия за тобой — и весь матч.') : t('{o} забрал партию и матч.', { o: opp })) + (pen ? t(' Штраф за партию +{p}.', { p: pen }) : '');
+      if (!lost && !NET && MODE.kind === 'career') s += t(' Следующий соперник открыт в карьере.');
     } else if (!SERIES.done && lim > 1) {
-      s += mw.p === lim - 1 && mw.b === lim - 1 ? ` Счёт ${mw.p}:${mw.b} — решающая!` : G.over === 'draw' ? ' Ничья в матче не засчитывается.' : ` Матч ${mw.p}:${mw.b}, до ${lim} побед.`;
+      s += mw.p === lim - 1 && mw.b === lim - 1 ? t(' Счёт {p}:{b} — решающая!', { p: mw.p, b: mw.b }) : G.over === 'draw' ? t(' Ничья в матче не засчитывается.') : t(' Матч {p}:{b}, до {n} побед.', { p: mw.p, b: mw.b, n: lim });
     }
-    extra = `<div class="series"><div><span>Ты</span><b>${mw.p}</b></div><div class="to">${lim > 1 ? `матч до ${lim} побед` : 'одна партия'}</div><div><span>${opp}</span><b>${mw.b}</b></div></div>
+    extra = `<div class="series"><div><span>Ты</span><b>${mw.p}</b></div><div class="to">${lim > 1 ? t('матч до {n} побед', { n: lim }) : t('одна партия')}</div><div><span>${opp}</span><b>${mw.b}</b></div></div>
       <div class="small" style="text-align:center;opacity:.75;margin-top:-4px">штраф за матч: <b id="serP">${SERIES.p}</b> : <b id="serB">${SERIES.b}</b></div>`;
     btns = host ? `<button class="btn blue" type="button" id="again">${SERIES.done ? (!NET && MODE.kind === 'career' ? 'Дальше' : lim > 1 ? 'Новый матч' : 'Ещё раз') : mw.p === lim - 1 && mw.b === lim - 1 ? 'Решающая партия' : 'Следующая партия'}</button><button class="btn grey" type="button" id="overMenu">Меню</button>`
       : `<button class="btn green" type="button" id="rematchBtn">Реванш</button>`;
   }
   const loser = G.over === 'p' ? 'b' : G.over === 'b' ? 'p' : null;
-  const penBox = loser && pen > 0 ? `<div class="pencount ${loser === 'b' ? 'good' : ''}"><span>${loser === 'b' ? 'штраф ' + opp : 'твой штраф'}</span><b id="penNum">+${pen}</b></div>` : '';
+  const penBox = loser && pen > 0 ? `<div class="pencount ${loser === 'b' ? 'good' : ''}"><span>${loser === 'b' ? t('штраф {o}', { o: opp }) : t('твой штраф')}</span><b id="penNum">+${pen}</b></div>` : '';
   const sh = shelbLine();
   if (G.over === 'p' && MODE.kind !== 'tutorial') btns += `<button class="btn gold" type="button" id="snapOver">📸 Открытка</button>`;
   o.hidden = false;
   o.innerHTML = `<h2>${h}</h2><p>${s}</p>${penBox}${extra}${sh ? `<div class="shelb">${sh}</div>` : ''}<div class="row">${btns}</div>`;
-  const so = $('snapOver'); if (so) so.onclick = () => openPostcard({ title: 'ТЫ НЕ ДУРАК!', phrase: `${oppName()}: на руке ${pen} ${plural(pen)}`, m: G.lastMoment });
+  const so = $('snapOver'); if (so) so.onclick = () => openPostcard({ title: 'ТЫ НЕ ДУРАК!', phrase: t('{o}: на руке {n} {w}', { o: oppD(), n: pen, w: plural(pen) }), m: G.lastMoment });
   /* у гостя G пересоздаётся на каждое состояние — подсчёт показываем один раз на партию */
   const ck = NET ? `${NET.code}:${SERIES.games}:${G.over}` : G;
   if (penBox && ck !== countedKey) { countedKey = ck; countUp(pen, loser); }
@@ -535,7 +540,7 @@ function countUp(pen, loser) {
 /* ================= на щелбаны: счёт с другом за всё время ================= */
 /* щелбаны: у гостя — как решил хозяин стола */
 const shelbOn = () => (NET && NET.role === 'guest' && NET.shelb != null ? NET.shelb : load('durocker-shelb') !== '0');
-const shelbWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? 'щелбанов' : d === 1 ? 'щелбан' : d >= 2 && d <= 4 ? 'щелбана' : 'щелбанов'; };
+const shelbWord = n => I18N.pl(Math.abs(n), ['щелбан', 'щелбана', 'щелбанов'], ['flick', 'flicks']);
 function shelbLine() {
   if (!NET || !shelbOn() || !NET.oppNick || !G || (G.over !== 'p' && G.over !== 'b')) return '';
   const p = prog(), nick = NET.oppNick, f = p.friends[nick] || (p.friends[nick] = { w: 0, l: 0 });
@@ -545,7 +550,7 @@ function shelbLine() {
   try { done = !!sessionStorage.getItem(key); if (!done) sessionStorage.setItem(key, '1'); } catch (e) {}
   if (!done) { f.sh = (f.sh || 0) + (G.over === 'p' ? 1 : -1) * (G.penalty || 0); saveProg(); }
   const sh = f.sh || 0, n = esc(nick);
-  return sh > 0 ? `👊 ${n} должен тебе <b>${sh}</b> ${shelbWord(sh)}` : sh < 0 ? `👊 Ты должен ${n} <b>${-sh}</b> ${shelbWord(sh)}` : `👊 По щелбанам с ${n} — квиты`;
+  return sh > 0 ? t('👊 {n} должен тебе <b>{s}</b> {w}', { n, s: sh, w: shelbWord(sh) }) : sh < 0 ? t('👊 Ты должен {n} <b>{s}</b> {w}', { n, s: -sh, w: shelbWord(sh) }) : t('👊 По щелбанам с {n} — квиты', { n });
 }
 
 /* ================= клип момента: открытка 1080×1080 ================= */
@@ -568,7 +573,7 @@ function drawCardOn(x, cx, cy, w, n, rot) {
   const four = document.documentElement.dataset.four === '1';
   const col = c.joker ? '#ffd84a' : c.s === 1 ? '#d9362f' : c.s === 2 ? (four ? '#2f6fe0' : '#d9362f') : c.s === 3 && four ? '#15924a' : '#1d1a22';
   x.fillStyle = col; x.textAlign = 'center'; x.textBaseline = 'middle';
-  if (c.joker) { x.font = `bold ${w * 0.55}px Arial, sans-serif`; x.fillText('★', 0, -h * 0.05); x.font = `bold ${w * 0.14}px Arial, sans-serif`; x.fillText('ДЖОКЕР', 0, h * 0.3); }
+  if (c.joker) { x.font = `bold ${w * 0.55}px Arial, sans-serif`; x.fillText('★', 0, -h * 0.05); x.font = `bold ${w * 0.14}px Arial, sans-serif`; x.fillText(t('ДЖОКЕР'), 0, h * 0.3); }
   else {
     x.font = `900 ${w * 0.26}px "Arial Black", Arial, sans-serif`; x.fillText(rn(c.r), -w * 0.3, -h * 0.36);
     x.font = `${w * 0.2}px Arial, sans-serif`; x.fillText(SU[c.s], -w * 0.3, -h * 0.2);
@@ -586,27 +591,29 @@ function postcardCanvas({ title, phrase, m }) {
   x.lineWidth = 26; x.strokeStyle = '#6b3d1c'; roundRect(x, 24, 24, S - 48, S - 48, 60); x.stroke();
   x.lineWidth = 4; x.setLineDash([18, 14]); x.strokeStyle = 'rgba(255,255,255,.18)'; roundRect(x, 64, 64, S - 128, S - 128, 40); x.stroke(); x.setLineDash([]);
   x.textAlign = 'center'; x.textBaseline = 'middle';
+  title = t(title);
   fitText(x, title, S - 200, 120, '900');
   x.lineWidth = 16; x.lineJoin = 'round'; x.strokeStyle = '#000'; x.strokeText(title, S / 2, 190);
   x.fillStyle = '#b3202a'; x.fillText(title, S / 2 + 8, 198); x.fillStyle = '#ffe14a'; x.fillText(title, S / 2, 190);
   if (m && m.vs && m.vs.length) {
-    x.font = '600 34px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.8)'; x.fillText(`на ${String(m.vsName || '').toLowerCase()}`, S / 2, 300);
+    x.font = '600 34px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.8)'; x.fillText(t('на {n}', { n: t(String(m.vsName || '')).toLowerCase() }), S / 2, 300);
     const w = 96, gap = 12, tot = m.vs.length * (w + gap) - gap;
     m.vs.forEach((n, i) => drawCardOn(x, S / 2 - tot / 2 + w / 2 + i * (w + gap), 400, w, n, (i - (m.vs.length - 1) / 2) * 0.05));
   }
   if (m && m.cards && m.cards.length) {
     const w = m.cards.length > 3 ? 150 : 190, gap = 16, tot = m.cards.length * (w + gap) - gap;
     m.cards.forEach((n, i) => drawCardOn(x, S / 2 - tot / 2 + w / 2 + i * (w + gap), 640, w, n, (i - (m.cards.length - 1) / 2) * 0.07));
-    x.font = '900 46px "Arial Black", Arial, sans-serif'; x.fillStyle = '#ffe14a'; x.fillText(String(m.name || '').toUpperCase(), S / 2, 820);
+    x.font = '900 46px "Arial Black", Arial, sans-serif'; x.fillStyle = '#ffe14a'; x.fillText(t(String(m.name || '')).toUpperCase(), S / 2, 820);
   }
+  if (phrase) phrase = t(phrase);
   if (phrase) { fitText(x, phrase, S - 220, 46, '800'); x.fillStyle = '#f8f1df'; x.fillText(phrase, S / 2, m && m.cards ? 885 : 560); }
   x.font = '700 34px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.9)'; x.fillText(myNick(), S / 2, 950);
-  x.font = '600 28px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('ДурКер · t.me/durocker_bot', S / 2, 996);
+  x.font = '600 28px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText(t('ДурКер') + ' · t.me/durocker_bot', S / 2, 996);
   return cv;
 }
 function openPostcard(o) {
   AU.play('snap');
-  const cv = postcardCanvas(o), text = `${o.title} ${o.phrase || ''} — играю в ДурКер: https://t.me/durocker_bot`;
+  const cv = postcardCanvas(o), text = t('{a} {b} — играю в ДурКер: https://t.me/durocker_bot', { a: t(o.title), b: t(o.phrase || '') });
   const box = document.createElement('div'); box.className = 'postcard';
   const url = cv.toDataURL('image/png');
   box.innerHTML = `<img alt="Открытка" src="${url}"><p>Долгое нажатие на картинку — сохранить</p><div class="row">
@@ -621,7 +628,7 @@ function openPostcard(o) {
       const file = new File([b], 'durocker.png', { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], text }).catch(() => {});
       else if (navigator.share) navigator.share({ text }).catch(() => {});
-      else { copyText(text, k); toast('Текст скопирован — картинку сохрани долгим нажатием'); }
+      else { copyText(text, k); toast(t('Текст скопирован — картинку сохрани долгим нажатием')); }
     }, 'image/png');
   };
 }
@@ -633,7 +640,7 @@ function nextGame() {
   if (SERIES.done && MODE.kind === 'free') { openBots(); return; }
   newGame();
 }
-function askRematch() { TR.send('rematch', {}); toast('Попросили реванш'); }
+function askRematch() { TR.send('rematch', {}); toast(t('Попросили реванш')); }
 function copyText(t, btn, el) {
   const fallback = () => { if (!el) return; const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
   if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { btn.textContent = 'Скопировано'; }, fallback); else fallback();
@@ -649,7 +656,7 @@ function tickTimer() {
     el.classList.toggle('late', left < 5000);
     el.classList.toggle('mine', G.phase.who === 'p');
     const sec = Math.ceil(left / 1000);
-    $('timerTxt').textContent = sec + ' с · ' + (G.phase.who === 'p' ? 'твой ход' : 'ход соперника');
+    $('timerTxt').textContent = G.phase.who === 'p' ? t('{s} с · твой ход', { s: sec }) : t('{s} с · ход соперника', { s: sec });
     if (sec <= 5 && G.phase.who === 'p' && tickTimer.last !== sec) { tickTimer.last = sec; AU.play('tick'); }
   } else el.hidden = true;
   renderClocks();
@@ -719,7 +726,7 @@ function openMenu() {
   const p = prog(), st = CAREER_OPS[Math.min(p.career, CAREER_OPS.length - 1)], day = todayKey(), played = !!p.daily[day];
   sheet('menu', `${head('ДурКер')}
     <div class="menugrid">
-      <button type="button" class="mi hero" data-go="career"><b>КАРЬЕРА: С ПОДЪЕЗДА В КАЗИНО</b><small>${p.careerDone ? 'Пройдена! Можно переиграть любого' : `Район «${esc(CAREER[st.district].name)}» · следующий: ${esc(st.name)}`}</small></button>
+      <button type="button" class="mi hero" data-go="career"><b>КАРЬЕРА: С ПОДЪЕЗДА В КАЗИНО</b><small>${p.careerDone ? t('Пройдена! Можно переиграть любого') : t('Район «{d}» · следующий: {n}', { d: esc(t(CAREER[st.district].name)), n: esc(t(st.name)) })}</small></button>
       <button type="button" class="mi" data-go="free"><b>Своя игра</b><small>Студент, Валера или Шулер</small></button>
       <button type="button" class="mi" data-go="daily"><b>Ежедневная #${dailyNumber(day)}</b><small>${played ? 'Сыграно — поделись результатом' : 'Одна колода для всех'}</small></button>
       <button type="button" class="mi" data-go="online"><b>Онлайн</b><small>С другом по коду стола</small></button>
@@ -771,7 +778,7 @@ function maybeRuleCard(then) {
   store(k, '1');
   const c = RULE_CARDS[d];
   sheet('page', `<div class="rulecard"><span class="tag">${c.tag}</span><h2>${esc(c.title)}</h2><p>${esc(c.text)}</p>
-    <div class="ex">${c.ex}</div><button class="btn blue" type="button" id="ruleGo">Играть</button></div>`);
+    <div class="ex">${t(c.ex)}</div><button class="btn blue" type="button" id="ruleGo">Играть</button></div>`);
   $('ruleGo').onclick = () => { $('page').hidden = true; then(); };
   return true;
 }
@@ -780,20 +787,20 @@ function maybeRuleCard(then) {
 function openCareer() {
   const p = prog();
   sheet('page', `${head('Карьера')}<p class="small">Соседи — матч до 2 побед, босс района — до 3 побед. Победил босса — открыл награду района.</p>
-    ${CAREER.map((d, di) => `<div class="district"><h3><span>${di + 1}. ${esc(d.name)}</span><span>${rewardName(d.reward)}</span></h3>
+    ${CAREER.map((d, di) => `<div class="district"><h3><span>${di + 1}. ${esc(t(d.name))}</span><span>${rewardName(d.reward)}</span></h3>
       <div class="bots">${d.ops.map(o => { const i = CAREER_OPS.findIndex(x => x.id === o.id), done = i < p.career, cur = i === p.career, locked = i > p.career;
         return `<button type="button" class="botcard ${cur ? 'on' : ''}" data-stage="${i}" ${locked ? 'disabled' : ''}>
           <span class="ava" style="background:${o.color}">${locked ? '?' : o.face}</span>
-          <span class="bt"><b>${locked ? '???' : esc(o.name)} ${done ? '✅' : ''}</b><em>${o.boss ? 'босс' : 'сосед'}${cur ? ' · следующий' : ''}</em><span>${locked ? 'Победи предыдущих, чтобы открыть' : esc(o.desc)}</span></span></button>`; }).join('')}</div></div>`).join('')}`);
+          <span class="bt"><b>${locked ? '???' : esc(o.name)} ${done ? '✅' : ''}</b><em>${o.boss ? t('босс') : t('сосед')}${cur ? t(' · следующий') : ''}</em><span>${locked ? 'Победи предыдущих, чтобы открыть' : esc(o.desc)}</span></span></button>`; }).join('')}</div></div>`).join('')}`);
 }
 function rewardName(r) {
   if (!r) return '';
   const n = [];
-  if (r.table) n.push('стол «' + (VFX.SKINS.find(s => s.id === r.table) || {}).name + '»');
-  if (r.back) n.push('рубашка «' + (BACKS.find(s => s.id === r.back) || {}).name + '»');
-  if (r.track) n.push('трек «' + (TRACKS.find(s => s.id === r.track) || {}).name + '»');
-  if (r.frame) n.push('рамка аватара');
-  if (r.ttl) n.push('титул «' + r.ttl + '»');
+  if (r.table) n.push(t('стол «{n}»', { n: t((VFX.SKINS.find(s => s.id === r.table) || {}).name) }));
+  if (r.back) n.push(t('рубашка «{n}»', { n: t((BACKS.find(s => s.id === r.back) || {}).name) }));
+  if (r.track) n.push(t('трек «{n}»', { n: t((TRACKS.find(s => s.id === r.track) || {}).name) }));
+  if (r.frame) n.push(t('рамка аватара'));
+  if (r.ttl) n.push(t('титул «{n}»', { n: t(r.ttl) }));
   return n.length ? '🎁 ' + n.join(', ') : '';
 }
 
@@ -846,7 +853,7 @@ function openCollection() {
   const achs = ACHS.map(a => {
     const got = !!p.ach[a.id], hide = a.secret && !got;
     const prog_ = !got && typeof a.progress === 'function' ? a.progress() : null;
-    return `<div class="ach ${got ? 'got' : ''} ${hide ? 'secret' : ''}"><i>${got ? '🏆' : hide ? '❔' : '🔒'}</i><div><b>${hide ? 'Секретное достижение' : a.name}</b><small>${hide ? 'Условие откроется, когда получишь' : a.desc}${a.reward && !hide ? ' · ' + rewardName(a.reward) : ''}</small>${prog_ ? `<span class="achbar"><i style="width:${Math.min(100, Math.round(prog_[0] / prog_[1] * 100))}%"></i><em>${Math.min(prog_[0], prog_[1])}/${prog_[1]}</em></span>` : ''}</div></div>`;
+    return `<div class="ach ${got ? 'got' : ''} ${hide ? 'secret' : ''}"><i>${got ? '🏆' : hide ? '❔' : '🔒'}</i><div><b>${hide ? 'Секретное достижение' : a.name}</b><small>${hide ? t('Условие откроется, когда получишь') : t(a.desc)}${a.reward && !hide ? ' · ' + rewardName(a.reward) : ''}</small>${prog_ ? `<span class="achbar"><i style="width:${Math.min(100, Math.round(prog_[0] / prog_[1] * 100))}%"></i><em>${Math.min(prog_[0], prog_[1])}/${prog_[1]}</em></span>` : ''}</div></div>`;
   }).join('');
   const friends = Object.entries(p.friends);
   sheet('page', `${head('Коллекция')}
@@ -855,7 +862,7 @@ function openCollection() {
     <h3>Столы</h3><div class="skins">${tables}</div>
     <h3>Музыка</h3><div class="seg">${tracks}</div>
     <h3>Достижения</h3><div class="achs">${achs}</div>
-    ${friends.length ? `<h3>Против друзей</h3><div class="achs">${friends.map(([n, f]) => `<div class="ach got"><i>🤝</i><div><b>${esc(n)}</b><small>побед ${f.w} · поражений ${f.l}${f.sh ? ` · ${f.sh > 0 ? `должен тебе ${f.sh}` : `ты должен ${-f.sh}`} ${shelbWord(f.sh)}` : ''}</small></div></div>`).join('')}</div>` : ''}`);
+    ${friends.length ? `<h3>Против друзей</h3><div class="achs">${friends.map(([n, f]) => `<div class="ach got"><i>🤝</i><div><b>${esc(n)}</b><small>${t('побед {w} · поражений {l}', { w: f.w, l: f.l })}${f.sh ? ' · ' + (f.sh > 0 ? t('должен тебе {n}', { n: f.sh }) : t('ты должен {n}', { n: -f.sh })) + ' ' + shelbWord(f.sh) : ''}</small></div></div>`).join('')}</div>` : ''}`);
 }
 function backPreview(id) {
   const prev = document.documentElement.dataset.back;
@@ -871,13 +878,13 @@ const RULE_WHERE = { transfer: 'Двор', mognul: 'Рынок', charge: 'Рын
 function openRules() {
   sheet('page', head('Правила') + $('rulesTpl').innerHTML);
   const r = (G && G.rules) || tableRules(), car = r.set === 'career';
-  const setName = car ? `карьера, район «${CAREER[Math.max(0, careerDistrict())].name}»` : r.set === 'classic' ? '«Классика»' : '«Полные правила»';
-  $('pageIn').querySelector('h2:not(.sheethead h2)')?.insertAdjacentHTML('afterend', `<p class="small">Сейчас: ${setName}. Серым — то, что в этой партии выключено.</p>`);
+  const setName = car ? t('карьера, район «{d}»', { d: t(CAREER[Math.max(0, careerDistrict())].name) }) : r.set === 'classic' ? t('«Классика»') : t('«Полные правила»');
+  $('pageIn').querySelector('h2:not(.sheethead h2)')?.insertAdjacentHTML('afterend', `<p class="small">${t('Сейчас: {s}. Серым — то, что в этой партии выключено.', { s: setName })}</p>`);
   $('pageIn').querySelectorAll('[data-rule]').forEach(el => {
     const k = el.dataset.rule;
     if (r[k] !== false) return;
     el.classList.add('locked');
-    el.insertAdjacentHTML('beforeend', ` <em class="where">${car ? 'откроется: ' + RULE_WHERE[k] : r.set === 'classic' ? 'в «Полных правилах»' : 'выключено за этим столом'}</em>`);
+    el.insertAdjacentHTML('beforeend', ` <em class="where">${car ? t('откроется: {d}', { d: t(RULE_WHERE[k]) }) : r.set === 'classic' ? t('в «Полных правилах»') : t('выключено за этим столом')}</em>`);
   });
 }
 /* формат матча: до 1, 2 или 3 побед */
@@ -900,10 +907,10 @@ function openSettings() {
     ${toggleHTML('stFour', 'Колода из 4 цветов: ♦ синие, ♣ зелёные', load('durocker-four') === '1')}
     <h3>Подсказки</h3>
     <div class="seg" id="stHints">${[['auto', 'Сами по опыту'], ['novice', 'Новичок'], ['player', 'Игрок'], ['pro', 'Профи']].map(([k, n]) => `<button type="button" data-h="${k}" class="${hl === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-    <p class="small">Новичок — подсветка, «чем крыть», шпаргалка. Игрок — только подсветка. Профи — только название комбинации. Сейчас: ${({ novice: 'новичок', player: 'игрок', pro: 'профи' })[hintLevel()]}.</p>
+    <p class="small">${t('Новичок — подсветка, «чем крыть», шпаргалка. Игрок — только подсветка. Профи — только название комбинации.')} ${t('Сейчас: {l}.', { l: t(({ novice: 'новичок', player: 'игрок', pro: 'профи' })[hintLevel()]) })}</p>
     <h3>Игра с ботом и онлайн</h3>
     ${ruleSegHTML('stRules', ruleSetName())}
-    <p class="small">${RULESET_NOTE} В карьере правила открываются по районам.</p>
+    <p class="small">${t(RULESET_NOTE)} ${t('В карьере правила открываются по районам.')}</p>
     ${toggleHTML('stBlitz', 'Блиц: 2,5 минуты на партию', blitzOn())}
     ${toggleHTML('stTransfer', 'Переводной', load('durocker-transfer') !== '0')}`);
   $('stMusic').onchange = e => { AU.unlock(); AU.setMusic(e.target.checked); renderSound(); };
@@ -912,7 +919,7 @@ function openSettings() {
   $('stFour').onchange = e => { store('durocker-four', e.target.checked ? '1' : '0'); applyFour(); if (G) update(); };
   $('stBlitz').onchange = e => { store('durocker-blitz', e.target.checked ? '1' : '0'); };
   $('stTransfer').onchange = e => store('durocker-transfer', e.target.checked ? '1' : '0');
-  $('stRules').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); openSettings(); toast('Правила сменятся со следующей партии'); };
+  $('stRules').onclick = e => { const b = e.target.closest('[data-rs]'); if (!b) return; store('durocker-ruleset', b.dataset.rs); openSettings(); toast(t('Правила сменятся со следующей партии')); };
   $('stSpeed').onclick = e => { const b = e.target.closest('[data-sp]'); if (!b) return; setSpeed(b.dataset.sp); openSettings(); };
   $('stHints').onclick = e => { const b = e.target.closest('[data-h]'); if (!b) return; store('durocker-hints', b.dataset.h); openSettings(); if (G) update(); };
 }
@@ -927,7 +934,7 @@ function renderLobby() {
         ${TR.linkable ? `<button class="btn green" type="button" id="shareLink" ${NET.ready ? '' : 'disabled'}>Позвать друга ссылкой</button>` : ''}
         <button class="btn orange" type="button" id="copyCode" ${NET.ready ? '' : 'disabled'}>Скопировать код</button></div>
       <div class="status" id="lobbyStatus"><span class="wait">${NET.ready ? 'Ждём соперника…' : 'Открываем стол…'}</span></div>
-      <p class="small">${TR.linkable ? 'Друг жмёт на ссылку и сразу садится за стол. Или открывает сайт, ☰ → «Онлайн» и вводит код.' : 'Друг открывает эту же страницу, жмёт ☰ → «Онлайн» и вводит код.'} Партия начнётся сама.</p>
+      <p class="small">${TR.linkable ? t('Друг жмёт на ссылку и сразу садится за стол. Или открывает сайт, ☰ → «Онлайн» и вводит код.') : t('Друг открывает эту же страницу, жмёт ☰ → «Онлайн» и вводит код.')} ${t('Партия начнётся сама.')}</p>
       <button class="btn grey" type="button" id="cancelHost">Закрыть стол</button>`;
     $('copyCode').onclick = () => copyText(NET.code.toUpperCase(), $('copyCode'), $('codeShow'));
     if ($('shareLink')) $('shareLink').onclick = () => shareInvite(NET.code, $('shareLink'));
@@ -971,8 +978,8 @@ function openReacts() {
   el.innerHTML = REACTS.map((r, i) => `<button type="button" data-r="${i}">${esc(r)}</button>`).join('');
   el.hidden = false;
 }
-function sendReact(i) { $('reacts').hidden = true; TR.send('react', { i }); toast('Ты: ' + REACTS[i]); }
-function showReact(i) { const t = REACTS[i | 0]; if (t) say(t); }
+function sendReact(i) { $('reacts').hidden = true; TR.send('react', { i }); toast(t('Ты: {r}', { r: t(REACTS[i]) })); }
+function showReact(i) { const r = REACTS[i | 0]; if (r) say(t(r)); }
 
 /* ================= звук ================= */
 function renderSound() {
@@ -1091,7 +1098,7 @@ function bindUI() {
       if (c && G) { e.preventDefault(); toggleCard(c.dataset.id); }
     }
     else if (e.key === ' ') { const b = $('pickBtn'); if (b && !b.disabled) { e.preventDefault(); b.click(); } }
-    else if (k === 't' || k === 'е') { setSpeed(speedMode() === 'turbo' ? 'normal' : 'turbo'); toast(speedMode() === 'turbo' ? '⚡ Турбо включено' : 'Обычная скорость'); }
+    else if (k === 't' || k === 'е') { setSpeed(speedMode() === 'turbo' ? 'normal' : 'turbo'); toast(speedMode() === 'turbo' ? t('⚡ Турбо включено') : t('Обычная скорость')); }
     else if (e.key === '?' || e.key === ',' && e.shiftKey) keysHelp();
   });
   bindSwipe();

@@ -68,9 +68,9 @@ const WEEKLY = (() => {
   const monthGen = k => MONTHS[+k.slice(5, 7) - 1];
   const prevMonth = k => { const y = +k.slice(0, 4), m = +k.slice(5, 7); return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`; };
   function left(ms) {
-    if (ms <= 0) return 'вот-вот';
+    if (ms <= 0) return t('вот-вот');
     const d = Math.floor(ms / DAY), h = Math.floor(ms % DAY / 3600000), m = Math.floor(ms % 3600000 / 60000), s = Math.floor(ms % 60000 / 1000);
-    return d ? `${d} д ${h} ч` : h ? `${h} ч ${m} мин` : `${m}:${String(s).padStart(2, '0')}`;
+    return d ? t('{d} д {h} ч', { d, h }) : h ? t('{h} ч {m} мин', { h, m }) : `${m}:${String(s).padStart(2, '0')}`;
   }
   const boss = () => BOSSES[ruleOf(weekIdx())];
 
@@ -233,20 +233,20 @@ const WEEKLY = (() => {
     if (!el) return;
     const b = boss(), w = weekIdx(), st = state(), used = usedToday(), won = wonThisWeek();
     const tabs = `<div class="lbtabs" style="grid-template-columns:1fr 1fr" role="tablist">
-      <button type="button" data-wktab="boss" class="${tab === 'boss' ? 'on' : ''}">Босс недели</button>
-      <button type="button" data-wktab="season" class="${tab === 'season' ? 'on' : ''}">Сезон</button></div>`;
+      <button type="button" data-wktab="boss" class="${tab === 'boss' ? 'on' : ''}">${t('Босс недели')}</button>
+      <button type="button" data-wktab="season" class="${tab === 'season' ? 'on' : ''}">${t('Сезон')}</button></div>`;
     let body = '';
     if (tab === 'boss') {
       const unlocked = (() => { try { return prog().unlocked.back.includes(b.back.id); } catch (e) { return false; } })();
-      const btn = used ? (st.res === 'win' ? 'Сегодня — победа ✓. Завтра можно ещё раз' : 'Попытка на сегодня потрачена. Завтра — ещё одна')
-        : won ? 'В бой (рубашка уже твоя)' : 'В бой!';
+      const btn = used ? (st.res === 'win' ? t('Сегодня — победа ✓. Завтра можно ещё раз') : t('Попытка на сегодня потрачена. Завтра — ещё одна'))
+        : won ? t('В бой (рубашка уже твоя)') : t('В бой!');
       body = `<div class="wkboss"><div class="wkava" style="background:${b.color}">${escH(b.face)}</div>
           <div><h3>${escH(b.name)}</h3><div class="wkrule">${escH(b.rule)}</div></div></div>
         <p class="wkdesc">${escH(b.desc)}</p>
-        <div class="wkmeta"><div><b id="wkLeft">${left(weekEnds(w) - Date.now())}</b><span>до смены босса</span></div>
-          <div><b>${used ? 'завтра' : '1 из 1'}</b><span>попытка сегодня</span></div></div>
+        <div class="wkmeta"><div><b id="wkLeft">${left(weekEnds(w) - Date.now())}</b><span>${t('до смены босса')}</span></div>
+          <div><b>${used ? t('завтра') : t('1 из 1')}</b><span>${t('попытка сегодня')}</span></div></div>
         <div class="wkprize"><div class="wkback" style="background:${b.back.css}"></div>
-          <p><b>Награда — рубашка «${escH(b.back.name)}»</b><br>${unlocked ? 'Уже в коллекции ✓' : 'Только на этой неделе. Победи босса один раз.'}</p></div>
+          <p><b>${t('Награда — рубашка «{n}»', { n: escH(t(b.back.name)) })}</b><br>${unlocked ? t('Уже в коллекции ✓') : t('Только на этой неделе. Победи босса один раз.')}</p></div>
         <button type="button" class="wkgo" id="wkGo" ${used ? 'disabled' : ''}>${btn}</button>
         <p class="wknote">Одна партия против босса, «Полные» правила + особое правило недели. Победа — 5 очков в рейтинг и сезон.</p>`;
     } else {
@@ -261,27 +261,27 @@ const WEEKLY = (() => {
       const row = (e, i) => {
         const t = ttlOf(e);
         return `<li class="lbrow${e.id === my.id ? ' me' : ''}${i < 3 ? ' top' + (i + 1) : ''}"><span class="pl">${['🥇', '🥈', '🥉'][i] || i + 1}</span>
-          <span class="nm">${escH(e.n)}${e.id === my.id ? ' (ты)' : ''}<small>${t ? `<span class="wkchamp">👑 ${escH(t)}</span> · ` : ''}побед ${e.w} из ${e.g}</small></span><span class="sc">${e.r}</span></li>`;
+          <span class="nm">${escH(e.n === 'Игрок' ? window.t('Игрок') : e.n)}${e.id === my.id ? ' ' + window.t('(ты)') : ''}<small>${t ? `<span class="wkchamp">👑 ${escH(window.t(t))}</span> · ` : ''}${window.t('побед {w} из {g}', { w: e.w, g: e.g })}</small></span><span class="sc">${e.r}</span></li>`;
       };
       const top = cur.slice(0, 50);
-      body = `<div class="wkmeta"><div><b>${MONTHS_N[+s.k.slice(5, 7) - 1]}</b><span>сезон · ещё ${left(endsIn)}</span></div>
-          <div><b>${s.r} · ${place || '—'} место</b><span>твои очки</span></div></div>
-        ${ch ? `<p class="wknote">👑 Чемпион ${monthGen(pk)}: <b class="wkchamp">${escH(ch.n)}</b> (${ch.v} очков)</p>` : ''}
-        ${has() || (typeof CLOUD !== 'undefined' && CLOUD.on()) ? (status ? `<p class="lbstatus">${escH(status)}</p>` : '') : '<p class="lbstatus">Общий сезон виден на сайте и в Telegram (@durocker_bot). Здесь — только твои очки.</p>'}
-        ${top.length ? `<ol class="lblist">${top.map(row).join('')}</ol>` : '<p class="lbstatus">В этом сезоне ещё никто не побеждал.</p>'}
+      body = `<div class="wkmeta"><div><b>${t(MONTHS_N[+s.k.slice(5, 7) - 1])}</b><span>${t('сезон · ещё {x}', { x: left(endsIn) })}</span></div>
+          <div><b>${t('{r} · {p} место', { r: s.r, p: place || '—' })}</b><span>${t('твои очки')}</span></div></div>
+        ${ch ? `<p class="wknote">👑 ${t('Чемпион ' + monthGen(pk))}: <b class="wkchamp">${escH(ch.n)}</b> (${t('{v} очков', { v: ch.v })})</p>` : ''}
+        ${has() || (typeof CLOUD !== 'undefined' && CLOUD.on()) ? (status ? `<p class="lbstatus">${escH(status)}</p>` : '') : '<p class="lbstatus">' + t('Общий сезон виден на сайте и в Telegram (@durocker_bot). Здесь — только твои очки.') + '</p>'}
+        ${top.length ? `<ol class="lblist">${top.map(row).join('')}</ol>` : '<p class="lbstatus">' + t('В этом сезоне ещё никто не побеждал.') + '</p>'}
         ${place > 50 ? `<div class="lbsep">…</div><ol class="lblist">${row(cur[place - 1], place - 1)}</ol>` : ''}
-        <p class="wknote">Очки сезона — как в рейтинге, но с нуля каждый месяц. Лучший за месяц получает титул «Чемпион ${monthGen(s.k)}».</p>`;
+        <p class="wknote">${t('Очки сезона — как в рейтинге, но с нуля каждый месяц. Лучший за месяц получает титул «{ttl}».', { ttl: t('Чемпион ' + monthGen(s.k)) })}</p>`;
       /* сам чемпион прошлого месяца — сохраняем титул в свою запись */
       if (ch && ch.id === my.id && s.ttl !== `Чемпион ${monthGen(pk)}`) { s.ttl = `Чемпион ${monthGen(pk)}`; wr('durocker-season', JSON.stringify(s)); publishSoon(); }
     }
-    el.innerHTML = `<div class="sheethead"><h2>Босс недели и сезон</h2><button type="button" class="close" data-close>×</button></div>${tabs}${body}`;
+    el.innerHTML = `<div class="sheethead"><h2>${t('Босс недели и сезон')}</h2><button type="button" class="close" data-close>×</button></div>${tabs}${body}`;
     el.querySelectorAll('[data-wktab]').forEach(x => { x.onclick = () => { tab = x.dataset.wktab; render(); if (tab === 'season') loadSeason(); }; });
     const go = document.getElementById('wkGo');
     if (go) go.onclick = fight;
   }
   async function loadSeason() {
     if (typeof CLOUD !== 'undefined' && CLOUD.on()) {
-      status = 'Загружаем сезон…'; render();
+      status = t('Загружаем сезон…'); render();
       const b = await CLOUD.board();
       if (!openNow) return;
       if (b) {
@@ -294,11 +294,11 @@ const WEEKLY = (() => {
       }
     }
     if (!has()) return;
-    status = 'Загружаем сезон…'; render();
+    status = t('Загружаем сезон…'); render();
     await publish();
     const got = await fetchAll(2500);
     if (!openNow) return;
-    if (got) { rows = got; status = ''; } else status = 'Не удалось связаться с сервером — показываю только тебя.';
+    if (got) { rows = got; status = ''; } else status = t('Не удалось связаться с сервером — показываю только тебя.');
     render(); idle(1500);
   }
   function open(t) {
@@ -318,7 +318,7 @@ const WEEKLY = (() => {
   /* ---------- бой ---------- */
   let allowStart = false;
   function fight() {
-    if (usedToday()) { try { toast('Бой с боссом недели — раз в день. Возвращайся завтра'); } catch (e) {} return; }
+    if (usedToday()) { try { toast(t('Бой с боссом недели — раз в день. Возвращайся завтра')); } catch (e) {} return; }
     const s = state(); s.day = today(); s.res = 'play'; saveState(s);
     openNow = false;
     try { closeSheets(); } catch (e) {}
@@ -338,7 +338,7 @@ const WEEKLY = (() => {
       newGame = function () {
         /* повторный бой с боссом в тот же день («Ещё партия», обновление страницы) не даём — возвращаем в свою игру */
         if (MODE && MODE.kind === 'weekly' && !(typeof NET !== 'undefined' && NET)) {
-          if (!allowStart) { MODE = { kind: 'free' }; try { loadSeries(); toast('Бой с боссом недели — раз в день. Это «Своя игра»'); } catch (e) {} }
+          if (!allowStart) { MODE = { kind: 'free' }; try { loadSeries(); toast(t('Бой с боссом недели — раз в день. Это «Своя игра»')); } catch (e) {} }
           allowStart = false;
         }
         return _ng.apply(this, arguments);
@@ -353,7 +353,7 @@ const WEEKLY = (() => {
           if (g && !g.querySelector('[data-go="weekly"]')) {
             const b = boss(), bt = document.createElement('button');
             bt.type = 'button'; bt.className = 'mi wk'; bt.dataset.go = 'weekly';
-            bt.innerHTML = `<b>Босс недели: ${escH(b.name)}</b><small>${escH(b.short)} · ${usedToday() ? 'попытка завтра' : 'смена через ' + left(weekEnds(weekIdx()) - Date.now())}</small>`;
+            bt.innerHTML = `<b>${t('Босс недели: {n}', { n: escH(t(b.name)) })}</b><small>${escH(t(b.short))} · ${usedToday() ? t('попытка завтра') : t('смена через {x}', { x: left(weekEnds(weekIdx()) - Date.now()) })}</small>`;
             const after = g.querySelector('[data-go="daily"]');
             if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
           }
@@ -381,7 +381,7 @@ const WEEKLY = (() => {
               const s = state(); s.day = today(); s.res = won ? 'win' : 'lose';
               if (won) s.wins[MODE.week] = true;
               saveState(s);
-              if (won) { const b = BOSSES[MODE.rule]; if (unlock('back', b.back.id)) setTimeout(() => { try { toast(`🎁 Рубашка «${b.back.name}» — твоя!`, 3500); } catch (e) {} }, 3000); }
+              if (won) { const b = BOSSES[MODE.rule]; if (unlock('back', b.back.id)) setTimeout(() => { try { toast(t('🎁 Рубашка «{n}» — твоя!', { n: t(b.back.name) }), 3500); } catch (e) {} }, 3000); }
             }
           }
         } catch (e) {}
@@ -411,25 +411,26 @@ const WEEKLY = (() => {
         const r = _rh.apply(this, arguments);
         try {
           if (MODE && MODE.kind === 'weekly' && !NET) {
-            const to = document.getElementById('scTo'); if (to) to.textContent = 'одна партия';
+            const to = document.getElementById('scTo'); if (to) to.textContent = t('одна партия');
             const mb = document.getElementById('modeBox'), b = BOSSES[MODE.rule];
-            if (mb && b && !mb.querySelector('.wkchip')) mb.insertAdjacentHTML('afterbegin', `<span class="boss wkchip">Босс недели: ${escH(b.short)}</span>`);
+            if (mb && b && !mb.querySelector('.wkchip')) mb.insertAdjacentHTML('afterbegin', `<span class="boss wkchip">${t('Босс недели: {n}', { n: escH(t(b.short)) })}</span>`);
           }
         } catch (e) {}
         return r;
       };
     }
   }
+  const cardsW = n => I18N.pl(n, ['карта', 'карты', 'карт'], ['card', 'cards']);
   function overScreen() {
     const o = document.getElementById('over');
     if (!o || o.hidden) return;
     const b = BOSSES[MODE.rule], won = G.over === 'p', pen = G.penalty || 0;
-    const h = G.over === 'draw' ? 'НИЧЬЯ' : won ? 'БОСС ПОВЕРЖЕН!' : 'БОСС ПОБЕДИЛ';
-    const s = G.over === 'draw' ? 'Оба скинули карты разом. Попробуй завтра ещё раз.'
-      : won ? `У босса осталось ${pen} ${typeof plural === 'function' ? plural(pen) : 'карт'}. Рубашка «${b.back.name}» — в коллекции.`
-      : `У тебя осталось ${pen} ${typeof plural === 'function' ? plural(pen) : 'карт'}. Новая попытка — завтра, босс сменится через ${left(weekEnds(weekIdx()) - Date.now())}.`;
-    o.innerHTML = `<h2>${h}</h2><p>${escH(s)}</p>${won ? `<div class="wkprize" style="justify-content:center"><div class="wkback" style="background:${b.back.css}"></div><p><b>«${escH(b.back.name)}»</b><br>рубашка недели</p></div>` : ''}
-      <div class="row"><button class="btn blue" type="button" id="wkFree">Своя игра</button><button class="btn grey" type="button" id="wkMenu">Меню</button></div>`;
+    const h = G.over === 'draw' ? t('НИЧЬЯ') : won ? t('БОСС ПОВЕРЖЕН!') : t('БОСС ПОБЕДИЛ');
+    const s = G.over === 'draw' ? t('Оба скинули карты разом. Попробуй завтра ещё раз.')
+      : won ? t('У босса осталось {pen} {cards}. Рубашка «{n}» — в коллекции.', { pen, cards: cardsW(pen), n: t(b.back.name) })
+      : t('У тебя осталось {pen} {cards}. Новая попытка — завтра, босс сменится через {x}.', { pen, cards: cardsW(pen), x: left(weekEnds(weekIdx()) - Date.now()) });
+    o.innerHTML = `<h2>${h}</h2><p>${escH(s)}</p>${won ? `<div class="wkprize" style="justify-content:center"><div class="wkback" style="background:${b.back.css}"></div><p><b>«${escH(t(b.back.name))}»</b><br>${t('рубашка недели')}</p></div>` : ''}
+      <div class="row"><button class="btn blue" type="button" id="wkFree">${t('Своя игра')}</button><button class="btn grey" type="button" id="wkMenu">${t('Меню')}</button></div>`;
     document.getElementById('wkFree').onclick = () => { try { setMode({ kind: 'free' }); } catch (e) {} };
     document.getElementById('wkMenu').onclick = () => { try { openMenu(); } catch (e) {} };
   }
