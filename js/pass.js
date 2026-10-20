@@ -16,8 +16,35 @@ const PASS = (() => {
 
   /* ---------- опыт ---------- */
   const XP = { game: 10, win: 15, match: 25, mognul: 5, caught: 10, daily: 20, weekly: 40, online: 10 };
-  /* стоимость уровня: 100 XP в начале (≈3–4 партии) → 180 XP в конце (≈6 партий); всего 4200 XP ≈ 140 партий */
-  const cost = L => Math.round((100 + 80 * (L - 1) / 29) / 5) * 5;
+  /* стоимость уровня: 200 XP в начале → 360 XP в конце, всего ≈8400 XP.
+     Партия с соперником среднего уровня даёт ≈25–30 XP, а за ботов в день — не больше 400 XP:
+     активный игрок (~15 партий в день) закрывает 30 уровней примерно за 3 недели */
+  const cost = L => Math.round((200 + 160 * (L - 1) / 29) / 5) * 5;
+  /* множитель за силу соперника и дневной потолок за ботов */
+  const BOT_CAP = 400;
+  function oppMult() {
+    try {
+      if (typeof NET !== 'undefined' && NET) return 1.5;
+      if (MODE && MODE.kind === 'weekly') return 2;
+      const b = currentBot();
+      if (b.boss) return 2;
+      if (b.ai === 'student') return 0.5;
+      if (b.ai === 'sharper') return 1.5;
+    } catch (e) {}
+    return 1;
+  }
+  /* опыт от ботов (своя игра, карьера, компания с ботами) упирается в потолок; онлайн, дейли и неделя — нет */
+  const capped = () => !(typeof NET !== 'undefined' && NET) && !(MODE && (MODE.kind === 'daily' || MODE.kind === 'weekly'));
+  const mskDay = () => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+  function capLeft() {
+    let d; try { d = JSON.parse(localStorage.getItem('durocker-pass-day')); } catch (e) {}
+    if (!d || d.d !== mskDay()) d = { d: mskDay(), xp: 0 };
+    return { d, left: Math.max(0, BOT_CAP - d.xp) };
+  }
+  function capUse(n) {
+    const c = capLeft(); c.d.xp += n;
+    try { localStorage.setItem('durocker-pass-day', JSON.stringify(c.d)); } catch (e) {}
+  }
   const TOTAL = Array.from({ length: 30 }, (_, i) => cost(i + 1)).reduce((a, b) => a + b, 0);
 
   /* ---------- награды ---------- */
@@ -202,9 +229,16 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
 
   /* ---------- начисление ---------- */
   let pend = { xp: 0, why: [] };
-  function add(n, why) {
+  function add(n, why, raw) {
     if (!n) return;
     if (typeof MODE !== 'undefined' && MODE && MODE.kind === 'tutorial') return;
+    if (!raw) n = Math.round(n * oppMult());
+    if (capped()) {
+      const c = capLeft();
+      if (c.left <= 0) { pend.cap = true; return; }
+      n = Math.min(n, c.left); capUse(n);
+    }
+    if (n <= 0) return;
     const s = state(), before = levelOf(s.xp).L;
     s.xp += n;
     const after = levelOf(s.xp).L;
@@ -223,7 +257,10 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
   }
   /* итог партии: одна всплывашка «+35 XP» */
   function flush() {
-    if (!pend.xp) return;
+    if (!pend.xp) {
+      if (pend.cap) { pend.cap = false; try { toast('🎟 Дневной лимит опыта за ботов — 400 XP. Онлайн, дейли и босс недели — без лимита'); } catch (e) {} }
+      return;
+    }
     const n = pend.xp, why = pend.why.slice(0, 4).join(' · ');
     pend = { xp: 0, why: [] };
     const s = state(), lv = levelOf(s.xp);
@@ -249,8 +286,9 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
     if (k === 'weekly') return won ? { n: XP.weekly, why: 'босс недели' } : { n: 10, why: 'бой с боссом' };
     return null;
   }
+  /* бонус «матч» — только за настоящий матч (до 2 или 3 побед); одна партия — не матч */
   function matchWonNow() {
-    try { return !!(SERIES && SERIES.done && SERIES.w && SERIES.w.p >= seriesTo()); } catch (e) { return false; }
+    try { return !!(SERIES && SERIES.done && SERIES.w && SERIES.w.p >= seriesTo() && seriesTo() >= 2); } catch (e) { return false; }
   }
 
   /* ---------- окно нового уровня ---------- */
@@ -346,6 +384,8 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
         <span>Ежедневная раздача</span><b>+${XP.daily}</b>
         <span>Победить босса недели</span><b>+${XP.weekly}</b>
         <span>Онлайн и быстрая игра</span><b>+${XP.online}</b>
+        <span>Сила соперника</span><b>Студент ×0.5 · Валера ×1 · Шулер ×1.5 · боссы ×2 · онлайн ×1.5</b>
+        <span>Лимит за ботов</span><b>${BOT_CAP} XP в день (сегодня осталось ${capLeft().left})</b>
       </div>
       <p class="pass-note">Пропуск бесплатный. В новом месяце уровень начинается с нуля, всё полученное остаётся навсегда — надевай в «Коллекции». На 30 уровне — анимированная рубашка этого сезона, в другом месяце её уже не получить.${s.hist ? ` Прошлый сезон: ${s.hist.lvl} ур.` : ''}</p>`);
     paintSeasonPrev($('pageIn'));
@@ -442,7 +482,7 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
             if (seen !== key) {
               guestSeen = key; try { sessionStorage.setItem('durocker-pass-seen', key); } catch (e) {}
               const won = G.over === 'p';
-              gameXP(won, won && !!(SERIES && SERIES.done && SERIES.w && SERIES.w.p >= (SERIES.to || 2)), modeExtra(won));
+              gameXP(won, won && !!(SERIES && SERIES.done && SERIES.w && (SERIES.to || 2) >= 2 && SERIES.w.p >= (SERIES.to || 2)), modeExtra(won));
             }
           }
           if (G && G.over) badge();

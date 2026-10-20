@@ -6,6 +6,13 @@
    Общая сезонная таблица — retained-сообщения durocker/lb1/s/<pid> на том же публичном брокере. */
 'use strict';
 
+function newPid() {
+  let s = '';
+  try { const a = new Uint8Array(10); crypto.getRandomValues(a); a.forEach(x => { s += (x % 36).toString(36); }); } catch (e) {}
+  while (s.length < 10) s += Math.floor(Math.random() * 36).toString(36);
+  return s;
+}
+
 const WEEKLY = (() => {
   const DAY = 86400000, WEEK = 7 * DAY, MSK = 3 * 3600000;
   const EPOCH = Date.UTC(2026, 9, 19); /* понедельник 19.10.2026, 00:00 по Москве — неделя №0 */
@@ -147,7 +154,7 @@ const WEEKLY = (() => {
   const has = () => typeof window.mqtt === 'object' || typeof window.mqtt === 'function';
   function pid() {
     let v = rd('durocker-pid');
-    if (!v || !/^[a-z0-9]{8,16}$/.test(v)) { v = Math.random().toString(36).slice(2, 12).padEnd(10, '0'); wr('durocker-pid', v); }
+    if (!v || !/^[a-z0-9]{8,16}$/.test(v) || /^(.)\1+$/.test(v)) { v = newPid(); wr('durocker-pid', v); }
     return v;
   }
   const nick = () => ((typeof myNick === 'function' ? myNick() : rd('durocker-nick')) || 'Игрок').slice(0, 16);

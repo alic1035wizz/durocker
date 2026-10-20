@@ -96,6 +96,7 @@ function grant(id) {
 /* ---------- конец партии: статистика, достижения, карьера, ежедневная ---------- */
 function onGameOver() {
   if (NET && NET.role === 'guest') return;
+  if (!NET) store('durocker-live', '');
   const p = prog(), won = G.over === 'p';
   p.games++; if (won) p.wins++;
   p.mognul += G.stats.mognul.p;
@@ -156,3 +157,72 @@ function applyLooks() {
   applyMognul();
   if (typeof AU !== 'undefined' && AU.setTrack) AU.setTrack(p.track);
 }
+
+
+/* ---------- честность: выход посреди партии = поражение ----------
+   При раздаче партии с ботом ставим флаг «партия идёт». Партия закончилась — флаг снимает onGameOver.
+   Флаг остался (обновил страницу, ушёл в другой режим) — при следующей раздаче засчитываем проигранную партию
+   со штрафом 10. Дейли засчитывается сразу при старте: повторно её не сыграть. */
+const LIVE_GRACE = 1500; /* двойной вызов newGame подряд (карточка правила и т.п.) за выход не считаем */
+function settleAbandoned() {
+  let f = null;
+  try { f = JSON.parse(load('durocker-live')); } catch (e) {}
+  if (!f || typeof f !== 'object') return false;
+  store('durocker-live', '');
+  if (Date.now() - (f.t || 0) < LIVE_GRACE && f.kind !== 'daily') return false;
+  const p = prog();
+  p.games++;
+  if (f.key) {
+    try {
+      const raw = load(f.key);
+      const s = raw ? JSON.parse(raw) : { p: 0, b: 0, w: { p: 0, b: 0 }, to: f.to || 2, games: 0, done: false };
+      if (s && s.w && typeof s.w.b === 'number' && !s.done) {
+        s.b = (s.b || 0) + 10; s.games = (s.games || 0) + 1; s.w.b++;
+        if (s.w.b >= (s.to || 2)) s.done = true;
+        store(f.key, JSON.stringify(s));
+      }
+    } catch (e) {}
+  }
+  if (f.kind === 'daily' && f.day) p.daily[f.day] = { won: false, mognul: 0, turns: 0, left: 8, penalty: 10, fled: true };
+  saveProg();
+  setTimeout(() => toast('Выход посреди партии — засчитано поражение', 4500), 300);
+  return true;
+}
+function markLive() {
+  if (NET || !G || G.over || !MODE || MODE.kind === 'tutorial') return;
+  let key = null;
+  try { key = seriesKey(); } catch (e) {}
+  store('durocker-live', JSON.stringify({ kind: MODE.kind, stage: MODE.stage, day: MODE.day, key, to: (typeof matchTo === 'function' ? matchTo() : 2), bot: currentBot().id, t: Date.now() }));
+}
+(() => {
+  if (typeof newGame !== 'function') return;
+  const _ng = newGame;
+  newGame = function () {
+    if (!(typeof NET !== 'undefined' && NET)) {
+      settleAbandoned();
+      /* дейли — одна попытка: если сегодня уже начинал, вместо неё — своя игра */
+      if (MODE && MODE.kind === 'daily') {
+        const p = prog();
+        if (p.daily[MODE.day]) {
+          MODE = { kind: 'free' };
+          setTimeout(() => toast('Ежедневная раздача — одна попытка в день. Это «Своя игра»', 4000), 300);
+        } else {
+          p.daily[MODE.day] = { won: false, mognul: 0, turns: 0, left: 8, penalty: 10, live: true };
+          saveProg();
+        }
+      }
+    }
+    const r = _ng.apply(this, arguments);
+    try { markLive(); } catch (e) {}
+    return r;
+  };
+})();
+/* обучение посреди партии не считается бегством: снимаем флаг, когда урок стартует */
+if (typeof addEventListener === 'function') addEventListener('load', () => {
+  try {
+    if (typeof TUT !== 'undefined' && TUT && TUT.start) {
+      const _ts = TUT.start;
+      TUT.start = function () { store('durocker-live', ''); return _ts.apply(this, arguments); };
+    }
+  } catch (e) {}
+});

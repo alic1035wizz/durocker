@@ -103,6 +103,7 @@ const M4 = (() => {
       }
       const ok = withCtx(S, () => beats(e, a));
       if (ok) return { ok: true, e, type: 'play', why: e.n > a.n ? 'Перекрытие!' : 'Бьёт!' };
+      if (a.n === 5 && e.n === 5 && withCtx(S, () => eachOn() && !!eachMatch(e.cards, a.cards))) return { ok: true, e, type: 'play', why: 'Поштучно!' };
       if (tr.ok) return tr;
       return no(e.n > a.n ? 'Для перекрытия нужна комбинация старшего типа' : 'Не бьёт');
     }
@@ -120,7 +121,7 @@ const M4 = (() => {
   /* перевод: на следующего за защитником, тем же типом и старшинством, пока никто не ответил */
   function checkTransfer(S, seat, cs, e) {
     const no = why => ({ ok: false, why });
-    if (!R(S).transfer || S.phase.kind !== 'defend' || seat !== S.def || !noneDefended(S)) return no(null);
+    if (!R(S).transfer || S.noTr || S.phase.kind !== 'defend' || seat !== S.def || !noneDefended(S)) return no(null);
     e = e || evC(S, cs);
     if (!e || !withCtx(S, () => sameRank(e, S.table[0].a))) return no(null);
     const to = nextActive(S, S.def);
@@ -149,14 +150,18 @@ const M4 = (() => {
     const k = S.phase.kind, trumpy = c.s === S.T;
     const hasSuit = e => trumpy || e.cards.some(x => x.s === c.s);
     if (k === 'attack') {
-      if (c.action === 'plus') return ok(S.deckN === 0 || (S.deck && !S.deck.length) ? `Защитнику +${trumpy ? 3 : 2} штрафа (колода пуста)` : `Защитник доберёт ${trumpy ? 3 : 2}`);
+      if (c.action === 'plus') return ok(S.deckN === 0 || (S.deck && !S.deck.length) ? 'Колода пуста: защитник не сможет переводить в этот ход' : `Защитник доберёт ${trumpy ? 3 : 2}`);
       if (c.action === 'trump' && !trumpy) return ok(`Козырем станет ${SU[c.s]}`);
       return ok('Пас: ход перейдёт следующему');
     }
     if (k === 'defend') {
       const b = openBattle(S);
       if (!b || seat !== S.def) return no(null);
-      if (c.action === 'shield') return hasSuit(b.a) ? ok('Атака уйдёт в бито без покрытия') : no(`В атаке нет ${SU[c.s]} — щит не подходит`);
+      if (c.action === 'shield') {
+        if (trumpy) return ok('Козырный щит: атака уйдёт в бито без покрытия');
+        if (!hasSuit(b.a)) return no(`В атаке нет ${SU[c.s]} — щит не подходит`);
+        return shieldSize(b.a) ? ok('Атака уйдёт в бито без покрытия') : no('Обычный щит держит атаку до 3 карт или одной масти');
+      }
       if (c.action === 'reverse') {
         if (!noneDefended(S)) return no('Разворот — только пока ничего не покрыто');
         if (!S.table.some(x => hasSuit(x.a))) return no(`В атаке нет ${SU[c.s]} — разворот не подходит`);
@@ -416,10 +421,10 @@ const M4 = (() => {
       M.grave++;
       const n2 = c.s === M.T ? 3 : 2, to = M.def;
       let drawn = 0;
-      for (let i = 0; i < n2; i++) { if (M.deck.length) { M.hands[to].push(M.deck.pop()); drawn++; } else M.pens[to]++; }
+      if (M.deck.length) { for (let i = 0; i < n2 && M.deck.length; i++) { M.hands[to].push(M.deck.pop()); drawn++; } } else M.noTr = true;
       sync();
       M.limit = Math.min(HAND, Math.max(M.limit, Math.min(HAND, M.counts[to])));
-      note('gold', seat, [`играет ${nm}:`, `играешь ${nm}:`], ' ', drawn ? `@T добирает ${drawn}` : `@T +${n2} штрафа`, to);
+      note('gold', seat, [`играет ${nm}:`, `играешь ${nm}:`], ' ', drawn ? `@T добирает ${drawn}` : '@T не сможет переводить', to);
     }
     if (c.action === 'trump') {
       M.grave++;
@@ -483,6 +488,7 @@ const M4 = (() => {
     startTurn(na);
   }
   function startTurn(na) {
+    M.noTr = false;
     M.att = na; M.def = nextActive(M, na);
     M.passed = []; M.turnCovers = 0; M.chained = false; M.upgraded = false;
     M.limit = Math.min(HAND, M.counts[M.def]);
@@ -561,7 +567,7 @@ const M4 = (() => {
       att: M.att, def: M.def, phase: M.phase, limit: M.limit, passed: M.passed.slice(), out: M.out.slice(),
       over: M.over, pen: M.pen, games: M.games, ev, turnNo: M.turnNo, v: VERSION,
       set: M.set, rules: M.rules, to: M.to, wins: M.wins.slice(), pens: M.pens.slice(), matchDone: M.matchDone, matchWinner: M.matchWinner, winner: M.winner,
-      charge: M.charge.slice(), offer: M.offer[seat], offers: M.offer.map(o => !!o), upgraded: M.upgraded, hype: M.hype, calls: M.calls,
+      charge: M.charge.slice(), offer: M.offer[seat], offers: M.offer.map(o => !!o), upgraded: M.upgraded, noTr: M.noTr, hype: M.hype, calls: M.calls,
     };
   }
   /* вид гостя → состояние для проверок (комбинации пересчитываются у него же) */
