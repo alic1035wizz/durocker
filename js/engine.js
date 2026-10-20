@@ -411,7 +411,9 @@ async function endTurn(defended) {
 
 function checkOver() {
   if (G.deck.length) return false;
-  const p0 = !G.P.length, b0 = !G.B.length;
+  /* карты-действия за заряд не держат на руке: остались только они — партию уже можно выиграть */
+  const live = h => (rule('charge') ? h.filter(c => !c.action).length : h.length);
+  const p0 = !live(G.P), b0 = !live(G.B);
   if (!p0 && !b0) return false;
   const win = p0 && b0 ? 'draw' : p0 ? 'p' : 'b';
   /* больше 10 штрафных за партию не дают, чтобы одна неудачная раздача не убивала серию */

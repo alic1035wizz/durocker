@@ -8,8 +8,8 @@ const BOTS = [
     desc: 'Ходит что попало, тратит козыри не глядя и иногда берёт, хотя мог отбиться.' },
   { id: 'valera', ai: 'valera', name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', level: 'средне',
     desc: 'Сбрасывает мелочь, бережёт козыри, кроет самым дешёвым. Переводит, когда выгодно.' },
-  { id: 'sharper', ai: 'sharper', style: 'sharper', peek: 'always', cheat: 0.5, name: 'Шулер', face: 'Ш', color: '#c8402f', level: 'сложно',
-    desc: 'Подглядывает в твои карты и просчитывает ходы вперёд. Честно играть не умеет.' },
+  { id: 'sharper', ai: 'sharper', style: 'sharper', peek: 'always', cheat: 0.4, slip: 1, endSearch: true, noise: 3, name: 'Шулер', face: 'Ш', color: '#c8402f', level: 'сложно',
+    desc: 'В начале играет как все и подтасовывает, а когда колода кончается — видит твои карты и считает на ходы вперёд. Честно играть не умеет.' },
 ];
 /* карьера «С подъезда в казино»: 5 районов, в каждом двое соседей и босс */
 const CAREER = [
@@ -23,16 +23,16 @@ const CAREER = [
     { id: 'c-vahter', ai: 'valera', style: 'valera', boss: 'vahter', name: 'Вахтёр', face: 'ВХ', color: '#8a6a3b', desc: 'БОСС: «Не положено!» — переводы запрещены.' } ] },
   { name: 'Рынок', reward: { track: 'night' }, ops: [
     { id: 'c-torgash', ai: 'valera', style: 'torgash', name: 'Торгаш', face: 'ТР', color: '#b8863b', desc: 'Каждую карту продаёт дороже, чем она стоит.' },
-    { id: 'c-zina', ai: 'sharper', style: 'zina', name: 'Тётя Зина', face: 'З', color: '#b85b5b', desc: 'Всё помнит. Всё.' },
+    { id: 'c-zina', ai: 'sharper', style: 'zina', noise: 3.5, name: 'Тётя Зина', face: 'З', color: '#b85b5b', desc: 'Всё помнит. Всё.' },
     { id: 'c-taxi', ai: 'valera', style: 'valera', boss: 'taxi', name: 'Таксист', face: 'ТК', color: '#d9c23c', desc: 'БОСС: счётчик тикает — у тебя 10 секунд на ход.' } ] },
   { name: 'Вокзал', reward: { table: 'neon' }, ops: [
-    { id: 'c-provod', ai: 'sharper', style: 'lite', name: 'Проводница', face: 'ПР', color: '#3b6db8', desc: 'Видала и не таких пассажиров.' },
+    { id: 'c-provod', ai: 'sharper', style: 'lite', noise: 2.5, name: 'Проводница', face: 'ПР', color: '#3b6db8', desc: 'Видала и не таких пассажиров.' },
     { id: 'c-dembel', ai: 'valera', style: 'dembel', name: 'Дембель', face: 'Д', color: '#4f7a3b', desc: 'Два года тренировался в казарме.' },
-    { id: 'c-major', ai: 'sharper', style: 'sharper', boss: 'major', name: 'Мажор', face: 'МЖ', color: '#c79bff', desc: 'БОСС: начинает партию с полным зарядом. Папа купил.' } ] },
+    { id: 'c-major', ai: 'sharper', style: 'sharper', noise: 1.5, boss: 'major', name: 'Мажор', face: 'МЖ', color: '#c79bff', desc: 'БОСС: начинает партию с полным зарядом. Папа купил.' } ] },
   { name: 'Казино', reward: { table: 'gold', back: 'gold' }, ops: [
-    { id: 'c-krupie', ai: 'sharper', style: 'lite', name: 'Крупье', face: 'КР', color: '#2e9d5b', desc: 'Улыбается и считает каждую карту.' },
+    { id: 'c-krupie', ai: 'sharper', style: 'lite', noise: 2.5, name: 'Крупье', face: 'КР', color: '#2e9d5b', desc: 'Улыбается и считает каждую карту.' },
     { id: 'c-valera', ai: 'valera', style: 'lite', name: 'Дядя Валера', face: 'ДВ', color: '#d9a03c', desc: 'Старый друг. Теперь играет по-крупному.' },
-    { id: 'c-sharper', ai: 'sharper', style: 'sharper', peek: 'late', cheat: 0.6, boss: 'sharper', name: 'Шулер', face: 'Ш', color: '#c8402f', desc: 'ФИНАЛЬНЫЙ БОСС: знает твою руку в конце колоды и не прощает ошибок.' } ] },
+    { id: 'c-sharper', ai: 'sharper', style: 'sharper', peek: 'late', cheat: 0.6, noise: 3, boss: 'sharper', name: 'Шулер', face: 'Ш', color: '#c8402f', desc: 'ФИНАЛЬНЫЙ БОСС: знает твою руку в конце колоды и не прощает ошибок.' } ] },
 ];
 const CAREER_OPS = CAREER.flatMap((d, di) => d.ops.map((o, oi) => ({ ...o, district: di, slot: oi, level: o.boss ? 'босс' : d.name })));
 function currentBot() {
@@ -44,10 +44,10 @@ const oppName = () => (NET ? (NET.oppNick || 'Соперник') : currentBot().
 
 /* ---------- общее: как бот ценит карты ---------- */
 const STYLE = {
-  student:  { search: 0 },
-  valera:   { search: 0 },
-  patsan:   { search: 0, transfer: 'always' },
-  mihalych: { search: 0, patient: true },
+  student:  { search: 0, take: 0.25 },
+  valera:   { search: 0, p3: 14 },
+  patsan:   { search: 0, transfer: 'always', p3: 14 },
+  mihalych: { search: 0, patient: true, p3: 14 },
   torgash:  { search: 0, hoard: 1.6 },
   dembel:   { search: 0, aggro: true },
   zina:     { search: 10 },
@@ -55,7 +55,8 @@ const STYLE = {
   sharper:  { search: 20 },
 };
 /* «лёгкий» ход: сильный бот с вероятностью slip на этом решении играет как Валера (ошибается как человек) */
-let LIGHT = false;
+let LIGHT = false, NOISE = 0;
+const jit = () => (NOISE ? (Math.random() - 0.5) * 2 * NOISE : 0);   /* человеческая неточность оценок: шум к вариантам хода */
 const styleOf = bot => (LIGHT ? STYLE.valera : STYLE[bot.style] || STYLE[bot.ai] || STYLE.valera);
 
 /* насколько охотно бот отдаёт эти карты; когда колода кончилась — сбрасывает всё подряд */
@@ -151,7 +152,7 @@ const sQ = s => (s.q == null ? (s.q = handQ(s.cards)) : s.q);
 
 /* ---------- просчёт ходов ---------- */
 let END = 0;
-function deadline() { return (END = Date.now() + 45); }
+function deadline() { return (END = Date.now() + 35); }
 const late_ = () => Date.now() > END;
 /* комбинации руки по размеру — с кэшем на время одного решения */
 let CC = new Map();
@@ -192,7 +193,7 @@ function evalAttack(bot, samples, e, onTable) {
   const room0 = G.limit - atkCount() - e.n;
   let sum = 0, cnt = 0;
   for (const s of samples) {
-    if (cnt >= 3 && late_()) break;
+    if (cnt >= 2 && late_()) break;
     cnt++;
     const d = oppAnswer(s, e);
     if (!d) {
@@ -225,7 +226,7 @@ function searchAttack(bot, list, kind) {
   if (kind === 'throw') bs = samples.reduce((a, s) => a + handQ(G.B, styleOf(bot).hoard) - sQ(s), 0) / samples.length - tempo();
   for (const e of cand) {
     if (Date.now() > end && best) break;
-    const v = evalAttack(bot, samples, e, onTable) + Math.random() * 0.02;
+    const v = evalAttack(bot, samples, e, onTable) + Math.random() * 0.02 + jit();
     if (v > bs) { bs = v; best = e; }
   }
   return best;
@@ -235,7 +236,7 @@ function searchAddTake(bot, list) {
   const hoard = styleOf(bot).hoard, base = handQ(G.B, hoard);
   let best = null, bs = 0.05;
   for (const e of list) {
-    const gain = handQ(minus(G.B, e.cards), hoard) - base - powSum(e.cards) * 0.6 * (1 - lateness()) + e.n * 0.6 * lateness();
+    const gain = handQ(minus(G.B, e.cards), hoard) - base - powSum(e.cards) * 0.6 * (1 - lateness()) + e.n * 0.6 * lateness() + jit();
     if (gain > bs) { bs = gain; best = e; }
   }
   return best;
@@ -254,7 +255,7 @@ function searchDefense(bot, cover, transfer) {
     const dump = dumpFor(R(s.cards), rankSet(table), Math.min(room, 5));
     take += handQ(G.B.concat(table, dump), hoard) - handQ(minus(s.cards, dump)) - tempo();
   }
-  take /= samples.length;
+  take = take / samples.length + jit();
   let best = null, bs = take;
   for (const d of cover.slice(0, G.B.length > 10 ? 3 : 6)) {
     if (Date.now() > end && best) break;
@@ -279,7 +280,7 @@ function searchDefense(bot, cover, transfer) {
       }
       sum += v;
     }
-    const v = sum / cnt;
+    const v = sum / cnt + jit();
     if (v > bs) { bs = v; best = { type: 'play', e: d }; }
   }
   for (const t of transfer.slice(0, 2)) {
@@ -291,7 +292,7 @@ function searchDefense(bot, cover, transfer) {
       for (const a of atks) { const d = cheapestCover(R(rest), a); if (!d) { ok = false; break; } rest = minus(rest, d.cards); }
       sum += ok ? bq - handQ(rest) - tempo() : bq - handQ(s.cards.concat(table, t.cards)) + tempo();
     }
-    const v = sum / samples.length;
+    const v = sum / samples.length + jit();
     if (v > bs) { bs = v; best = { type: 'transfer', e: t }; }
   }
   return best;
@@ -326,7 +327,7 @@ function defenseList() {
 function botAttackPick(bot) {
   const st = styleOf(bot);
   const score = bot.ai === 'student' || bot.style === 'student' ? e => heur(e, 30) - e.n * 3
-    : st.aggro ? e => heur(e) + e.n * 6 : st.hoard ? e => heur(e) - (e.tr + e.jk) * 12 : e => heur(e);
+    : st.aggro ? e => heur(e) + e.n * 6 : st.hoard ? e => heur(e) - (e.tr + e.jk) * 12 : e => heur(e) + (st.tb || 0) * e.t - (e.n === 3 ? st.p3 || 0 : 0);
   const list = attackList(score, st.search ? 10 : 1);
   if (!list.length) return null;
   return st.search ? searchAttack(bot, list, 'attack') : list[0];
@@ -362,7 +363,7 @@ function botThrowPick(bot, forTake) {
 function botDefense(bot) {
   const { cover, transfer } = defenseList(), st = styleOf(bot);
   if (bot.ai === 'student' || bot.style === 'student') {
-    if (!cover.length || Math.random() < 0.15) return null;
+    if (!cover.length || Math.random() < (st.take == null ? 0.15 : st.take)) return null;
     return { type: 'play', e: cover[Math.floor(Math.random() * cover.length)] };
   }
   if (st.transfer === 'always' && transfer.length) return { type: 'transfer', e: transfer[0] };
@@ -384,8 +385,9 @@ function botUpgradePick(bot) {
   if (!b) return null;
   const hand = plainCards(G.B), max = Math.min(4, 5 - b.a.n), opts = [], pick = [];
   let budget = 4000;
+  const stopAt = Date.now() + 40;   /* потолок: на телефоне перебор апгрейдов не должен подвешивать ход */
   const rec = (st, d, k) => {
-    if (budget-- <= 0) return;
+    if (budget-- <= 0 || (!(budget & 63) && Date.now() > stopAt)) { budget = 0; return; }
     if (d === k) { const cs = pick.slice(0, k), r = checkUpgrade('b', cs); if (r.ok) opts.push({ cs, e: r.e }); return; }
     for (let i = st; i <= hand.length - (k - d); i++) { pick[d] = hand[i]; rec(i + 1, d + 1, k); }
   };
@@ -416,7 +418,7 @@ const botActs = kind => G.B.filter(c => c.action === kind && checkAction('b', c)
 function trumpWorth(c) {
   /* меняем козырь, если в новой масти у бота заметно больше карт, чем в старой */
   const cnt = s => G.B.filter(x => x.s === s && !x.action && !x.joker).length;
-  return cnt(c.s) >= cnt(G.T) + 2;
+  return cnt(c.s) >= cnt(G.T) + 1 && cnt(c.s) >= 2;
 }
 function botActionFirst(bot) {
   const k = G.phase.kind, rnd = bot.ai === 'student' ? Math.random() < 0.5 : true;
@@ -434,8 +436,10 @@ function botDefenseAction(bot, d) {
   const sh = botActs('shield'), rv = botActs('reverse');
   const a = openB().a;
   if (!d) return sh[0] || rv[0] || null;
+  /* в конце партии лишняя карта-действие мешает выйти, а на крупную атаку щит или разворот выгоднее покрытия */
+  if (bot.ai !== 'student' && (!G.deck.length || a.n >= 3)) { if (sh[0]) return sh[0]; if (rv[0]) return rv[0]; }
   /* Шулер и Валера бросают щит на дорогую атаку, чтобы не тратить козыри */
-  if (bot.ai !== 'student' && (d.e.tr > 0 || d.e.jk > 0 || a.n >= 4)) return sh[0] || null;
+  if (bot.ai !== 'student' && (d.e.tr > 0 || d.e.jk > 0 || a.n >= 4)) return sh[0] || rv[0] || null;
   return null;
 }
 
@@ -461,9 +465,10 @@ function cheatSwap(bot) {
 /* решение бота: что сделать сейчас. Возвращает [действие, карты, реплика] */
 /* потолок решения: на телефоне в ~3 раза медленнее, поэтому в node держим максимум около 100 мс */
 function botDecide(bot) {
-  COMBO_STOP = Date.now() + 70;
-  LIGHT = !!bot.slip && Math.random() < bot.slip;
-  try { return botDecide0(bot); } finally { COMBO_STOP = 0; LIGHT = false; }
+  COMBO_STOP = Date.now() + 55;
+  LIGHT = !!bot.slip && Math.random() < bot.slip && !(bot.endSearch && !G.deck.length);   /* endSearch: в конце партии (колода кончилась) бот считает всерьёз */
+  NOISE = bot.noise || 0;
+  try { return botDecide0(bot); } finally { COMBO_STOP = 0; LIGHT = false; NOISE = 0; }
 }
 function botDecide0(bot) {
   cheatSwap(bot);
