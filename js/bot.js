@@ -457,7 +457,12 @@ function cheatSwap(bot) {
 }
 
 /* решение бота: что сделать сейчас. Возвращает [действие, карты, реплика] */
+/* потолок решения: на телефоне в ~3 раза медленнее, поэтому в node держим максимум около 100 мс */
 function botDecide(bot) {
+  COMBO_STOP = Date.now() + 70;
+  try { return botDecide0(bot); } finally { COMBO_STOP = 0; }
+}
+function botDecide0(bot) {
   cheatSwap(bot);
   const k = G.phase.kind;
   const first = botActionFirst(bot);

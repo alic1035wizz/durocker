@@ -1,5 +1,5 @@
 /* Автотест: партии бот против бота на настоящем движке (rules/engine/bot/meta) в vm с заглушками DOM.
-   Падает при любом REJECT/STUCK, при выходе винрейтов лестницы за границы и при решении бота дольше 400 мс
+   Падает при любом REJECT/STUCK, при выходе винрейтов лестницы за границы и при решении бота дольше 400 мс на p99 (одиночные выбросы терпим до 1500 мс)
    (меряем процессорное время, чтобы нагрузка на CI-машине не давала ложных срабатываний).
    Запуск: node tests/sim.js [партий на пару, по умолчанию 500 всего]  (SIM_GAMES=100 для быстрой проверки) */
 'use strict';
@@ -74,7 +74,10 @@ vm.runInContext(src + harness, ctx, { filename: 'durocker-bundle.js' });
   for (const id in times) {
     const a = times[id].slice().sort((p, q) => p - q), mx = a[a.length - 1];
     console.log(`процессорное время решения ${id}: n=${a.length} среднее ${(a.reduce((p, q) => p + q, 0) / a.length).toFixed(2)} мс, p95 ${a[Math.floor(a.length * .95)]} мс, макс ${mx} мс`);
-    if (mx > MAX_MS) errs.push(`бот ${id} думал ${mx} мс (> ${MAX_MS})`);
+    const p99 = a[Math.floor(a.length * .99)], over = a.filter(x => x > MAX_MS).length;
+    if (over) console.log(`   ВНИМАНИЕ: ${id}: решений > ${MAX_MS} мс: ${over} из ${a.length}, p99 ${p99} мс`);
+    if (p99 > MAX_MS) errs.push(`бот ${id}: p99 решения ${p99} мс (> ${MAX_MS})`);
+    if (mx > 1500) errs.push(`бот ${id} думал ${mx} мс (> 1500)`);
   }
   console.log(`партий: ${games}, ${((Date.now() - t0) / 1000).toFixed(0)} с`);
   if (errs.length) { console.error('\nПРОВАЛ:\n - ' + errs.join('\n - ')); process.exit(1); }

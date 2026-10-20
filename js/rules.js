@@ -63,46 +63,52 @@ const VERSION = '2026.10.19-w5';
 const myNick = () => (load('durocker-nick') || 'Игрок').slice(0, 16);
 
 /* ---------- оценка комбинаций ---------- */
+const EPC = new Int8Array(20);
+/* старшая карта стрита (0 — не стрит); по готовой таблице номиналов */
 function straightHigh(cs) {
-  const n = cs.length, rs = [...new Set(cs.map(c => c.r))].sort((a, b) => a - b);
-  if (rs.length !== n) return 0;
-  if (rs[n - 1] - rs[0] === n - 1) return rs[n - 1];
-  if (rs.includes(14)) {
-    const lo = rs.map(r => (r === 14 ? 1 : r)).sort((a, b) => a - b);
-    if (lo[n - 1] - lo[0] === n - 1) return lo[n - 1];
-  }
+  const n = cs.length; let lo = 99, hi = 0, d = 0;
+  for (let i = 0; i < n; i++) { const r = cs[i].r; if (EPC[r] === 1) { d++; if (r < lo) lo = r; if (r > hi) hi = r; } else if (EPC[r] > 1) return 0; }
+  if (d !== n) return 0;
+  if (hi - lo === n - 1) return hi;
+  if (EPC[14]) { let l2 = 99, h2 = 0; for (let i = 0; i < n; i++) { const r = cs[i].r === 14 ? 1 : cs[i].r; if (r < l2) l2 = r; if (r > h2) h2 = r; } if (h2 - l2 === n - 1) return h2; }
   return 0;
 }
 /* оценка без джокеров */
 function evPlain(cs) {
-  const n = cs.length, byR = {};
-  cs.forEach(c => (byR[c.r] = (byR[c.r] || 0) + 1));
-  const g = Object.entries(byR).map(([r, k]) => [+r, k]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
-  const tr = cs.filter(c => c.s === G.T).length;
-  const fl = n >= 3 && cs.every(c => c.s === cs[0].s), sh = n >= 3 ? straightHigh(cs) : 0;
-  const desc = () => cs.map(c => c.r).sort((a, b) => b - a);
-  const mk = (t, keys) => ({ t, keys, n, tr, jk: 0, name: TN[t] });
-  if (n === 1) return mk(0, [cs[0].r]);
-  if (n === 2) return g[0][1] === 2 ? mk(1, [g[0][0]]) : null;
-  if (n === 3) {
-    if (fl && sh) return mk(5, [sh]);
-    if (g[0][1] === 3) return mk(4, [g[0][0]]);
-    if (sh) return mk(3, [sh]);
-    if (fl) return mk(2, desc());
+  const n = cs.length;
+  let tr = 0, fl = n >= 3;
+  const s0 = cs[0].s;
+  for (let i = 0; i < n; i++) { const c = cs[i]; EPC[c.r]++; if (c.s === G.T) tr++; if (c.s !== s0) fl = false; }
+  try {
+    const mk = (t, keys) => ({ t, keys, n, tr, jk: 0, name: TN[t] });
+    if (n === 1) return mk(0, [cs[0].r]);
+    /* группы: (номинал, сколько) по убыванию количества, затем номинала */
+    const g = [];
+    for (let r = 19; r >= 0; r--) if (EPC[r]) g.push([r, EPC[r]]);
+    g.sort((x, y) => y[1] - x[1] || y[0] - x[0]);
+    const desc = () => cs.map(c => c.r).sort((x, y) => y - x);
+    if (n === 2) return g[0][1] === 2 ? mk(1, [g[0][0]]) : null;
+    const sh = n >= 3 ? straightHigh(cs) : 0;
+    if (n === 3) {
+      if (fl && sh) return mk(5, [sh]);
+      if (g[0][1] === 3) return mk(4, [g[0][0]]);
+      if (sh) return mk(3, [sh]);
+      if (fl) return mk(2, desc());
+      return null;
+    }
+    if (n === 4) {
+      if (g[0][1] === 4) return mk(7, [g[0][0]]);
+      if (g.length === 2 && g[0][1] === 2) return mk(6, [g[0][0], g[1][0]]);
+      return null;
+    }
+    if (n === 5) {
+      if (fl && sh) return mk(11, [sh]);
+      if (g[0][1] === 3 && g[1] && g[1][1] === 2) return mk(10, [g[0][0], g[1][0]]);
+      if (fl) return mk(9, desc());
+      if (sh) return mk(8, [sh]);
+    }
     return null;
-  }
-  if (n === 4) {
-    if (g[0][1] === 4) return mk(7, [g[0][0]]);
-    if (g.length === 2 && g[0][1] === 2) return mk(6, [g[0][0], g[1][0]]);
-    return null;
-  }
-  if (n === 5) {
-    if (fl && sh) return mk(11, [sh]);
-    if (g[0][1] === 3 && g[1] && g[1][1] === 2) return mk(10, [g[0][0], g[1][0]]);
-    if (fl) return mk(9, desc());
-    if (sh) return mk(8, [sh]);
-  }
-  return null;
+  } finally { for (let i = 0; i < n; i++) EPC[cs[i].r] = 0; }
 }
 /* сравнение комбинаций одного размера: тип, потом козыри, потом ранги, потом меньше джокеров */
 function cmpE(a, b) {
@@ -112,9 +118,24 @@ function cmpE(a, b) {
   return b.jk - a.jk;
 }
 /* полная оценка: джокер сам становится картой, которая делает комбинацию сильнее всего */
+/* кэш оценок: ключ — номера карт и козырь; отдаём копию с картами вызывающего (по ним сравнивают по ссылке) */
+let EVC = new Map();
 function ev(cs) {
   const n = cs.length;
   if (!n || n > 5 || cs.some(c => c.action)) return null;
+  let key = G.T + ':';
+  for (let i = 0; i < n; i++) key += cs[i].n + ',';
+  let tpl = EVC.get(key);
+  if (tpl === undefined) {
+    tpl = evRaw(cs);
+    if (EVC.size > 60000) EVC = new Map();
+    EVC.set(key, tpl ? { ...tpl, cards: null } : null);
+    return tpl;
+  }
+  return tpl ? { ...tpl, cards: cs } : null;
+}
+function evRaw(cs) {
+  const n = cs.length;
   const jokers = cs.filter(c => c.joker), real = cs.filter(c => !c.joker);
   if (!jokers.length) { const e = evPlain(cs); if (e) e.cards = cs; return e; }
   if (n === 1) return { t: 0, keys: [13.5], n: 1, tr: 1, jk: 1, name: 'Одиночка', cards: cs };
@@ -358,13 +379,15 @@ function defenseOptions(seat) {
   const acts = hand.filter(c => c.action && (c.action === 'shield' || c.action === 'reverse' || c.action === 'trump') && checkAction(seat, c).ok);
   return { cover, transfer, acts };
 }
+/* жёсткий потолок на перебор: бот выставляет время, после которого combos отдаёт то, что успел */
+let COMBO_STOP = 0, COMBO_N = 0;
 function combos(hand, sizes) {
   hand = hand.filter(c => !c.action);
   const out = [], L = hand.length, pick = [];
   for (const n of sizes) {
     if (n < 1 || n > L || (n === 5 && L > 24)) continue;
     const rec = (st, d) => {
-      if (d === n) { const e = ev(pick.slice(0, n)); if (e) out.push(e); return; }
+      if (d === n) { if (COMBO_STOP && !(++COMBO_N & 127) && Date.now() > COMBO_STOP) return; const e = ev(pick.slice(0, n)); if (e) out.push(e); return; }
       for (let i = st; i <= L - (n - d); i++) { pick[d] = hand[i]; rec(i + 1, d + 1); }
     };
     rec(0, 0);
