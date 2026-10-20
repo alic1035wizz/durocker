@@ -12,7 +12,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'dist' / 'durocker-claude.html'
-SCRIPTS = ['rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-room', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'table', 'story-data', 'story', 'access', 'netbet', 'clubs', 'share', 'leaders', 'lobby', 'tg', 'native', 'main']
+SCRIPTS = ['i18n', 'i18n/en-a', 'i18n/en-b', 'i18n/en-c', 'i18n/en-d', 'rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-room', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'table', 'story-data', 'story', 'access', 'netbet', 'clubs', 'share', 'leaders', 'lobby', 'tg', 'native', 'main']
 
 html = (ROOT / 'index.html').read_text(encoding='utf-8')
 CSS_FILES = ['style', 'ds', 'lobby', 'table', 'story', 'company', 'access']

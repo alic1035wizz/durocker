@@ -1,7 +1,7 @@
 /* ДурКер — офлайн: сначала сеть (чтобы обновления приходили сразу), без сети — из кэша */
-const CACHE = 'durker-w8';
+const CACHE = 'durker-w9';
 const CORE = ['./', 'index.html', 'css/style.css', 'css/ds.css', 'css/lobby.css', 'css/table.css', 'css/story.css', 'css/company.css', 'css/access.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/icon-maskable.png', 'assets/apple-touch-icon.png',
-  ...['rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-mqtt', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'table', 'story-data', 'story', 'access', 'netbet', 'clubs', 'share', 'leaders', 'lobby', 'tg', 'native', 'main'].map(f => `js/${f}.js`)];
+  ...['i18n', 'i18n/en-a', 'i18n/en-b', 'i18n/en-c', 'i18n/en-d', 'rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-mqtt', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'table', 'story-data', 'story', 'access', 'netbet', 'clubs', 'share', 'leaders', 'lobby', 'tg', 'native', 'main'].map(f => `js/${f}.js`)];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => Promise.all(CORE.map(u => c.add(u).catch(() => {})))).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch', e => {
