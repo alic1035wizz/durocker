@@ -11,7 +11,7 @@ function newPid() {
 }
 
 /* адрес веб-приложения после «Развернуть → Новое развёртывание» (…/exec) */
-const CLOUD_URL = '';
+const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbxPoMl985LdpeSlKjZOXjswl_ZuOgFJ80TzKXB6Qf0-moREAqrW3WTQTQUaV8jbyH6d/exec';
 
 const CLOUD = (() => {
   const rd = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
