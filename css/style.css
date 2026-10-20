@@ -267,9 +267,13 @@ html[data-back="skull"]{--backbg:radial-gradient(circle at 50% 42%,#f3ecd8 0 22%
 @keyframes zin{0%{transform:scale(.2) rotate(-30deg);opacity:0}25%{transform:scale(1.15) rotate(6deg);opacity:1}35%{transform:scale(1) rotate(0)}80%{transform:scale(1);opacity:1}100%{transform:scale(.6) translateY(40px);opacity:0}}
 @keyframes zfade{0%,15%{opacity:0}30%,80%{opacity:1}100%{opacity:0}}
 #fxc{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:44}
-.toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:70;background:var(--gold);color:#3a2306;font-weight:800;padding:10px 16px;border-radius:12px;box-shadow:0 4px 0 rgba(0,0,0,.4);max-width:92vw;text-align:center}
-.toast.on{animation:toastin 3.2s ease forwards}
-@keyframes toastin{0%{opacity:0;transform:translate(-50%,-20px)}10%,85%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+.toast{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:70;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none;width:max-content;max-width:calc(100vw - 132px)}
+.toast[hidden]{display:none}
+.tpill{pointer-events:auto;cursor:pointer;background:var(--gold);color:#3a2306;font-weight:800;font-size:13px;line-height:1.25;padding:6px 14px;border-radius:14px;box-shadow:0 3px 0 rgba(0,0,0,.4);text-align:center;max-width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;animation:tpin .22s cubic-bezier(.2,1.4,.4,1)}
+.tpill.ach{background:#2a2210;color:#ffe9a6;border:2px solid #e8b33c;padding:4px 12px}
+@keyframes tpin{from{opacity:0;transform:translateY(-10px) scale(.92)}to{opacity:1;transform:none}}
+@media (orientation:landscape) and (max-height:520px){.toast{top:calc(4px + env(safe-area-inset-top,0px));max-width:46vw}}
+@media (prefers-reduced-motion:reduce){.tpill{animation:none}}
 @keyframes blink{50%{opacity:.35}}
 .wait{display:inline-block;animation:blink 1s steps(2) infinite}
 
