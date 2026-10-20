@@ -20,3 +20,9 @@ npm run test:ui             # Playwright
 Быстрая проверка: `SIM_GAMES=50 node tests/sim.js`, `SIM_GAMES=20 node tests/multi.js`.
 Если браузер уже стоит в другом месте: `CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test`.
 Скриншоты UI-теста лежат в `test-results/` и в CI выгружаются артефактом `ui-screenshots`.
+
+## Шина событий (tests/bus.js, tests/features.spec.js)
+
+`node tests/bus.js` — юнит-тест `js/bus.js` в vm: порядок событий, изоляция ошибок подписчиков, хуки, `menuKey`, `match:over`.
+`tests/features.spec.js` (Playwright) — после партии проверяет, что фичи на шине живы: профиль, XP пропуска, портреты и эмоции, пункты меню, окно «Фишки».
+Список событий и API — в шапке `js/bus.js`.

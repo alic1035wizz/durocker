@@ -457,7 +457,6 @@ const ROGUE = (() => {
       } catch (e) {}
     });
     BUS.on('menu:open', () => {
-      console.warn('ROGUE-H1', !!document.querySelector('#menuIn .menugrid'), !!document.querySelector('#menuIn .menugrid [data-go="rogue"]'));
       try {
         const g = document.querySelector('#menuIn .menugrid');
         if (g && !g.querySelector('[data-go="rogue"]')) {
@@ -467,7 +466,7 @@ const ROGUE = (() => {
           const after = g.querySelector('[data-go="weekly"]') || g.querySelector('[data-go="daily"]');
           if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
         }
-      } catch (e) { console.warn('ROGUE-MENU', e.message); }
+      } catch (e) {}
     });
     BUS.menuKey('rogue', () => { try { closeSheets(); } catch (e) {} open(); });
   }
