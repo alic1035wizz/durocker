@@ -54,7 +54,9 @@ const STYLE = {
   lite:     { search: 16 },
   sharper:  { search: 20 },
 };
-const styleOf = bot => STYLE[bot.style] || STYLE[bot.ai] || STYLE.valera;
+/* «лёгкий» ход: сильный бот с вероятностью slip на этом решении играет как Валера (ошибается как человек) */
+let LIGHT = false;
+const styleOf = bot => (LIGHT ? STYLE.valera : STYLE[bot.style] || STYLE[bot.ai] || STYLE.valera);
 
 /* насколько охотно бот отдаёт эти карты; когда колода кончилась — сбрасывает всё подряд */
 function heur(e, noise) {
@@ -460,7 +462,8 @@ function cheatSwap(bot) {
 /* потолок решения: на телефоне в ~3 раза медленнее, поэтому в node держим максимум около 100 мс */
 function botDecide(bot) {
   COMBO_STOP = Date.now() + 70;
-  try { return botDecide0(bot); } finally { COMBO_STOP = 0; }
+  LIGHT = !!bot.slip && Math.random() < bot.slip;
+  try { return botDecide0(bot); } finally { COMBO_STOP = 0; LIGHT = false; }
 }
 function botDecide0(bot) {
   cheatSwap(bot);

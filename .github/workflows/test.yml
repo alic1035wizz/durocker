@@ -12,6 +12,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: node tests/bus.js
+      - run: node tests/bets.js
+      - run: node tests/pwa.js
+      - run: node tests/story.js
       - run: node tests/sim.js
       - run: node tests/multi.js
   ui:

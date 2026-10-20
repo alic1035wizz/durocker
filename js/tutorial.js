@@ -1,4 +1,5 @@
-/* ДурКер — обучение на 2 минуты: три подстроенные раздачи против Учителя.
+/* ДурКер — обучение на 2–3 минуты: четыре подстроенные раздачи против Учителя (пара, перекрытие, подкидывание, «пятёрка поштучно»),
+   плюс «Подбор» и фишки. Учитель с портретом, уровень подсказок на выбор, обучение можно пропустить.
    Работает на обычном движке: раздача выставляется вручную, ходы Учителя — по сценарию.
    Результаты обучения не идут ни в серию, ни в статистику, ни в таблицу лидеров (до конца партии дело не доходит). */
 'use strict';
@@ -12,7 +13,7 @@ const TUT = (() => {
   /* три урока: раздача, подсказки по фазам, условие успеха */
   const LESSONS = [
     {
-      title: 'Урок 1 из 3 · Покрой пару',
+      title: 'Урок 1 из 4 · Покрой пару',
       deal() {
         return {
           T: 0, attacker: 'b',
@@ -22,14 +23,14 @@ const TUT = (() => {
         };
       },
       hint(k) {
-        if (k === 'p_defend') return { t: 'Учитель зашёл <b>парой семёрок</b>. Пару бьют парой старше. Выбери <b>9♥ и 9♣</b> и жми «Покрыть».', hi: [C(9, 1), C(9, 3)] };
+        if (k === 'p_defend') return { t: 'Учитель зашёл <b>парой семёрок</b>. Пару бьют парой старше. Выбери <b>9♥ и 9♣</b> и жми «Покрыть». Не знаешь, чем бить, — жми <b>⟳ Подбор</b>: он сам покажет ход.', hi: [C(9, 1), C(9, 3)], pick: true };
         return { t: 'Покрыто! Учитель говорит «Бито» — карты уходят в отбой.' };
       },
       win: who => who === 'p',
       done: 'Пара на пару, старше — и ты отбился. Так кроется любая комбинация: <b>тем же числом карт, но старше</b>. Козырь внутри комбинации делает её сильнее.',
     },
     {
-      title: 'Урок 2 из 3 · Перекрой стритом',
+      title: 'Урок 2 из 4 · Перекрой стритом',
       deal() {
         return {
           T: 0, attacker: 'b',
@@ -39,14 +40,14 @@ const TUT = (() => {
         };
       },
       hint(k) {
-        if (k === 'p_defend') return { t: 'Две пары! Старших двух пар у тебя нет — зато есть <b>стрит 5-6-7-8-9</b>. <b>Перекрытие:</b> на атаку можно лечь старшей комбинацией ровно на <b>одну карту больше</b>. Выбери пять карт подряд и жми «Покрыть». Не видишь ход — жми «⟳ Подбор».', hi: [C(5, 1), C(6, 3), C(7, 2), C(8, 1), C(9, 3)] };
+        if (k === 'p_defend') return { t: 'Две пары! Старших двух пар у тебя нет — зато есть <b>стрит 5-6-7-8-9</b>. <b>Перекрытие:</b> на атаку можно лечь старшей комбинацией ровно на <b>одну карту больше</b>. Выбери пять карт подряд и жми «Покрыть». Не видишь ход — жми «⟳ Подбор».', hi: [C(5, 1), C(6, 3), C(7, 2), C(8, 1), C(9, 3)], pick: true };
         return { t: 'Перекрыл! Учитель сдаётся — «Бито».' };
       },
       win: who => who === 'p',
       done: 'Перекрытие спасает, когда нечем крыть тем же числом: на 2 карты — тройкой, на 3 — четвёркой, на 4 — пятёркой. Только <b>старшим типом</b>.',
     },
     {
-      title: 'Урок 3 из 3 · Подкинь',
+      title: 'Урок 3 из 4 · Подкинь',
       deal() {
         return {
           T: 0, attacker: 'p',
@@ -64,7 +65,34 @@ const TUT = (() => {
       win: who => who === 'b',
       done: 'Подкидывают комбинацией с номиналом со стола — или любой, если такая комбинация уже сложилась из карт на столе. Одиночкой не подкидывают.',
     },
+    {
+      title: 'Урок 4 из 4 · Пятёрка поштучно',
+      deal() {
+        return {
+          T: 0, attacker: 'b',
+          P: [C(11, 1), C(13, 1), C(12, 3), C(14, 3), C(13, 2), C(2, 2), C(4, 3), C(3, 1)],
+          B: [C(14, 2), C(10, 0), C(2, 0), C(9, 0)],
+          table: [[C(5, 1), C(6, 3), C(7, 2), C(8, 1), C(9, 3)]], phase: { who: 'p', kind: 'defend' },
+        };
+      },
+      hint(k) {
+        if (k === 'p_defend') {
+          const n = G.sel ? G.sel.size : 0;
+          if (n === 5) return { t: 'Это <b>поштучный ответ</b>: у каждой карты стрита — своя, старшая той же масти. Жми «Покрыть».', hi: [C(11, 1), C(13, 1), C(12, 3), C(14, 3), C(13, 2)] };
+          return { t: 'Учитель зашёл <b>стритом 5-6-7-8-9</b> разных мастей. Стрита старше и флеша у тебя нет, но пятёрку можно побить <b>поштучно</b>: каждую карту — своей, <b>старшей той же масти</b> (или козырем). Жми <b>⟳ Подбор</b> — он найдёт такой ход.', hi: [C(11, 1), C(13, 1), C(12, 3), C(14, 3), C(13, 2)], pick: true };
+        }
+        return { t: 'Отбился поштучно! Учитель говорит «Бито».' };
+      },
+      win: who => who === 'p',
+      done: 'Пятёрку нечем побить комбинацией — бей <b>каждую карту своей</b>: старшей той же масти или козырем. Джокера бьёт только козырной туз, а перекрыть пятёрку шестью картами нельзя.',
+    },
   ];
+
+  /* портрет Учителя (из portraits.js); без него остаётся пустое место */
+  function face(host, emo) {
+    if (!host || typeof PORTRAITS === 'undefined' || !PORTRAITS.mount) return;
+    try { PORTRAITS.mount(host, 'teacher', { emo: emo || 'neutral' }); } catch (e) {}
+  }
 
   /* ---------- раздача урока ---------- */
   function start(i) {
@@ -130,13 +158,16 @@ const TUT = (() => {
     const L = LESSONS[lesson], last = lesson === LESSONS.length - 1;
     if (!last) { card('Готово! ✅', L.done, [['Дальше', () => start(lesson + 1)]]); return; }
     store('durocker-tut', 'done');
-    card('Ты готов! 🃏', L.done + '<br><br>Дальше в карьере откроются <b>перевод</b>, <b>«могнул»</b> (покрыл старшим типом — сопернику штраф) и <b>заряд</b> с картами-действиями.',
+    card('Ты готов! 🃏', L.done + '<br><br>Если растерялся — <b>⟳ Подбор</b> всегда покажет следующий допустимый ход. В карьере откроются <b>перевод</b>, <b>«могнул»</b> (покрыл старшим типом — сопернику штраф) и <b>заряд</b> с картами-действиями.<br><br>🪙 <b>Фишки:</b> перед матчем с ботом можно поставить фишки, серия побед умножает награду, каждый 3-й матч — сундук. Ставки только внутриигровые: купить фишки нельзя.',
       [['В карьеру', () => finish('career')], ['Своя игра', () => finish('free')]]);
   }
   function card(h, text, btns) {
-    sheet('page', `<div class="rulecard tutcard"><span class="tag">ОБУЧЕНИЕ</span><h2>${h}</h2><p>${text}</p>
-      <div class="row">${btns.map((b, i) => `<button class="btn ${i ? 'grey' : 'blue'}" type="button" data-tutbtn="${i}">${b[0]}</button>`).join('')}</div></div>`);
+    sheet('page', `<div class="rulecard tutcard"><span class="tag">ОБУЧЕНИЕ</span><div class="tface lg" data-face="1"></div><h2>${h}</h2><p>${text}</p>
+      <div class="row">${btns.map((b, i) => `<button class="btn ${i ? 'grey' : 'blue'}" type="button" data-tutbtn="${i}">${b[0]}</button>`).join('')}</div>
+      <button class="skipall" type="button" id="tutSkipAll">Пропустить обучение</button></div>`);
     btns.forEach((b, i) => { document.querySelector(`[data-tutbtn="${i}"]`).onclick = () => { $('page').hidden = true; b[1](); }; });
+    $('tutSkipAll').onclick = () => { $('page').hidden = true; store('durocker-tut', load('durocker-tut') || 'skip'); finish('back'); };
+    face(document.querySelector('#pageIn .tface'), /^Не вышло/.test(h) ? 'think' : 'smug');
   }
   function finish(where) {
     lesson = -1;
@@ -152,14 +183,15 @@ const TUT = (() => {
     let el = $('tutBubble');
     const on = !!(G && G.tutorial && MODE.kind === 'tutorial' && lesson >= 0);
     document.documentElement.classList.toggle('tut', on);
-    if (!on) { if (el) el.hidden = true; document.querySelectorAll('#hand .slot.tut').forEach(s => s.classList.remove('tut')); return; }
+    if (!on) { if (el) el.hidden = true; document.querySelectorAll('#hand .slot.tut').forEach(s => s.classList.remove('tut')); const pb0 = $('pickBtn'); if (pb0) pb0.classList.remove('tutpick'); return; }
     if (!el) {
       el = document.createElement('div'); el.id = 'tutBubble'; el.className = 'tutbubble';
       $('felt').appendChild(el);
     }
     const L = LESSONS[lesson], h = L.hint(uiPhase()) || { t: '' };
-    const html = `<div class="tt">${L.title}</div><div class="tx">${h.t}</div><button type="button" class="skip" id="tutSkip">Пропустить</button>`;
-    if (el.dataset.k !== html) { el.innerHTML = html; el.dataset.k = html; $('tutSkip').onclick = () => finish('back'); }
+    const html = `<span class="tface" data-face="1"></span><div class="tbody"><div class="tt">${L.title}</div><div class="tx">${h.t}</div></div><button type="button" class="skip" id="tutSkip">Пропустить</button>`;
+    if (el.dataset.k !== html) { el.innerHTML = html; el.dataset.k = html; $('tutSkip').onclick = () => finish('back'); face(el.querySelector('.tface'), 'neutral'); }
+    const pb = $('pickBtn'); if (pb) pb.classList.toggle('tutpick', !!h.pick && uiPhase() === 'p_defend');
     el.hidden = !!G.busy && !G.phase.who;
     const hi = new Set(ids(h.hi || []));
     document.querySelectorAll('#hand .slot').forEach(s => { const c = s.querySelector('.card'); s.classList.toggle('tut', !!c && hi.has(c.dataset.id) && !G.sel.has(c.dataset.id)); });
@@ -180,7 +212,7 @@ const TUT = (() => {
         if (g && !g.querySelector('[data-go="tutorial"]')) {
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'mi'; b.dataset.go = 'tutorial';
-          b.innerHTML = `<b>Обучение</b><small>${load('durocker-tut') ? 'Пройдено · повторить за 2 минуты' : '3 урока за 2 минуты'}</small>`;
+          b.innerHTML = `<b>Обучение</b><small>${load('durocker-tut') ? 'Пройдено · повторить за 3 минуты' : '4 урока за 3 минуты'}</small>`;
           const rules = g.querySelector('[data-go="rules"]');
           g.insertBefore(b, rules || null);
         }
@@ -191,13 +223,26 @@ const TUT = (() => {
     wrap('setMode', (o, t, a) => { if (a[0] && a[0].kind !== 'tutorial') { lesson = -1; paint(); } return o.apply(t, a); });
   }
 
-  /* первый запуск: предлагаем обучение (тем, кто уже играл, — не навязываем) */
+  /* первый запуск: спрашиваем уровень (он же — уровень подсказок) и предлагаем обучение */
   function offer() {
     if (load('durocker-tut') || prog().games > 0) { openMenu(); return; }
-    sheet('page', `<div class="rulecard tutcard"><span class="tag">ДУРКЕР</span><h2>Впервые за столом?</h2>
-      <p>Это дурак, где отбиваются <b>покерными комбинациями</b>. Три коротких урока — и ты в игре. Около двух минут.</p>
-      <div class="row"><button class="btn blue" type="button" id="tutStart">Начать обучение</button><button class="btn grey" type="button" id="tutNo">Пропустить</button></div></div>`);
-    $('tutStart').onclick = () => { $('page').hidden = true; start(0); };
+    sheet('page', `<div class="rulecard tutcard tutoffer"><span class="tag">ДУРКЕР</span><div class="tface xl" data-face="1"></div><h2>Впервые за столом?</h2>
+      <p>Это дурак, где отбиваются <b>покерными комбинациями</b>. Как давно ты играешь в дурака? От ответа зависят подсказки в игре — их можно поменять в настройках.</p>
+      <div class="lvl">
+        <button class="btn blue" type="button" data-lvl="novice"><b>🙂 Новичок</b><small>покажи всё: 4 урока, подсвечу ходы</small></button>
+        <button class="btn orange" type="button" data-lvl="player"><b>🃏 Играл раньше</b><small>уроки коротко, только подсветка</small></button>
+        <button class="btn grey" type="button" data-lvl="pro"><b>😎 Профи</b><small>без обучения, подсказок почти нет</small></button>
+      </div>
+      <button class="skipall" type="button" id="tutNo">Пропустить</button></div>`);
+    face(document.querySelector('#pageIn .tface'), 'smug');
+    document.querySelectorAll('#pageIn [data-lvl]').forEach(b => {
+      b.onclick = () => {
+        const v = b.dataset.lvl;
+        store('durocker-hints', v === 'novice' ? 'auto' : v);
+        $('page').hidden = true;
+        if (v === 'pro') { store('durocker-tut', 'skip'); openMenu(); } else start(0);
+      };
+    });
     $('tutNo').onclick = () => { $('page').hidden = true; store('durocker-tut', 'skip'); openMenu(); };
   }
 
@@ -210,6 +255,19 @@ const TUT = (() => {
 #hand .slot.tut .card{box-shadow:0 0 0 3px #ffe14a,0 0 18px 4px rgba(255,225,74,.75);animation:tutp 1s ease-in-out infinite}
 @keyframes tutp{50%{box-shadow:0 0 0 3px #ffe14a,0 0 6px 1px rgba(255,225,74,.4)}}
 .tutcard .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.tutcard{text-align:center}
+.tutcard .tface{margin:6px auto 2px}
+.tface{display:inline-block;flex:none;width:44px;height:44px;border-radius:12px;overflow:hidden;border:2px solid var(--gold);background:#1b4a36}
+.tface.lg{width:72px;height:72px}.tface.xl{width:104px;height:104px;border-radius:16px}
+.tface svg{display:block;width:100%;height:100%}
+.tutbubble{display:flex;gap:8px;align-items:flex-start}
+.tutbubble .tbody{flex:1;min-width:0;padding-right:46px}
+.tutbubble .tface{width:40px;height:40px;margin-top:2px}
+.tutoffer .lvl{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}
+.tutoffer .lvl .btn{flex-direction:column;gap:2px;text-align:center}
+.tutoffer .lvl .btn small{font-size:12px;font-weight:600;opacity:.95;color:inherit}
+.skipall{display:block;margin:10px auto 0;background:none;border:none;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer}
+#pickBtn.tutpick{animation:tutp 1s ease-in-out infinite;box-shadow:0 0 0 3px #ffe14a,0 0 18px 4px rgba(255,225,74,.75)}
 html.tut #ruleHint,html.tut .siderules{display:none!important}
 @media (orientation:landscape) and (max-height:520px){.tutbubble{position:fixed;left:8px;top:auto;bottom:8px;right:auto;width:min(254px,30vw);font-size:12px;padding:6px 8px}}`;
   document.head.appendChild(css);

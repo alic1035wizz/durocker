@@ -1,0 +1,64 @@
+/* ДурКер — волна 7: режим «Компания» (3–4): тема стола, веер, итог, портреты, полёт карт.
+   Подключается после table.css и перекрывает inline-стили ui4. */
+#m4{--w-hand:clamp(60px,17vw,74px)}
+#m4[data-theme="kitchen"]{background:radial-gradient(90% 55% at 50% 0%,rgba(255,206,120,.20) 0%,transparent 70%),radial-gradient(120% 80% at 50% 0%,#2e2118 0%,var(--bg) 75%)}
+#m4[data-theme="casino"]{background:radial-gradient(90% 55% at 50% 0%,rgba(255,80,80,.16) 0%,transparent 70%),radial-gradient(120% 80% at 50% 0%,#241018 0%,var(--bg) 75%)}
+/* стол: «кухонный» — скатерть в клетку на дереве; «казино» — бархат с золотой каймой */
+#m4[data-theme="kitchen"] .m4felt{
+  background-color:#b8503a;
+  background-image:linear-gradient(90deg,rgba(255,255,255,.22) 50%,transparent 50%),linear-gradient(rgba(255,255,255,.22) 50%,transparent 50%),radial-gradient(ellipse at 50% 38%,rgba(255,226,160,.38) 0%,rgba(0,0,0,0) 62%),radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,0,0,.5) 100%);
+  background-size:34px 34px,34px 34px,100% 100%,100% 100%;
+  border-color:#7a4a22;box-shadow:inset 0 0 0 3px #a8703a,inset 0 0 40px rgba(0,0,0,.5),0 6px 0 rgba(0,0,0,.4)}
+#m4[data-theme="kitchen"] .m4felt::before{content:"";position:absolute;left:50%;top:-6px;width:2px;height:16px;background:#2a1a0e;transform:translateX(-50%);z-index:1}
+#m4[data-theme="kitchen"] .m4felt::after{content:"";position:absolute;left:50%;top:8px;width:30px;height:20px;border-radius:50% 50% 8px 8px;transform:translateX(-50%);background:radial-gradient(circle at 50% 70%,#fff6c8 0%,#ffd876 55%,#8a5a1c 100%);box-shadow:0 0 28px 12px rgba(255,214,120,.35);pointer-events:none}
+#m4[data-theme="casino"] .m4felt{
+  background:radial-gradient(ellipse at 50% 42%,#1f8a58 0%,#0f4a33 62%,#082b1e 100%);
+  border-color:#c9972e;box-shadow:inset 0 0 0 3px #7a5a12,inset 0 0 44px rgba(0,0,0,.55),0 0 18px rgba(201,151,46,.35),0 6px 0 rgba(0,0,0,.4)}
+#m4 .m4felt .m4dir,#m4 .m4felt .m4grave{text-shadow:1px 1px 0 #000}
+#m4 .m4bats{position:relative;z-index:2}
+/* рука: тот же веер, что в обычной партии (js/table.js) */
+#m4 .m4hand{--w:var(--w-hand);position:relative;display:block;width:100%;height:150px;padding:0;flex:none;touch-action:none}
+#m4 .m4hand .slot{position:absolute;bottom:12px;cursor:pointer;transition:transform .18s cubic-bezier(.3,1.5,.5,1);
+  transform:translateY(calc(var(--y,0px) + var(--lift,0px))) rotate(var(--r,0deg)) scale(var(--sc,1))}
+#m4 .m4hand .slot.sel{--lift:-26px;--sc:1.1}
+#m4 .m4hand .slot.sel .card .front{box-shadow:0 0 0 3px var(--gold),0 12px 16px rgba(0,0,0,.5)}
+#m4 .m4hand .slot.peek{--lift:-22px;--sc:1.16;z-index:2000!important}
+@media (hover:hover){#m4 .m4hand .slot:hover{--lift:-14px;--sc:1.07;z-index:1500!important}#m4 .m4hand .slot.sel:hover{--lift:-30px;--sc:1.12}}
+#m4 .m4hand.grp .slot::after{content:"";position:absolute;left:12%;right:12%;bottom:-7px;height:4px;border-radius:3px;background:var(--sc2,#999);opacity:.95;pointer-events:none;box-shadow:0 0 6px var(--sc2,#999)}
+#m4 .m4hand.grp .slot[data-s="0"]{--sc2:#9db8ff}#m4 .m4hand.grp .slot[data-s="1"]{--sc2:#ff6b5e}
+#m4 .m4hand.grp .slot[data-s="2"]{--sc2:#ffb347}#m4 .m4hand.grp .slot[data-s="3"]{--sc2:#7ee2a0}
+#m4 .m4hand.grp .slot[data-s="j"]{--sc2:#c79bff}#m4 .m4hand.grp .slot[data-s="a"]{--sc2:#e8e2f4}
+#m4 .m4mid .so{min-width:92px}
+/* стол: карты чуть крупнее */
+#m4 .m4felt{--w:48px;min-height:120px}
+/* портреты соперников */
+.m4opp .ava.pt-host{box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.m4opp.who .ava.pt-host{box-shadow:0 0 0 2px var(--gold),0 0 10px rgba(234,181,75,.5)}
+/* итог: модальное окно, ничего не обрезается */
+#m4 .m4over{overflow:auto;-webkit-overflow-scrolling:touch;align-items:flex-start;padding:max(14px,env(safe-area-inset-top)) 14px max(14px,env(safe-area-inset-bottom));background:rgba(6,10,12,.82);backdrop-filter:blur(3px)}
+#m4 .m4over .box{margin:auto;max-height:none;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+#m4 .m4over td .who{display:flex;align-items:center;gap:8px;min-width:0}
+#m4 .m4over td .who>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+#m4 .m4over .ava{flex:none;width:30px;height:30px;font-size:9px}
+#m4 .m4over .ava.pt-host{width:34px!important;height:34px!important;border-radius:9px!important}
+#m4 .m4over tr.loser .ava.pt-host{filter:saturate(.7)}
+#m4 .m4over .btns .btn{flex:1 1 120px}
+/* компактная всплывашка в компании: поверх стола не мешает */
+.m4on .toast{top:calc(52px + env(safe-area-inset-top,0px))}
+/* горизонтальный экран: рука и кнопки справа, стол слева */
+@media (orientation:landscape) and (max-height:520px){
+  #m4{--w-hand:clamp(40px,13vh,56px)}
+  #m4 .m4hand{height:96px}
+  #m4 .m4felt{--w:clamp(32px,10vh,42px)}
+  #m4 .m4over{align-items:center}
+  #m4 .m4over .box{padding:10px;gap:6px}
+  #m4 .m4over h2{font-size:13px}
+  #m4 .m4over td{padding:2px 6px;font-size:12px}
+  #m4 .m4over .ava,#m4 .m4over .ava.pt-host{width:24px!important;height:24px!important}
+  #m4 .m4over .btn{padding:8px 12px}
+}
+@media (min-width:900px) and (min-height:521px){
+  #m4{--w-hand:clamp(64px,12.4vh,92px)}
+  #m4 .m4felt{--w:60px}
+}
+@media (prefers-reduced-motion:reduce){#m4 .m4felt::after{box-shadow:0 0 18px 8px rgba(255,214,120,.3)}}

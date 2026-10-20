@@ -1,0 +1,81 @@
+/* ДурКер — доступность (волна 7): дальтонизм, размер текста, крупные кнопки, контраст, меньше вспышек, фокус */
+
+/* скрытый текст для скринридера */
+.sr-only{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ---------- фокус: хорошо виден и на фоне стола, и в окнах ---------- */
+:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px rgba(234,181,75,.9)}
+.hand .slot:focus{outline:none}
+.hand .slot:focus-visible{outline:none;box-shadow:none;--lift:-16px;--sc:1.08;z-index:1600!important}
+.hand .slot:focus-visible .card .front{box-shadow:0 0 0 4px #fff,0 0 0 8px var(--gold),0 8px 12px rgba(0,0,0,.5)}
+input[type=checkbox]:focus-visible+span{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px rgba(234,181,75,.9)}
+
+/* ---------- настройки: громкость и блок доступности ---------- */
+.accblock{display:flex;flex-direction:column;gap:var(--s2,8px)}
+.accblock .vol{line-height:1.2;display:grid;grid-template-columns:104px 1fr 40px;align-items:center;gap:10px;font-size:14px}
+.accblock .vol output{font-family:var(--f-pix);font-size:13px;color:var(--muted);text-align:right}
+.accblock input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
+.accblock input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:99px;background:linear-gradient(90deg,var(--gold) var(--p,100%),rgba(255,255,255,.14) var(--p,100%))}
+.accblock input[type=range]::-moz-range-track{height:8px;border-radius:99px;background:rgba(255,255,255,.14)}
+.accblock input[type=range]::-moz-range-progress{height:8px;border-radius:99px;background:var(--gold)}
+.accblock input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-9px;border-radius:50%;background:#fff;border:3px solid var(--gold);box-shadow:0 2px 0 rgba(0,0,0,.45)}
+.accblock input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--gold)}
+.accblock .small{margin:0}
+
+/* ---------- дальтонизм: палитра Окабе–Ито + узор на лице карты + крупные индексы ---------- */
+html[data-cb="1"] .front.s1,html[data-cb="1"] .front.s1.red{color:#c2410c}
+html[data-cb="1"] .front.s2,html[data-cb="1"] .front.s2.red{color:#0060a8}
+html[data-cb="1"] .front.s3{color:#006e52}
+html[data-cb="1"] .front.s0{color:#0b0d1a}
+html[data-cb="1"] .card:not(.act):not(.joker) .front.s1{background-image:repeating-linear-gradient(45deg,rgba(194,65,12,.20) 0 3px,transparent 3px 9px)}
+html[data-cb="1"] .card:not(.act):not(.joker) .front.s2{background-image:radial-gradient(circle,rgba(0,96,168,.26) 1.4px,transparent 1.6px);background-size:8px 8px}
+html[data-cb="1"] .card:not(.act):not(.joker) .front.s3{background-image:repeating-linear-gradient(0deg,rgba(0,110,82,.22) 0 2px,transparent 2px 7px)}
+html[data-cb="1"] .card:not(.act):not(.joker) .front.s0{background-image:repeating-linear-gradient(135deg,rgba(11,13,26,.12) 0 1px,transparent 1px 12px)}
+html[data-cb="1"] .card .ix{font-size:.78em;text-shadow:0 0 1px currentColor}
+html[data-cb="1"] .card .ix i{font-size:1.5em;font-weight:900}
+html[data-cb="1"] .card .pip{font-weight:900;text-shadow:0 0 2px currentColor}
+html[data-cb="1"] .card.act .front.s1{color:#ffb27a}
+html[data-cb="1"] .card.act .front.s2{color:#8ecbff}
+html[data-cb="1"] .card.act .front.s3{color:#6fe0b8}
+html[data-cb="1"] .trumpbox b.s1,html[data-cb="1"] .su1{color:#ff9d5c}
+html[data-cb="1"] .trumpbox b.s2,html[data-cb="1"] .su2{color:#6fb8ff}
+html[data-cb="1"] .trumpbox b.s3,html[data-cb="1"] .su3{color:#5fe0b8}
+html[data-cb="1"] .card.trump .front{border-style:double;border-width:4px}
+
+/* ---------- размер текста: окна, подсказки, плашки ---------- */
+html[data-ts="1"] .win,html[data-ts="1"] .rulecard,html[data-ts="1"] #toast,html[data-ts="1"] .tutbubble,html[data-ts="1"] #combo,html[data-ts="1"] .hudbar,html[data-ts="1"] .accblock{zoom:1.12}
+html[data-ts="2"] .win,html[data-ts="2"] .rulecard,html[data-ts="2"] #toast,html[data-ts="2"] .tutbubble,html[data-ts="2"] #combo,html[data-ts="2"] .hudbar,html[data-ts="2"] .accblock{zoom:1.28}
+html[data-ts="1"] .accblock,html[data-ts="2"] .accblock{zoom:1}
+html[data-ts="1"] .banner .sub,html[data-ts="1"] .over p{font-size:1.1em}
+html[data-ts="2"] .banner .sub,html[data-ts="2"] .over p{font-size:1.25em}
+html[data-ts="1"]{--t-body:17px;--t-small:15px;--t-micro:12px}
+html[data-ts="2"]{--t-body:19px;--t-small:17px;--t-micro:14px}
+
+/* ---------- крупные кнопки ---------- */
+html[data-big="1"] .btn,html[data-big="1"] #actMain .btn,html[data-big="1"] #actAlt .btn{min-height:60px;font-size:19px;padding-block:16px}
+html[data-big="1"] #pickBtn,html[data-big="1"] .sorter button,html[data-big="1"] #sortR,html[data-big="1"] #sortS{min-height:46px;font-size:15px}
+html[data-big="1"] .win .seg button,html[data-big="1"] .seg button{min-height:48px;font-size:16px;padding-inline:14px}
+html[data-big="1"] .mi,html[data-big="1"] .win .mi{min-height:68px}
+html[data-big="1"] .toggle{min-height:48px;font-size:16px}
+html[data-big="1"] .close,html[data-big="1"] .sheethead .close{min-width:48px;min-height:48px;font-size:26px}
+html[data-big="1"] #menuBtn,html[data-big="1"] #sndBtn,html[data-big="1"] #reactBtn{min-width:48px;min-height:48px}
+
+/* ---------- высокий контраст ---------- */
+html[data-hc="1"]{--bg:#000;--text:#fff;--muted:#e9f6ef;--line:rgba(255,255,255,.55);--panel:rgba(0,0,0,.96);--sheet:#000;--ink:#000;--grey:#3a4743;color-scheme:dark}
+html[data-hc="1"] body::after{display:none}
+html[data-hc="1"] #bg{opacity:.25}
+html[data-hc="1"] .btn{border:2px solid #fff;text-shadow:none}
+html[data-hc="1"] .win,html[data-hc="1"] .rulecard{border:2px solid #fff}
+html[data-hc="1"] .front{border:3px solid #000;box-shadow:0 0 0 1px #fff,0 3px 0 #000}
+html[data-hc="1"] .front.red{color:#c4000f}
+html[data-hc="1"] .hand .slot.sel .card .front{box-shadow:0 0 0 4px #ffe14a,0 0 0 6px #000}
+html[data-hc="1"] .hand .slot.can .card .front{box-shadow:0 0 0 3px #3dff8a,0 0 0 5px #000}
+html[data-hc="1"] .muted,html[data-hc="1"] .small,html[data-hc="1"] small{color:#e9f6ef}
+html[data-hc="1"] .toggle span{border:2px solid #fff}
+
+/* ---------- меньше вспышек и тряски ---------- */
+html[data-flash="1"] *,html[data-flash="1"] *::before,html[data-flash="1"] *::after{animation-iteration-count:1!important}
+html[data-flash="1"] #fxc,html[data-flash="1"] #vign,html[data-flash="1"] .cshadow,html[data-flash="1"] .chflash,html[data-flash="1"] .chrays,html[data-flash="1"] .evfog,html[data-flash="1"] .evdeco{display:none!important}
+html[data-flash="1"] .card.trump .front::after,html[data-flash="1"] .card.joker .front::after{animation:none;background:none}
+html[data-flash="1"] .tpulse{animation:none!important}
+html[data-flash="1"] .felt,html[data-flash="1"] #felt{filter:none!important}

@@ -10,6 +10,12 @@ const REPLAY = (() => {
   const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   const fresh = () => { if (G !== forG) { forG = G; moments = []; } };
 
+  /* портрет соперника: тот же ключ, что у аватара в шапке (js/portraits.js кладёт его в data-id) */
+  function oppFaceKey() {
+    try { const el = document.querySelector('#oppAva svg.pt'); if (el && el.dataset.id && el.dataset.id !== 'gen') return el.dataset.id; } catch (e) {}
+    try { return 'nick:' + oppName(); } catch (e) { return 'nick:?'; }
+  }
+
   /* ---------- запись розыгрышей ---------- */
   function record(o) {
     if (!G || !G.table || (typeof MODE !== 'undefined' && MODE.kind === 'tutorial')) return;
@@ -19,7 +25,7 @@ const REPLAY = (() => {
       if (!b) return;
       moments.push({
         mine: o.actor === 'p', att: b.a.cards.map(c => c.n), attName: b.a.name, def: b.d.cards.map(c => c.n), defName: b.d.name,
-        t: b.d.t, T: G.T, phrase: null, mognul: false, me: myNick(), opp: oppName(),
+        t: b.d.t, T: G.T, phrase: null, mognul: false, me: myNick(), opp: oppName(), ok: oppFaceKey(),
       });
       if (moments.length > 30) moments.shift();
     }
@@ -107,6 +113,93 @@ const REPLAY = (() => {
     try { frame(x, m, ms); } finally { if (G) G.T = keep; }
   }
 
+
+  /* ---------- «кружок»: квадрат 480×480 в круге, 8 секунд, с портретами ---------- */
+  const CW = 480, CDUR = 8200;
+  const faceCache = new Map();
+  /* портрет → картинка для canvas: стили вшиваем в сам SVG, эмоция — атрибутом data-e */
+  function faceImg(key, emo) {
+    const k = key + '|' + emo;
+    if (faceCache.has(k)) return faceCache.get(k);
+    const p = new Promise(res => {
+      try {
+        if (typeof PORTRAITS === 'undefined') { res(null); return; }
+        let sv = PORTRAITS.svg(key, { emo });
+        sv = sv.replace('<svg class="pt"', '<svg xmlns="http://www.w3.org/2000/svg" class="pt" width="200" height="200"').replace(/>/, '><style>' + (PORTRAITS.CSS || '').replace(/var\(--pt-k,1\)/g, '1') + '</style>');
+        const img = new Image();
+        img.onload = () => res(img); img.onerror = () => res(null);
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sv);
+      } catch (e) { res(null); }
+    });
+    faceCache.set(k, p);
+    return p;
+  }
+  async function loadFaces(m) {
+    const me = 'nick:' + (m.me || 'Игрок'), op = m.ok || ('nick:' + m.opp);
+    const [a, b, c, d] = await Promise.all([faceImg(me, 'neutral'), faceImg(me, 'smug'), faceImg(op, 'neutral'), faceImg(op, 'shock')]);
+    return { meN: a, meS: b, opN: c, opS: d };
+  }
+  function drawFace(x, img, cx, cy, size, ring, pop) {
+    x.save(); x.translate(cx, cy); if (pop !== 1) x.scale(pop, pop);
+    x.beginPath(); x.arc(0, 0, size / 2, 0, Math.PI * 2); x.save(); x.clip();
+    if (img) x.drawImage(img, -size / 2, -size / 2, size, size); else { x.fillStyle = '#244'; x.fillRect(-size / 2, -size / 2, size, size); }
+    x.restore();
+    x.lineWidth = 5; x.strokeStyle = ring; x.beginPath(); x.arc(0, 0, size / 2, 0, Math.PI * 2); x.stroke();
+    x.restore();
+  }
+  function circleFrame(x, m, ms, F) {
+    const t = ms / 1000, R = CW / 2, HIT = 3.6;
+    const hit = t - HIT, sh = hit > 0 && hit < 0.4 ? (1 - hit / 0.4) * 9 : 0;
+    x.save();
+    x.clearRect(0, 0, CW, CW);
+    x.beginPath(); x.arc(R, R, R, 0, Math.PI * 2); x.clip();
+    x.setTransform(1, 0, 0, 1, sh ? (Math.random() - 0.5) * sh : 0, sh ? (Math.random() - 0.5) * sh : 0);
+    const g = x.createRadialGradient(R, R * 0.8, 20, R, R, R * 1.05);
+    g.addColorStop(0, '#2a8a5f'); g.addColorStop(1, '#0b3324'); x.fillStyle = g; x.fillRect(-20, -20, CW + 40, CW + 40);
+    x.lineWidth = 3; x.setLineDash([10, 9]); x.strokeStyle = 'rgba(255,255,255,.16)'; x.beginPath(); x.arc(R, R, R - 34, 0, Math.PI * 2); x.stroke(); x.setLineDash([]);
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    /* портреты: я слева, соперник справа; после удара он в шоке, я ухмыляюсь */
+    const pi = ease(t / 0.6), after = t > HIT;
+    drawFace(x, after && m.mognul !== false ? F.meS : F.meN, 156, 88, 84, '#eab54b', 0.4 + 0.6 * back(pi));
+    drawFace(x, after ? F.opS : F.opN, 324, 88, 84, '#d9362f', 0.4 + 0.6 * back(pi));
+    x.font = '900 24px "Arial Black", Arial, sans-serif'; x.fillStyle = '#ffe14a'; x.globalAlpha = Math.min(1, pi); x.fillText('VS', R, 88);
+    x.font = '700 15px Arial, sans-serif'; x.fillStyle = 'rgba(248,241,223,.92)';
+    x.fillText(String(m.me || '').slice(0, 12), 156, 142); x.fillText(String(m.opp || '').slice(0, 12), 324, 142); x.globalAlpha = 1;
+    /* атака влетает сверху */
+    const aw = m.att.length > 3 ? 54 : 64;
+    m.att.forEach((n, i) => {
+      const p = back((t - 0.9 - i * 0.1) / 0.55); if (p <= 0) return;
+      drawCardOn(x, rowC(m.att.length, aw, 8, i), -90 + (215 + 90) * p, aw, n, (i - (m.att.length - 1) / 2) * 0.06 + (1 - p) * 0.5);
+    });
+    /* защита накрывает снизу */
+    const dw = m.def.length > 3 ? 62 : 76;
+    m.def.forEach((n, i) => {
+      const p = back((t - 2.7 - i * 0.1) / 0.55); if (p <= 0) return;
+      drawCardOn(x, rowC(m.def.length, dw, 8, i), CW + 110 - (CW + 110 - 300) * p, dw, n, (i - (m.def.length - 1) / 2) * 0.08 - (1 - p) * 0.4);
+    });
+    if (hit > 0 && hit < 0.35) { x.fillStyle = `rgba(255,248,220,${0.55 * (1 - hit / 0.35)})`; x.fillRect(-20, -20, CW + 40, CW + 40); }
+    /* название комбинации и фраза */
+    const nm = ease((t - 3.8) / 0.4);
+    if (nm > 0) { x.globalAlpha = nm; let sz = 30; const txt = String(m.defName || '').toUpperCase(); do { x.font = `900 ${sz}px "Arial Black", Arial, sans-serif`; sz -= 2; } while (x.measureText(txt).width > 330 && sz > 14); x.fillStyle = '#ffe14a'; x.fillText(txt, R, 392); x.globalAlpha = 1; }
+    const hp = t - 5.0;
+    if (hp > 0 && m.phrase) {
+      const sc = hp < 0.35 ? 0.4 + 0.9 * back(hp / 0.35) : 1 + Math.sin((hp - 0.35) * 5) * 0.02;
+      x.save(); x.globalAlpha = Math.min(1, hp / 0.15); x.translate(R, 426); x.rotate(-0.06); x.scale(sc, sc);
+      let sz = 32; do { x.font = `900 ${sz}px "Arial Black", Arial, sans-serif`; sz -= 2; } while (x.measureText(m.phrase).width > 280 && sz > 14);
+      x.lineJoin = 'round'; x.lineWidth = 8; x.strokeStyle = '#000'; x.strokeText(m.phrase, 0, 0); x.fillStyle = '#ffe14a'; x.fillText(m.phrase, 0, 0); x.restore();
+    }
+    x.font = '800 17px Arial, sans-serif'; x.fillStyle = '#eab54b'; x.fillText('ДурКер', R, 458);
+    /* золотое кольцо по краю круга */
+    x.setTransform(1, 0, 0, 1, 0, 0); x.lineWidth = 8; x.strokeStyle = '#eab54b'; x.beginPath(); x.arc(R, R, R - 4, 0, Math.PI * 2); x.stroke();
+    x.restore();
+  }
+  const rowC = (n, w, gap, i) => CW / 2 - (n * (w + gap) - gap) / 2 + w / 2 + i * (w + gap);
+  function drawCircle(x, m, ms, F) {
+    const keep = G && G.T;
+    if (G) G.T = m.T;
+    try { circleFrame(x, m, ms, F); } finally { if (G) G.T = keep; }
+  }
+
   /* ---------- видео ---------- */
   function pickType() {
     if (typeof MediaRecorder === 'undefined') return null;
@@ -114,15 +207,17 @@ const REPLAY = (() => {
     for (const t of list) { try { if (MediaRecorder.isTypeSupported(t)) return t; } catch (e) {} }
     return '';
   }
-  function makeVideo(m) {
+  /* cfg: {size, dur, draw(x, ms)}; по умолчанию — квадратный повтор 720×720 */
+  function makeVideo(m, cfg) {
+    const SZ = (cfg && cfg.size) || W, DU = (cfg && cfg.dur) || DUR, DR = (cfg && cfg.draw) || ((x, mm, ms) => draw(x, mm, ms));
     return new Promise((res, rej) => {
       const type = pickType();
-      const cv = document.createElement('canvas'); cv.width = cv.height = W;
+      const cv = document.createElement('canvas'); cv.width = cv.height = SZ;
       if (type === null || !cv.captureStream) { rej(new Error('no recorder')); return; }
       const x = cv.getContext('2d');
-      draw(x, m, 0);
+      DR(x, m, 0);
       let rec;
-      try { rec = new MediaRecorder(cv.captureStream(FPS), type ? { mimeType: type, videoBitsPerSecond: 2500000 } : undefined); } catch (e) { rej(e); return; }
+      try { rec = new MediaRecorder(cv.captureStream(FPS), type ? { mimeType: type, videoBitsPerSecond: SZ <= 480 ? 1500000 : 2500000 } : undefined); } catch (e) { rej(e); return; }
       const parts = [];
       rec.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
       rec.onstop = () => { const b = new Blob(parts, { type: (rec.mimeType || type || 'video/webm').split(';')[0] }); b.size ? res(b) : rej(new Error('empty')); };
@@ -131,8 +226,8 @@ const REPLAY = (() => {
       /* rAF не идёт в фоне — дублируем таймером, чтобы запись не встала */
       const step = () => {
         const ms = performance.now() - t0;
-        draw(x, m, Math.min(ms, DUR));
-        if (ms >= DUR + 300) { clearInterval(iv); try { rec.stop(); } catch (e) { rej(e); } return; }
+        DR(x, m, Math.min(ms, DU));
+        if (ms >= DU + 300) { clearInterval(iv); try { rec.stop(); } catch (e) { rej(e); } return; }
       };
       const iv = setInterval(step, 1000 / FPS);
     });
@@ -148,65 +243,84 @@ const REPLAY = (() => {
 .replay p{margin:0;font-size:13px;color:var(--muted,#9fb5ab);text-align:center;min-height:1.3em}
 .replay .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .replay .btn[disabled]{opacity:.45}
+.replay.circle canvas,.replay.circle video{border-radius:50%;width:min(80vw,52vh);box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 0 4px rgba(234,181,75,.6)}
 .snapbtn.rp{margin-left:0;bottom:calc(6% + 40px)}`;
     document.head.appendChild(s);
   }
-  function open(m) {
+  /* в сборке для Claude (нет ссылки/скачивания) видео можно только посмотреть */
+  const canExport = () => { try { return !(typeof TR !== 'undefined' && TR && TR.linkable === undefined); } catch (e) { return true; } };
+  function sendFile(blob, name, text, btn) {
+    if (typeof SHARE !== 'undefined' && SHARE.sendFile) return SHARE.sendFile(blob, name, text, btn);
+    const file = new File([blob], name, { type: blob.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], text }).catch(() => {});
+    else if (navigator.share) navigator.share({ text }).catch(() => {});
+    else { if (typeof copyText === 'function') copyText(text, btn); toast('Текст скопирован — видео сохрани кнопкой «Сохранить»'); }
+  }
+  function open(m, mode) {
     m = m || best();
     if (!m) { toast('Нечего показать — могни кого-нибудь 😏'); return; }
+    const circle = mode === 'circle', SZ = circle ? CW : W, DU = circle ? CDUR : DUR;
     style();
     if (typeof AU !== 'undefined') AU.play('snap');
-    const box = document.createElement('div'); box.className = 'replay';
-    box.innerHTML = `<canvas width="${W}" height="${W}"></canvas><p class="st">Готовим видео…</p><div class="row">
-      <button class="btn gold" type="button" data-rp="share" disabled>Поделиться</button>
-      <button class="btn blue" type="button" data-rp="save" disabled>Сохранить</button>
+    const box = document.createElement('div'); box.className = 'replay' + (circle ? ' circle' : '');
+    const exp = canExport();
+    box.innerHTML = `<canvas width="${SZ}" height="${SZ}"></canvas><p class="st">Готовим видео…</p><div class="row">
+      ${exp ? '<button class="btn gold" type="button" data-rp="share" disabled>Поделиться</button><button class="btn blue" type="button" data-rp="save" disabled>Сохранить</button>' : ''}
+      <button class="btn ${circle ? 'grey' : 'orange'}" type="button" data-rp="${circle ? 'plain' : 'circle'}">${circle ? '🎬 Квадрат' : '🎞 Кружок'}</button>
       <button class="btn grey" type="button" data-rp="close">Закрыть</button></div>`;
     document.body.appendChild(box);
     const cv = box.querySelector('canvas'), x = cv.getContext('2d'), st = box.querySelector('.st');
-    let raf = 0, alive = true, blob = null, url = null;
-    if (reduced()) draw(x, m, DUR);
-    else {
-      const t0 = performance.now();
-      const loop = () => { if (!alive) return; draw(x, m, (performance.now() - t0) % (DUR + 900)); raf = requestAnimationFrame(loop); };
-      loop();
-    }
+    let raf = 0, alive = true, blob = null, url = null, F = null;
+    const DR = circle ? ((xx, mm, ms) => drawCircle(xx, mm, ms, F || {})) : ((xx, mm, ms) => draw(xx, mm, ms));
+    const run = () => {
+      if (reduced()) DR(x, m, DU);
+      else {
+        const t0 = performance.now();
+        const loop = () => { if (!alive) return; DR(x, m, (performance.now() - t0) % (DU + 900)); raf = requestAnimationFrame(loop); };
+        loop();
+      }
+    };
     const text = `${m.phrase || 'Мой лучший момент'} — играю в ДурКер: https://t.me/durocker_bot`;
     const ext = () => (blob && /mp4/.test(blob.type) ? 'mp4' : 'webm');
-    makeVideo(m).then(b => {
-      if (!alive) return;
-      blob = b; url = URL.createObjectURL(b);
-      box.querySelectorAll('[data-rp]').forEach(e => { e.disabled = false; });
-      /* на телефоне видео удобнее сохранить долгим нажатием — показываем готовое видео вместо canvas */
-      if (/mp4/.test(b.type) || !/iPhone|iPad/.test(navigator.userAgent)) {
-        const v = document.createElement('video');
-        Object.assign(v, { src: url, loop: true, muted: true, autoplay: true, playsInline: true });
-        v.setAttribute('playsinline', '');
-        cancelAnimationFrame(raf); cv.replaceWith(v); v.play().catch(() => {});
-      }
-      st.textContent = 'Долгое нажатие на видео — сохранить';
-      REPLAY.lastBlob = b;
-    }).catch(() => {
-      if (!alive) return;
-      st.textContent = 'Видео здесь не записать — сохрани картинку-открытку';
-      const sv = box.querySelector('[data-rp="save"]'); sv.disabled = false; sv.textContent = '📸 Открытка';
-      sv.dataset.rp = 'card';
-    });
+    const fname = () => (circle ? 'durker-krug.' : 'durocker.') + ext();
+    const start = async () => {
+      if (circle) { F = await loadFaces(m); if (!alive) return; }
+      run();
+      makeVideo(m, { size: SZ, dur: DU, draw: DR }).then(b => {
+        if (!alive) return;
+        blob = b; url = URL.createObjectURL(b);
+        box.querySelectorAll('[data-rp="share"],[data-rp="save"]').forEach(e => { e.disabled = false; });
+        /* на телефоне видео удобнее сохранить долгим нажатием — показываем готовое видео вместо canvas */
+        if (/mp4/.test(b.type) || !/iPhone|iPad/.test(navigator.userAgent)) {
+          const v = document.createElement('video');
+          Object.assign(v, { src: url, loop: true, muted: true, autoplay: true, playsInline: true });
+          v.setAttribute('playsinline', '');
+          cancelAnimationFrame(raf); cv.replaceWith(v); v.play().catch(() => {});
+        }
+        st.textContent = !exp ? 'Сохранить и поделиться — на сайте и в Telegram' : circle ? 'Кружок готов: долгое нажатие на видео — сохранить, в Telegram прикрепи как видео' : 'Долгое нажатие на видео — сохранить';
+        REPLAY.lastBlob = b;
+      }).catch(() => {
+        if (!alive) return;
+        st.textContent = 'Видео здесь не записать — сохрани картинку-открытку';
+        const sv = box.querySelector('[data-rp="save"]');
+        if (sv) { sv.disabled = false; sv.textContent = '📸 Открытка'; sv.dataset.rp = 'card'; }
+      });
+    };
+    start();
     const close = () => { alive = false; cancelAnimationFrame(raf); if (url) setTimeout(() => URL.revokeObjectURL(url), 1000); box.remove(); };
     box.onclick = e => {
       const k = e.target.closest('[data-rp]');
       if (!k) { if (e.target === box) close(); return; }
       const a = k.dataset.rp;
       if (a === 'close') close();
+      else if (a === 'circle') { close(); open(m, 'circle'); }
+      else if (a === 'plain') { close(); open(m); }
       else if (a === 'card') { close(); if (typeof openPostcard === 'function') openPostcard({ title: m.mognul ? 'МОГНУЛ!' : 'ТЫ НЕ ДУРАК!', phrase: m.phrase, m: { name: m.defName, cards: m.def, vs: m.att, vsName: m.attName } }); }
       else if (a === 'save' && blob) {
-        const l = document.createElement('a'); l.href = url; l.download = 'durocker.' + ext(); document.body.appendChild(l); l.click(); l.remove();
-      } else if (a === 'share' && blob) {
-        const file = new File([blob], 'durocker.' + ext(), { type: blob.type });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], text }).catch(() => {});
-        else if (navigator.share) navigator.share({ text }).catch(() => {});
-        else { if (typeof copyText === 'function') copyText(text, k); toast('Текст скопирован — видео сохрани кнопкой «Сохранить»'); }
-      }
+        const l = document.createElement('a'); l.href = url; l.download = fname(); document.body.appendChild(l); l.click(); l.remove();
+      } else if (a === 'share' && blob) sendFile(blob, fname(), text, k);
     };
+    return box;
   }
 
   /* ---------- встраивание: события шины ---------- */
@@ -220,6 +334,10 @@ const REPLAY = (() => {
         b.type = 'button'; b.className = 'btn gold'; b.id = 'replayOver'; b.textContent = '🎬 Повтор';
         b.onclick = () => open();
         so.after(b);
+        const c = document.createElement('button');
+        c.type = 'button'; c.className = 'btn orange'; c.id = 'circleOver'; c.textContent = '🎞 Кружок';
+        c.onclick = () => open(null, 'circle');
+        b.after(c);
       }
     } catch (e) {}
   });
@@ -239,5 +357,5 @@ const REPLAY = (() => {
     } catch (e) {}
   });
 
-  return { open, best, makeVideo, draw, get moments() { return moments; }, lastBlob: null };
+  return { open, best, makeVideo, draw, drawCircle, loadFaces, CW, CDUR, get moments() { return moments; }, lastBlob: null };
 })();

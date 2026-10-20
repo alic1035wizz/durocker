@@ -449,6 +449,7 @@ html.pt-still .pt .v,html.pt-still .pt-head{transition:none!important}
 .wkava.pt-host{width:96px!important;height:96px!important;border-radius:18px!important}
 .m4opp .ava.pt-host{width:32px!important;height:32px!important;border-radius:9px!important}
 .m4lobby .seat .ava.pt-host{width:32px!important;height:32px!important;border-radius:9px!important}
+.m4over .ava.pt-host{border-radius:9px!important}
 .pava.pt-host>.pt{border-radius:50%}
 .pt-over{position:relative;flex:none;z-index:3;left:auto;top:auto;width:72px;height:72px;border-radius:18px;overflow:hidden;border:3px solid ${INK};box-shadow:0 4px 0 rgba(0,0,0,.45);pointer-events:none;transition:left .5s cubic-bezier(.3,1.3,.5,1),top .5s cubic-bezier(.3,1.3,.5,1),width .5s,height .5s,transform .5s,box-shadow .5s}
 .pt-over.pop{position:absolute;left:50%;top:50%;width:160px;height:160px;border-radius:28px;transform:translate(-50%,-50%);box-shadow:0 0 0 100vmax rgba(4,16,12,.6),0 6px 0 rgba(0,0,0,.5);transition:none;animation:ptpop .35s cubic-bezier(.3,1.5,.5,1)}
@@ -557,7 +558,7 @@ html.pt-still .pt-over{transition:none!important;animation:none!important}
       let mine = ''; try { mine = typeof initials === 'function' ? initials(myNick()) : ''; } catch (e) {}
       key = 'nick:' + (mine && face === mine ? myNick() : face); role = 'me';
     }
-    if (!key && el.closest('.m4opp,.m4lobby')) key = 'nick:' + face + colorKey(el);
+    if (!key && el.closest('.m4opp,.m4lobby,.m4over')) key = 'nick:' + face + colorKey(el);
     if (!key) return;
     if (el.closest('.m4opp')) role = 'seat';
     mount(el, key, { role });

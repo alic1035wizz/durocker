@@ -57,6 +57,8 @@ function inviteLink(code) {
   u.search = ''; u.hash = ''; u.searchParams.set('t', code);
   return u.toString();
 }
+/* события онлайна для надстроек (ставки js/netbet.js и др.): BUS 'net:<имя>' */
+function netEvt(k, d) { try { if (typeof BUS !== 'undefined') BUS.emit('net:' + k, { d, role: NET ? NET.role : null }); } catch (e) {} }
 let verWarned = false;
 function checkVersion(v) {
   if (verWarned || v === VERSION) return;
@@ -81,6 +83,7 @@ function hostTable(restore) {
       if (topic === 'hi') onHi(data);
       else if (topic === 'act') onAct(data);
       else if (topic === 'react') showReact(data && data.i);
+      else if (topic === 'bet' || topic === 'dbl') netEvt(topic, data);
       else if (topic === 'rematch') { toast(`${oppName()} хочет реванш`); if (G && G.over) { if (SERIES.done) newSeries(); newGame(); } }
     },
     gone() { if (!NET) return; NET.connected = false; armTimer(); renderNet(); showOver(); armFlee(); },
@@ -96,6 +99,7 @@ function onHi(d) {
   $('lobby').hidden = true;
   if (fresh) { NET.started = true; G = null; newSeries(); newGame(); } else commit();
   renderNet();
+  netEvt('hi', { fresh });
 }
 function onAct(d) {
   if (!G) return;
@@ -122,6 +126,7 @@ function joinTable(codeArg) {
       if (!NET) return;
       if (topic === 'full') { lobbyStatus('За этим столом уже играют двое.', true); return; }
       if (topic === 'react') { showReact(data && data.i); return; }
+      if (topic === 'bet' || topic === 'dbl') { netEvt(topic, data); return; }
       if (topic === 'st' && data && typeof data === 'object') {
         if (!NET.got) { NET.got = true; $('lobby').hidden = true; $('over').hidden = true; }
         if (!NET.connected) { NET.connected = true; renderNet(); }
@@ -165,6 +170,7 @@ function applyView(st) {
 }
 
 function leaveTable() {
+  if (NET) netEvt('leave', {});
   if (NET) { TR.close(); NET = null; }
   setUrl(null); try { sessionStorage.removeItem('durocker-host'); } catch (e) {}
   clearTimeout(turnTimer);

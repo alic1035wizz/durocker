@@ -45,11 +45,20 @@ const LB = (() => {
     if (b.boss) return { pts: 5, kind: 'bot' };
     return { pts: b.ai === 'sharper' ? 4 : b.ai === 'valera' ? 2 : 1, kind: 'bot' };
   }
+  /* очки недели (по Москве, смена в понедельник): нужны клубам */
+  const weekKey = () => { try { if (typeof WEEKLY !== 'undefined' && WEEKLY.weekIdx) return WEEKLY.weekIdx(); } catch (e) {} return Math.floor((Date.now() + 3 * 3600e3 - 4 * DAY) / (7 * DAY)); };
+  function weekPoints() { const d = local(); return d.wk && d.wk.k === weekKey() ? d.wk.p | 0 : 0; }
   function record(won) {
     const d = local(), w = worth();
     d.g++;
-    if (won) { d.w++; d.r += w.pts; if (w.kind === 'online') d.o++; }
+    if (won) {
+      d.w++; d.r += w.pts; if (w.kind === 'online') d.o++;
+      const wk = weekKey();
+      if (!d.wk || d.wk.k !== wk) d.wk = { k: wk, p: 0 };
+      d.wk.p += w.pts;
+    }
     saveLocal(d);
+    try { if (typeof BUS !== 'undefined') BUS.emit('lb:record', { won, pts: w.pts, week: d.wk && d.wk.p }); } catch (e) {}
     if (won) setTimeout(() => { try { toast(`🏆 +${w.pts} ${w.pts === 1 ? 'очко' : w.pts < 5 ? 'очка' : 'очков'} в таблицу лидеров`, 2600); } catch (e) {} }, 2200);
     publishSoon();
   }
@@ -334,5 +343,5 @@ const LB = (() => {
     watchClose();
   }
   hook();
-  return { open, publish, local, mine, record, _clean: clean, _fetch: fetchAll };
+  return { open, publish, local, mine, record, weekPoints, weekKey, pid, nick, _clean: clean, _fetch: fetchAll };
 })();

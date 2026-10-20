@@ -24,7 +24,7 @@ const BOT4 = (() => {
     const hand = handOf(S, seat);
     const k = S.phase.kind, late = deckLeft(S) < 4;
     const full = S.rules && S.rules.charge;
-    const opts = M4.options(S, seat, hand);
+    const opts = M4.options(S, seat, hand, hand.length > 9 ? 700 : hand.length > 7 ? 1400 : 2500);
     const pick = (list, score) => list.reduce((b, o) => { const sc = score(o); return !b || sc > b.sc ? { o, sc } : b; }, null);
     if (full) {
       /* +2 и смена козыря — до основного хода */

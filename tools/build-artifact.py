@@ -12,10 +12,10 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'dist' / 'durocker-claude.html'
-SCRIPTS = ['rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-room', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'table', 'leaders', 'lobby', 'tg', 'main']
+SCRIPTS = ['rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-room', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'table', 'story', 'story-data', 'story', 'access', 'netbet', 'clubs', 'share', 'leaders', 'lobby', 'tg', 'main']
 
 html = (ROOT / 'index.html').read_text(encoding='utf-8')
-CSS_FILES = ['style', 'ds', 'lobby', 'table']
+CSS_FILES = ['style', 'ds', 'lobby', 'table', 'story', 'company', 'access']
 css = '\n'.join((ROOT / 'css' / f'{n}.css').read_text(encoding='utf-8') for n in CSS_FILES if (ROOT / 'css' / f'{n}.css').exists())
 css = re.sub(r'/\* standalone:start.*?/\* standalone:end \*/\n?', '', css, flags=re.S)
 
