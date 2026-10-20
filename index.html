@@ -17,6 +17,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Press+Start+2P&display=swap">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/ds.css">
+<link rel="stylesheet" href="css/lobby.css">
 </head>
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
@@ -88,10 +90,10 @@
 <div class="actzoom" id="actzoom" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
-<div class="sheet" id="menu" hidden><div class="in" id="menuIn"></div></div>
-<div class="sheet" id="bots" hidden><div class="in" id="botsIn"></div></div>
-<div class="sheet" id="lobby" hidden><div class="in" id="lobbyIn"></div></div>
-<div class="sheet" id="page" hidden><div class="in" id="pageIn"></div></div>
+<div class="sheet" id="menu" hidden><div class="in win" id="menuIn"></div></div>
+<div class="sheet" id="bots" hidden><div class="in win" id="botsIn"></div></div>
+<div class="sheet" id="lobby" hidden><div class="in win" id="lobbyIn"></div></div>
+<div class="sheet" id="page" hidden><div class="in win" id="pageIn"></div></div>
 
 <template id="rulesTpl">
   <h2>Как играть</h2>
@@ -150,6 +152,7 @@
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>if(!window.mqtt){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';document.head.appendChild(s)}</script>
 <script src="js/rules.js"></script>
+<script src="js/bus.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/bot.js"></script>
 <script src="js/meta.js"></script>
@@ -178,6 +181,7 @@
 <script src="js/rogue.js"></script>
 <script src="js/portraits.js"></script>
 <script src="js/leaders.js"></script>
+<script src="js/lobby.js"></script>
 <script src="js/tg.js"></script>
 <script src="js/main.js"></script>
 </body>

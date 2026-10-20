@@ -446,91 +446,61 @@ html[data-back="p-holo"] .back,html[data-back="p-holo"] .deck .stack,html[data-b
   let guestSeen = '';
   function hook() {
     looks();
-    if (typeof showHype === 'function') {
-      const _sh = showHype;
-      showHype = function (key, mine) {
-        try {
-          if (mine && key === 'mognul') add(XP.mognul, 'могнул');
-          if (mine && key === 'caught') add(XP.caught, 'шулер пойман');
-        } catch (e) {}
-        return _sh.apply(this, arguments);
-      };
-    }
+    BUS.on('hype', d => {
+      try {
+        if (d.mine && d.key === 'mognul') add(XP.mognul, 'могнул');
+        if (d.mine && d.key === 'caught') add(XP.caught, 'шулер пойман');
+      } catch (e) {}
+    });
     /* хозяин и игра с ботом */
-    if (typeof onGameOver === 'function') {
-      const _go = onGameOver;
-      onGameOver = function () {
-        const r = _go.apply(this, arguments);
-        try {
-          if (G && G.over && !(isOnline() && NET.role === 'guest') && MODE.kind !== 'tutorial') {
-            const won = G.over === 'p';
-            gameXP(won, won && matchWonNow(), modeExtra(won));
-          }
-        } catch (e) {}
-        return r;
-      };
-    }
+    BUS.on('game:over', () => {
+      try {
+        if (G && G.over && !(isOnline() && NET.role === 'guest') && MODE.kind !== 'tutorial') {
+          const won = G.over === 'p';
+          gameXP(won, won && matchWonNow(), modeExtra(won));
+        }
+      } catch (e) {}
+    });
     /* гость: движок не крутится — ловим экран итога один раз на партию; плюс значок игрока на итоге */
-    if (typeof showOver === 'function') {
-      const _so = showOver;
-      showOver = function () {
-        const r = _so.apply(this, arguments);
-        try {
-          if (isOnline() && NET.role === 'guest' && G && G.over) {
-            const key = NET.code + '|' + (SERIES && SERIES.games) + '|' + G.over;
-            let seen = guestSeen; try { seen = sessionStorage.getItem('durocker-pass-seen') || guestSeen; } catch (e) {}
-            if (seen !== key) {
-              guestSeen = key; try { sessionStorage.setItem('durocker-pass-seen', key); } catch (e) {}
-              const won = G.over === 'p';
-              gameXP(won, won && !!(SERIES && SERIES.done && SERIES.w && (SERIES.to || 2) >= 2 && SERIES.w.p >= (SERIES.to || 2)), modeExtra(won));
-            }
+    BUS.on('over', () => {
+      try {
+        if (isOnline() && NET.role === 'guest' && G && G.over) {
+          const key = NET.code + '|' + (SERIES && SERIES.games) + '|' + G.over;
+          let seen = guestSeen; try { seen = sessionStorage.getItem('durocker-pass-seen') || guestSeen; } catch (e) {}
+          if (seen !== key) {
+            guestSeen = key; try { sessionStorage.setItem('durocker-pass-seen', key); } catch (e) {}
+            const won = G.over === 'p';
+            gameXP(won, won && !!(SERIES && SERIES.done && SERIES.w && (SERIES.to || 2) >= 2 && SERIES.w.p >= (SERIES.to || 2)), modeExtra(won));
           }
-          if (G && G.over) badge();
-        } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof openMenu === 'function') {
-      const _om = openMenu;
-      openMenu = function () {
-        const r = _om.apply(this, arguments);
-        try {
-          const g = document.querySelector('#menuIn .menugrid');
-          if (g && !g.querySelector('[data-go="pass"]')) {
-            const s = state(), lv = levelOf(s.xp);
-            const b = document.createElement('button');
-            b.type = 'button'; b.className = 'mi pass'; b.dataset.go = 'pass';
-            b.innerHTML = `<b>Пропуск 🎟 ур. ${lv.L}</b><small>${lv.L >= 30 ? 'Сезон закрыт на максимум!' : `${lv.into}/${lv.next} XP · след.: ${e_(rewardName(...levels(s.k)[lv.L]))}`}</small>`;
-            const after = g.querySelector('[data-go="online"]');
-            if (after && after.nextSibling) g.insertBefore(b, after.nextSibling); else g.appendChild(b);
-          }
-        } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof menuGo === 'function') {
-      const _mg = menuGo;
-      menuGo = function (k) {
-        if (k === 'pass') { try { closeSheets(); } catch (e) {} open(); return; }
-        return _mg.apply(this, arguments);
-      };
-    }
-    if (typeof openCollection === 'function') {
-      const _oc = openCollection;
-      openCollection = function () {
-        looks();
-        const r = _oc.apply(this, arguments);
-        try {
-          const pi = $('pageIn');
-          const ach = [...pi.querySelectorAll('h3')].find(h => /Достижения/.test(h.textContent));
-          const html = collExtra();
-          if (ach) ach.insertAdjacentHTML('beforebegin', html); else pi.insertAdjacentHTML('beforeend', html);
-          paintSeasonPrev(pi);
-          pi.querySelectorAll('.ci i').forEach(i => { if (i.className.includes('bk-ps-')) i.classList.add('psprev'); });
-        } catch (e) {}
-        return r;
-      };
-    }
+        }
+        if (G && G.over) badge();
+      } catch (e) {}
+    });
+    BUS.on('menu:open', () => {
+      try {
+        const g = document.querySelector('#menuIn .menugrid');
+        if (g && !g.querySelector('[data-go="pass"]')) {
+          const s = state(), lv = levelOf(s.xp);
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'mi pass'; b.dataset.go = 'pass';
+          b.innerHTML = `<b>Пропуск 🎟 ур. ${lv.L}</b><small>${lv.L >= 30 ? 'Сезон закрыт на максимум!' : `${lv.into}/${lv.next} XP · след.: ${e_(rewardName(...levels(s.k)[lv.L]))}`}</small>`;
+          const after = g.querySelector('[data-go="online"]');
+          if (after && after.nextSibling) g.insertBefore(b, after.nextSibling); else g.appendChild(b);
+        }
+      } catch (e) {}
+    });
+    BUS.menuKey('pass', () => { try { closeSheets(); } catch (e) {} open(); });
+    BUS.on('collection:open:before', () => looks());
+    BUS.on('collection:open', () => {
+      try {
+        const pi = $('pageIn');
+        const ach = [...pi.querySelectorAll('h3')].find(h => /Достижения/.test(h.textContent));
+        const html = collExtra();
+        if (ach) ach.insertAdjacentHTML('beforebegin', html); else pi.insertAdjacentHTML('beforeend', html);
+        paintSeasonPrev(pi);
+        pi.querySelectorAll('.ci i').forEach(i => { if (i.className.includes('bk-ps-')) i.classList.add('psprev'); });
+      } catch (e) {}
+    });
     /* клики в коллекции и украшение своей строки в таблице лидеров */
     const pi = $('pageIn');
     if (pi) {

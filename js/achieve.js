@@ -106,15 +106,14 @@
   }
 
   let jokerLast = false;
-  const _sf = showFx;
-  showFx = function (o) {
+  BUS.on('fx', d => {
+    const o = d.o;
     try {
       if (o && o.actor === 'p' && ['attack', 'throw', 'defend', 'transfer'].includes(o.what) && G && G.table)
         jokerLast = G.table.some(x => (x.a && x.a.joker) || (x.d && x.d.joker));
       else if (o && o.what === 'trump') jokerLast = false;
     } catch (e) {}
-    return _sf.apply(this, arguments);
-  };
+  });
 
   STATS.onRecord((r, m, s) => {
     const n = (typeof SERIES !== 'undefined' && SERIES.games) || 1;

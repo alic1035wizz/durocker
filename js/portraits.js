@@ -633,29 +633,21 @@ html.pt-still .pt-over{transition:none!important;animation:none!important}
     oppEmote(target, 0);
   }
   function wrapAll() {
-    try { if (typeof showFx === 'function') { const f = showFx; showFx = function (o) { const r = f.apply(this, arguments); try { onFx(o); } catch (e) {} return r; }; } } catch (e) {}
-    try { if (typeof showOver === 'function') { const f = showOver; showOver = function () { const r = f.apply(this, arguments); try { onOver(); } catch (e) {} return r; }; } } catch (e) {}
-    try { if (typeof cheatSeen === 'function') { const f = cheatSeen; cheatSeen = function () { const r = f.apply(this, arguments); try { oppEmote('cheat', holdMs(1500)); } catch (e) {} return r; }; } } catch (e) {}
-    try {
-      if (typeof say === 'function') {
-        const f = say;
-        say = function (t) { const r = f.apply(this, arguments); try { if (t) eachRole('opp', el => { el.classList.remove('talk'); void el.getBoundingClientRect(); el.classList.add('talk'); setTimeout(() => el.classList.remove('talk'), 900); }); } catch (e) {} return r; };
-      }
-    } catch (e) {}
-    try {
-      if (typeof renderHUD === 'function') {
-        const f = renderHUD;
-        renderHUD = function () {
-          const r = f.apply(this, arguments);
-          try {
-            eachRole('opp', el => { if (!el.closest('.pt-over')) setBase(el, baseNow()); });
-            const a = document.getElementById('oppAva'); if (a && !a.querySelector('svg.pt')) adopt(a);
-            if (!(G && G.over)) { const b = document.querySelector('#over .pt-over'); if (b) b.remove(); }
-          } catch (e) {}
-          return r;
-        };
-      }
-    } catch (e) {}
+    BUS.on('fx', d => { try { onFx(d.o); } catch (e) {} });
+    BUS.on('over', () => { try { onOver(); } catch (e) {} });
+    BUS.on('cheat:seen', () => { try { oppEmote('cheat', holdMs(1500)); } catch (e) {} });
+    BUS.on('say', d => {
+      try {
+        if (d.text) eachRole('opp', el => { el.classList.remove('talk'); void el.getBoundingClientRect(); el.classList.add('talk'); setTimeout(() => el.classList.remove('talk'), 900); });
+      } catch (e) {}
+    });
+    BUS.on('hud:render', () => {
+      try {
+        eachRole('opp', el => { if (!el.closest('.pt-over')) setBase(el, baseNow()); });
+        const a = document.getElementById('oppAva'); if (a && !a.querySelector('svg.pt')) adopt(a);
+        if (!(G && G.over)) { const b = document.querySelector('#over .pt-over'); if (b) b.remove(); }
+      } catch (e) {}
+    });
   }
 
   function init() {

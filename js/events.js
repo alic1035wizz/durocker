@@ -155,57 +155,34 @@ html.ev-april .hand{transition:transform .35s}
 
   function hook() {
     css(); registerBacks();
-    if (typeof currentBot === 'function') {
-      const _cb = currentBot;
-      currentBot = function () { const b = boss(); if (fight && b && MODE && MODE.kind === 'free' && !(typeof NET !== 'undefined' && NET)) return { ...b, boss: 'event', level: 'праздничный босс' }; return _cb.apply(this, arguments); };
-    }
-    if (typeof setMode === 'function') {
-      const _sm = setMode;
-      setMode = function (m) { if (!(m && m.kind === 'free' && fight)) fight = false; return _sm.apply(this, arguments); };
-      /* setMode выше уже вызван из startFight с fight=true; любой другой вызов сбросит флаг */
-    }
-    if (typeof onGameOver === 'function') {
-      const _go = onGameOver;
-      onGameOver = function () {
-        const r = _go.apply(this, arguments);
-        try {
-          const b = boss();
-          if (fight && b && G && G.over === 'p' && unlock('back', b.back.id)) setTimeout(() => { try { toast(`🎁 Рубашка «${b.back.name}» — твоя!`, 3500); } catch (e) {} }, 3000);
-        } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof newGame === 'function') {
-      const _ng = newGame;
-      newGame = function () {
-        const r = _ng.apply(this, arguments);
-        if (cur === 'april') flip();
-        return r;
-      };
-    }
-    if (typeof openMenu === 'function') {
-      const _om = openMenu;
-      openMenu = function () {
-        const r = _om.apply(this, arguments);
-        try {
-          const b = boss(), g = document.querySelector('#menuIn .menugrid');
-          if (b && g && !g.querySelector('[data-go="event"]')) {
-            const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mi ev'; bt.dataset.go = 'event';
-            bt.innerHTML = `<b>${escH(LIST[cur].name)}: ${escH(b.name)}</b><small>${escH(b.short)} · награда — рубашка «${escH(b.back.name)}»</small>`;
-            const after = g.querySelector('[data-go="daily"]');
-            if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
-          }
-        } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof menuGo === 'function') {
-      const _mg = menuGo;
-      menuGo = function (k) { if (k === 'event') { startFight(); return; } return _mg.apply(this, arguments); };
-    }
+    BUS.hook('currentBot', (next) => {
+      const b = boss();
+      if (fight && b && MODE && MODE.kind === 'free' && !(typeof NET !== 'undefined' && NET)) return { ...b, boss: 'event', level: 'праздничный босс' };
+      return next();
+    });
+    /* setMode из startFight вызван с fight=true; любой другой вызов сбросит флаг */
+    BUS.hook('setMode', (next, a) => { const m = a[0]; if (!(m && m.kind === 'free' && fight)) fight = false; return next(); });
+    BUS.on('game:over', () => {
+      try {
+        const b = boss();
+        if (fight && b && G && G.over === 'p' && unlock('back', b.back.id)) setTimeout(() => { try { toast(`🎁 Рубашка «${b.back.name}» — твоя!`, 3500); } catch (e) {} }, 3000);
+      } catch (e) {}
+    });
+    BUS.on('game:start', () => { if (cur === 'april') flip(); });
+    BUS.on('menu:open', () => {
+      try {
+        const b = boss(), g = document.querySelector('#menuIn .menugrid');
+        if (b && g && !g.querySelector('[data-go="event"]')) {
+          const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mi ev'; bt.dataset.go = 'event';
+          bt.innerHTML = `<b>${escH(LIST[cur].name)}: ${escH(b.name)}</b><small>${escH(b.short)} · награда — рубашка «${escH(b.back.name)}»</small>`;
+          const after = g.querySelector('[data-go="daily"]');
+          if (after && after.nextSibling) g.insertBefore(bt, after.nextSibling); else g.appendChild(bt);
+        }
+      } catch (e) {}
+    });
+    BUS.menuKey('event', () => startFight());
     if (typeof openSettings === 'function') {
-      const _os = openSettings;
-      openSettings = function () { const r = _os.apply(this, arguments); try { settingsRow(); } catch (e) {} return r; };
+      BUS.on('settings:open', () => { try { settingsRow(); } catch (e) {} });
     } else {
       /* openSettings нет — следим за окном настроек */
       const pg = document.getElementById('pageIn');

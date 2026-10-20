@@ -247,90 +247,61 @@ const QUICK = (() => {
 @media (prefers-reduced-motion:reduce){.qspin span{animation:none}}
 .mi.quick{border-color:#d9a03c}`;
     document.head.appendChild(css);
-    if (typeof openMenu === 'function') {
-      const _om = openMenu;
-      openMenu = function () {
-        const r = _om.apply(this, arguments);
-        try {
-          const g = document.querySelector('#menuIn .menugrid');
-          if (g && !g.querySelector('[data-go="quick"]')) {
-            const b = document.createElement('button');
-            b.type = 'button'; b.className = 'mi quick'; b.dataset.go = 'quick';
-            b.innerHTML = available() ? '<b>⚡ Быстрая игра</b><small>Случайный соперник онлайн</small>' : '<b>⚡ Быстрая игра</b><small>На сайте и в Telegram</small>';
-            const after = g.querySelector('[data-go="career"]');
-            if (after && after.nextSibling) g.insertBefore(b, after.nextSibling); else g.appendChild(b);
-          }
-        } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof menuGo === 'function') {
-      const _mg = menuGo;
-      menuGo = function (k) {
-        if (k === 'quick') { try { closeSheets(); } catch (e) {} start(); return; }
-        return _mg.apply(this, arguments);
-      };
-    }
+    BUS.on('menu:open', () => {
+      try {
+        const g = document.querySelector('#menuIn .menugrid');
+        if (g && !g.querySelector('[data-go="quick"]')) {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'mi quick'; b.dataset.go = 'quick';
+          b.innerHTML = available() ? '<b>⚡ Быстрая игра</b><small>Случайный соперник онлайн</small>' : '<b>⚡ Быстрая игра</b><small>На сайте и в Telegram</small>';
+          const after = g.querySelector('[data-go="career"]');
+          if (after && after.nextSibling) g.insertBefore(b, after.nextSibling); else g.appendChild(b);
+        }
+      } catch (e) {}
+    });
+    BUS.menuKey('quick', () => { try { closeSheets(); } catch (e) {} start(); });
     /* в лобби онлайна — кнопка быстрой игры */
-    if (typeof renderLobby === 'function') {
-      const _rl = renderLobby;
-      renderLobby = function () {
-        const r = _rl.apply(this, arguments);
-        try {
-          const L = document.getElementById('lobbyIn');
-          if (L && !NET && available() && !L.querySelector('#quickBtn')) {
-            const b = document.createElement('button');
-            b.type = 'button'; b.id = 'quickBtn'; b.className = 'btn gold'; b.textContent = '⚡ Быстрая игра — случайный соперник';
-            b.onclick = () => { const n = document.getElementById('nickIn'); if (n) store('durocker-nick', (n.value.trim() || 'Игрок').slice(0, 16)); $('lobby').hidden = true; start(); };
-            const host = L.querySelector('#hostBtn');
-            if (host) host.parentNode.insertBefore(b, host); else L.appendChild(b);
-          }
-        } catch (e) {}
-        return r;
-      };
-    }
+    BUS.on('lobby:render', () => {
+      try {
+        const L = document.getElementById('lobbyIn');
+        if (L && !NET && available() && !L.querySelector('#quickBtn')) {
+          const b = document.createElement('button');
+          b.type = 'button'; b.id = 'quickBtn'; b.className = 'btn gold'; b.textContent = '⚡ Быстрая игра — случайный соперник';
+          b.onclick = () => { const n = document.getElementById('nickIn'); if (n) store('durocker-nick', (n.value.trim() || 'Игрок').slice(0, 16)); $('lobby').hidden = true; start(); };
+          const host = L.querySelector('#hostBtn');
+          if (host) host.parentNode.insertBefore(b, host); else L.appendChild(b);
+        }
+      } catch (e) {}
+    });
     /* правила быстрой игры: полные, без блица, у всех одинаково */
-    if (typeof tableRules === 'function') {
-      const _tr = tableRules;
-      tableRules = function () {
-        const r = _tr.apply(this, arguments);
-        if (typeof NET !== 'undefined' && NET && NET.quick) return { ...r, ...RULESETS.full, set: 'full', transfer: true, blitz: false };
-        return r;
-      };
-    }
+    BUS.hook('tableRules', (next) => {
+      const r = next();
+      if (typeof NET !== 'undefined' && NET && NET.quick) return { ...r, ...RULESETS.full, set: 'full', transfer: true, blitz: false };
+      return r;
+    });
     /* рейтинг соперника рядом с ником */
-    if (typeof renderHUD === 'function') {
-      const _rh = renderHUD;
-      renderHUD = function () {
-        const r = _rh.apply(this, arguments);
-        try { if (NET && NET.quick && NET.oppR != null) { const o = $('oppName'); if (o) o.textContent = `${oppName()} · ★${NET.oppR} по его данным`; } } catch (e) {}
-        return r;
-      };
-    }
+    BUS.on('hud:render', () => {
+      try { if (NET && NET.quick && NET.oppR != null) { const o = $('oppName'); if (o) o.textContent = `${oppName()} · ★${NET.oppR} по его данным`; } } catch (e) {}
+    });
     /* итог: «Новый соперник»; соперник ушёл — без кода стола, сразу к поиску */
-    if (typeof showOver === 'function') {
-      const _so = showOver;
-      showOver = function () {
-        const r = _so.apply(this, arguments);
-        try {
-          if (!(NET && NET.quick)) return r;
-          const o = $('over');
-          const gone = (NET.role === 'host' && NET.started && !NET.connected) || (NET.role === 'guest' && NET.got && !NET.connected);
-          if (gone) {
-            o.hidden = false;
-            o.innerHTML = `<h2>СОПЕРНИК УШЁЛ</h2><p>${esc(oppName())} отключился.</p><div class="row"><button class="btn gold" type="button" id="qNew">⚡ Новый соперник</button><button class="btn grey" type="button" id="qLeave">Меню</button></div>`;
-          } else if (G && G.over && SERIES && SERIES.done && !o.querySelector('#qNew')) {
-            const row = o.querySelector('.row') || o;
-            const b = document.createElement('button');
-            b.type = 'button'; b.id = 'qNew'; b.className = 'btn gold'; b.textContent = '⚡ Новый соперник';
-            row.appendChild(b);
-          }
-          const qn = $('qNew'); if (qn) qn.onclick = () => { leaveTable(); start(); };
-          const ql = $('qLeave'); if (ql) ql.onclick = () => { leaveTable(); openMenu(); };
-        } catch (e) {}
-        return r;
-      };
-    }
+    BUS.on('over', () => {
+      try {
+        if (!(NET && NET.quick)) return;
+        const o = $('over');
+        const gone = (NET.role === 'host' && NET.started && !NET.connected) || (NET.role === 'guest' && NET.got && !NET.connected);
+        if (gone) {
+          o.hidden = false;
+          o.innerHTML = `<h2>СОПЕРНИК УШЁЛ</h2><p>${esc(oppName())} отключился.</p><div class="row"><button class="btn gold" type="button" id="qNew">⚡ Новый соперник</button><button class="btn grey" type="button" id="qLeave">Меню</button></div>`;
+        } else if (G && G.over && SERIES && SERIES.done && !o.querySelector('#qNew')) {
+          const row = o.querySelector('.row') || o;
+          const b = document.createElement('button');
+          b.type = 'button'; b.id = 'qNew'; b.className = 'btn gold'; b.textContent = '⚡ Новый соперник';
+          row.appendChild(b);
+        }
+        const qn = $('qNew'); if (qn) qn.onclick = () => { leaveTable(); start(); };
+        const ql = $('qLeave'); if (ql) ql.onclick = () => { leaveTable(); openMenu(); };
+      } catch (e) {}
+    });
     watchSeated();
   }
   hook();
