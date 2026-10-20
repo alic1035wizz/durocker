@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ДурКер — политика конфиденциальности</title>
+<meta name="robots" content="index,follow">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #06191a; color: #e9efe6; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 18px 64px; }
+  h1 { font-size: 28px; color: #f5d76e; margin: 8px 0 4px; }
+  h2 { font-size: 20px; color: #f5d76e; margin: 28px 0 6px; }
+  p, li { color: #d6dfd2; }
+  a { color: #8fd3ff; }
+  .muted { color: #93a59b; font-size: 14px; }
+  hr { border: 0; border-top: 1px solid #1f3a35; margin: 36px 0; }
+  code { background: #0d2a2b; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Политика конфиденциальности</h1>
+<p class="muted">Приложение «ДурКер» (ru.durker.app) · редакция от 20 октября 2026</p>
+
+<p>«ДурКер» — карточная игра. Мы собираем минимум данных и ничего не продаём. В игре нет рекламы и нет платных покупок.</p>
+
+<h2>Что хранится на вашем устройстве</h2>
+<p>Ник, прогресс карьеры, достижения, настройки, внутриигровые фишки, статистика партий и случайный идентификатор игрока хранятся только в памяти устройства (локальное хранилище браузера/приложения). Они не уходят никуда, пока вы сами не включите онлайн-функции. Удалить всё можно, очистив данные приложения в настройках телефона или удалив приложение.</p>
+
+<h2>Что отправляется в сеть (только в онлайн-режимах)</h2>
+<ul>
+  <li><b>Игра с другом, быстрая игра, компания, клубы.</b> Ходы партии, ваш ник, случайный идентификатор игрока и версия игры передаются через публичный MQTT-брокер по защищённому соединению (WSS). Данные видят участники вашего стола. Брокер — сторонний общедоступный сервис, мы им не управляем.</li>
+  <li><b>Таблица лидеров и клубы.</b> Ник, рейтинг, очки сезона, титул и рамка публикуются в общем канале, чтобы другие игроки видели таблицу.</li>
+  <li><b>Облачный рейтинг (по мере подключения).</b> Ник, случайный идентификатор, результаты партий и очки сохраняются в Google Таблице проекта через Google Apps Script. Секрет игрока хранится там только в виде хеша.</li>
+  <li><b>Шрифты.</b> При запуске приложение может загрузить шрифты с серверов Google Fonts; при этом Google видит IP-адрес устройства.</li>
+</ul>
+<p>Реальные имена, телефон, почта, геолокация, контакты, фото и платёжные данные приложением <b>не запрашиваются и не собираются</b>.</p>
+
+<h2>Ник и общение</h2>
+<p>Ник вы придумываете сами — не вводите в него настоящее имя и личные данные. Общение между игроками ограничено готовыми реакциями и фразами за столом; свободного чата нет.</p>
+
+<h2>Дети</h2>
+<p>Игра не предназначена для детей младше 13 лет, мы сознательно не собираем их данные. Если вы родитель и считаете, что ребёнок указал личные данные в нике, напишите нам — мы удалим запись из облачной таблицы.</p>
+
+<h2>Передача третьим лицам</h2>
+<p>Мы не продаём и не передаём данные для рекламы. Данные видят только участники вашего стола, а ник и рейтинг — другие игроки в таблице лидеров. Технические сервисы: публичный MQTT-брокер, Google (Apps Script/Таблицы, Google Fonts), Google Play (распространение приложения).</p>
+
+<h2>Хранение и удаление</h2>
+<p>Данные на устройстве хранятся, пока вы не удалите приложение или не очистите его данные. Данные в облачной таблице (ник, рейтинг, результаты) можно удалить по запросу: напишите на адрес ниже с указанием ника — идентификатор игрока можно посмотреть в разделе «Профиль».</p>
+
+<h2>Безопасность</h2>
+<p>Сетевые соединения защищены (HTTPS/WSS). Очки рейтинга считает сервер, а не приложение, поэтому их нельзя накрутить с телефона. Но публичный брокер не гарантирует тайну онлайн-партии: не передавайте через игру ничего личного.</p>
+
+<h2>Изменения</h2>
+<p>Если политика изменится, новая версия появится на этой странице с новой датой.</p>
+
+<h2>Контакты</h2>
+<p>Разработчик: ДурКер. Почта для вопросов и удаления данных: <a href="mailto:alic1035wizz@gmail.com">alic1035wizz@gmail.com</a>.</p>
+
+<hr>
+
+<h1 lang="en">Privacy Policy</h1>
+<p class="muted" lang="en">DurKer app (ru.durker.app) · last updated October 20, 2026</p>
+<div lang="en">
+<p>DurKer is a card game. We collect as little as possible and sell nothing. The app has no ads and no in-app purchases.</p>
+<h2>Stored on your device</h2>
+<p>Your nickname, career progress, achievements, settings, in-game chips, statistics and a random player ID are stored locally on your device only. They are not sent anywhere unless you use online features. Clear the app's data or uninstall it to delete everything.</p>
+<h2>Sent over the network (online modes only)</h2>
+<ul>
+  <li><b>Friend games, quick game, company, clubs:</b> moves, your nickname, the random player ID and the game version go through a public MQTT broker over a secure WebSocket (WSS). Other players at your table can see them. The broker is a third-party public service we do not operate.</li>
+  <li><b>Leaderboard and clubs:</b> nickname, rating, season points, title and frame are published to a shared channel so others can see the table.</li>
+  <li><b>Cloud rating (when enabled):</b> nickname, random ID, game results and points are stored in the project's Google Sheet through Google Apps Script; the player secret is stored only as a hash.</li>
+  <li><b>Fonts:</b> the app may load fonts from Google Fonts, which can see the device's IP address.</li>
+</ul>
+<p>The app does <b>not</b> ask for or collect real names, phone numbers, email, location, contacts, photos or payment data.</p>
+<h2>Children</h2>
+<p>The game is not directed to children under 13 and we do not knowingly collect their data.</p>
+<h2>Sharing</h2>
+<p>We do not sell data or share it for advertising. Service providers involved: a public MQTT broker, Google (Apps Script/Sheets, Google Fonts) and Google Play.</p>
+<h2>Deletion and contact</h2>
+<p>To delete your cloud data (nickname, rating, results), email <a href="mailto:alic1035wizz@gmail.com">alic1035wizz@gmail.com</a> with your nickname. Local data is removed by clearing app data or uninstalling.</p>
+</div>
+</main>
+</body>
+</html>

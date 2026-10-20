@@ -2,10 +2,27 @@
   "appId": "ru.durker.app",
   "appName": "ДурКер",
   "webDir": "www",
-  "backgroundColor": "#0f3b2c",
-  "android": { "allowMixedContent": false },
+  "backgroundColor": "#06191a",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#06191a"
+  },
   "plugins": {
-    "SplashScreen": { "launchShowDuration": 800, "backgroundColor": "#0f3b2c", "showSpinner": false },
-    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "launchAutoHide": false,
+      "backgroundColor": "#0f3b2c",
+      "showSpinner": false
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  },
+  "server": {
+    "androidScheme": "https"
   }
 }
