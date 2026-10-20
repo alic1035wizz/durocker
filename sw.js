@@ -1,7 +1,7 @@
 /* ДурКер — офлайн: сначала сеть (чтобы обновления приходили сразу), без сети — из кэша */
 const CACHE = 'durker-w6';
-const CORE = ['./', 'index.html', 'css/style.css', 'css/ds.css', 'css/lobby.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-192.png',
-  ...['rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-mqtt', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'leaders', 'lobby', 'tg', 'main'].map(f => `js/${f}.js`)];
+const CORE = ['./', 'index.html', 'css/style.css', 'css/ds.css', 'css/lobby.css', 'css/table.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-192.png',
+  ...['rules', 'bus', 'engine', 'bot', 'meta', 'net', 'transport-mqtt', 'audio', 'vfx', 'ui', 'tutorial', 'voices', 'cheat', 'weekly', 'multi/engine4', 'multi/bot4', 'multi/transport4', 'multi/net4', 'multi/ui4', 'replay', 'quick', 'pass', 'cloud', 'stats', 'achieve', 'events', 'chips', 'rogue', 'portraits', 'table', 'leaders', 'lobby', 'tg', 'main'].map(f => `js/${f}.js`)];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch', e => {

@@ -1,0 +1,124 @@
+/* ДурКер — главный экран-лобби (волна 6). Работает поверх #menu, когда js/lobby.js добавил класс .lb-home */
+
+#menu.lb-home{
+  align-items:stretch;justify-content:center;padding:0;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%,rgba(234,181,75,.18),transparent 60%),
+    radial-gradient(ellipse 80% 50% at 50% 110%,rgba(44,127,224,.14),transparent 60%),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.018) 0 2px,transparent 2px 14px),
+    linear-gradient(180deg,#0a2a26,#06191a 70%);
+}
+#menu.lb-home .in.win{
+  width:100%;max-width:720px;max-height:none;height:100%;margin:0 auto;border:none;border-radius:0;background:transparent;box-shadow:none;
+  padding:max(var(--s3),env(safe-area-inset-top,0px)) max(var(--s4),env(safe-area-inset-right,0px)) max(var(--s5),env(safe-area-inset-bottom,0px)) max(var(--s4),env(safe-area-inset-left,0px));
+  gap:var(--s4);
+}
+#menu.lb-home .in.win::before{display:none}
+.lb{display:flex;flex-direction:column;gap:var(--s4);min-height:100%;
+  grid-template-areas:"top" "main" "today" "modes" "more";}
+
+/* шапка */
+.lb-top{display:flex;align-items:center;gap:var(--s3)}
+.lb-logo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.lb-logo b{font-family:var(--f-hard);font-weight:400;font-size:20px;line-height:1.3;color:var(--gold);text-shadow:0 3px 0 rgba(0,0,0,.5);letter-spacing:.02em}
+.lb-suits{display:flex;gap:6px;font-size:13px;line-height:1;color:#101010;text-shadow:0 0 6px rgba(255,255,255,.35)}
+.lb-suits .r{color:#ff6b5e}
+.lb-wallet{display:inline-flex;align-items:center;gap:var(--s1);min-height:36px;padding:0 var(--s3);border-radius:var(--r-pill);border:var(--border-gold);background:rgba(0,0,0,.4);font-size:var(--t-small);font-weight:700;color:var(--text)}
+.lb-wallet b{font-family:var(--f-hard);font-weight:400;font-size:12px;color:var(--gold);letter-spacing:0}
+.lb-hot{margin-left:var(--s1);color:#ffb04a;font-weight:800}
+.lb-chest{margin-left:var(--s1);animation:lbwiggle 2.4s ease-in-out infinite}
+@keyframes lbwiggle{0%,80%,100%{transform:none}86%{transform:rotate(-12deg)}92%{transform:rotate(10deg)}}
+#menu.lb-home .close{flex:none}
+
+/* веер-заставка в свободном месте между шапкой и кнопкой */
+.lb-fan{flex:1 1 0;min-height:0;display:flex;align-items:flex-end;justify-content:center;position:relative;margin-bottom:var(--s2)}
+.lb-fan i{position:absolute;bottom:0;left:50%;width:80px;height:112px;margin-left:-40px;border-radius:8px;background:var(--paper);border:2px solid var(--paper-edge);color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-style:normal;transform-origin:50% 230%;transform:rotate(var(--a));box-shadow:0 4px 0 rgba(0,0,0,.45)}
+.lb-fan i.r{color:#c2261f}
+.lb-fan i b{font-family:var(--f-hard);font-weight:400;font-size:20px;line-height:1}
+.lb-fan i s{text-decoration:none;font-size:24px;line-height:1}
+.lb-fan i.jk{background:linear-gradient(160deg,#2b1640,#4a2370 55%,#2b1640);color:#f3d27a;border-color:#c79bff}
+.lb-fan i.jk s{font-size:9px;font-family:var(--f-hard)}
+@media (max-height:760px),(orientation:landscape) and (max-height:520px){.lb-fan{display:none}}
+
+/* ИГРАТЬ */
+.lb-play{position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr auto;gap:var(--s4);align-items:center;width:100%;text-align:left;
+  min-height:112px;padding:var(--s4) var(--s5) var(--s4) var(--s4);border:none;border-radius:var(--r-lg);color:#fff;
+  background:linear-gradient(135deg,#e2433a,#b5261f 60%,#8e1b16);box-shadow:0 7px 0 rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.22);
+  transition:transform .08s,box-shadow .08s}
+.lb-play.resume,.lb-play.back{background:linear-gradient(135deg,#2e9d5b,#237a46 60%,#1a5c35)}
+.lb-play:active{transform:translateY(4px);box-shadow:0 3px 0 rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.22)}
+.lb-play::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.22) 48%,transparent 60%) 0 0/260% 100%;animation:lbshine 4.2s linear infinite;pointer-events:none}
+@keyframes lbshine{from{background-position:130% 0}to{background-position:-130% 0}}
+.lb-pface{width:72px;height:72px;border-radius:var(--r-md);overflow:hidden;background:rgba(0,0,0,.3);border:3px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:30px;flex:none}
+.lb-pface .pt{width:100%;height:100%}
+.lb-ptext{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
+.lb-ptext b{font-family:var(--f-hard);font-weight:400;font-size:26px;line-height:1.3;letter-spacing:.03em;text-shadow:0 3px 0 rgba(0,0,0,.4)}
+.lb-ptext small{font-size:var(--t-small);line-height:1.35;color:rgba(255,255,255,.88);overflow-wrap:anywhere}
+.lb-go{font-size:30px;text-shadow:0 3px 0 rgba(0,0,0,.4);animation:lbnudge 1.6s ease-in-out infinite}
+@keyframes lbnudge{0%,100%{transform:none}50%{transform:translateX(5px)}}
+
+/* «Сегодня» */
+.lb-today{display:flex;flex-direction:column;gap:var(--s2)}
+.lb-today h3{margin:0}
+.lb-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
+.lb-cards.n2{grid-template-columns:repeat(2,minmax(0,1fr))}.lb-cards.n1{grid-template-columns:1fr}
+.lb-card{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2);min-width:0;text-align:left;padding:var(--s3);border:var(--border);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-tile);transition:border-color .12s,transform .06s}
+.lb-card:hover{border-color:rgba(234,181,75,.55)}
+.lb-card:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.lb-card.done{border-color:rgba(46,157,91,.55)}
+.lb-ico,.lb-bface{flex:none;width:44px;height:44px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(0,0,0,.35);overflow:hidden}
+.lb-bface .pt{width:100%;height:100%}
+.lb-ct{display:flex;flex-direction:column;gap:2px;min-width:0;width:100%}
+.lb-ct em{font-style:normal;font-size:var(--t-micro);letter-spacing:.06em;text-transform:uppercase;color:var(--gold);font-weight:700;line-height:1.3}
+.lb-ct b{font-size:15px;line-height:1.25;overflow-wrap:anywhere}
+.lb-ct small{font-size:12px;line-height:1.3;color:var(--muted);overflow-wrap:anywhere}
+.lb-card .bar{margin:var(--s1) 0}
+.lb-event{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:var(--s3);border-radius:var(--r-md);border:var(--border-gold);background:linear-gradient(135deg,rgba(234,181,75,.18),rgba(0,0,0,.25))}
+.lb-event b{font-size:15px;color:var(--gold)}.lb-event small{font-size:12px;color:var(--muted)}
+
+/* быстрые режимы */
+.lb-modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
+.lb-tile{display:flex;flex-direction:column;align-items:center;gap:var(--s1);min-width:0;padding:var(--s3) var(--s1);text-align:center;border:var(--border);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-tile);transition:border-color .12s,transform .06s}
+.lb-tile:hover{border-color:rgba(234,181,75,.55)}
+.lb-tile:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.lb-tile i{font-style:normal;font-size:30px;line-height:1.1}
+.lb-tile b{font-size:14px;line-height:1.2;overflow-wrap:anywhere}
+.lb-tile small{font-size:11px;line-height:1.25;color:var(--muted);overflow-wrap:anywhere}
+
+/* «Ещё» */
+.lb-morebtn{align-self:center;justify-self:center;min-height:40px;padding:0 var(--s5);border-radius:var(--r-pill);border:var(--border);background:var(--surface-2);color:var(--muted);font-weight:700;font-size:14px}
+.lb-morebtn:hover{border-color:rgba(234,181,75,.55);color:var(--text)}
+.lb-more{grid-template-columns:1fr 1fr;animation:lbfold .22s ease-out}
+@keyframes lbfold{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.lb .lb-more[hidden]{display:none!important}
+
+/* широкий экран */
+@media (min-width:900px){
+  #menu.lb-home .in.win{padding-top:var(--s5);padding-bottom:var(--s5);max-width:760px}
+  .lb{gap:var(--s5)}
+  .lb-logo b{font-size:24px}
+  .lb-play{min-height:128px}
+  .lb-more{grid-template-columns:repeat(3,1fr)}
+}
+/* узкий телефон */
+@media (max-width:380px){
+  .lb-ptext b{font-size:21px}.lb-pface{width:58px;height:58px}
+  .lb-cards{grid-template-columns:1fr}.lb-card{flex-direction:row;align-items:center}
+  .lb-modes{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* горизонталь на телефоне: две колонки — слева лого и ИГРАТЬ, справа «Сегодня» и режимы */
+@media (orientation:landscape) and (max-height:520px){
+  #menu.lb-home .in.win{max-width:none;padding-top:max(var(--s2),env(safe-area-inset-top,0px));padding-bottom:var(--s3);gap:var(--s2)}
+  .lb{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);grid-template-areas:"top top" "main today" "main modes" "more more";gap:var(--s2) var(--s4);align-content:start}
+  .lb-top{grid-area:top}.lb-main{grid-area:main;display:flex}.lb-today{grid-area:today}.lb-modes{grid-area:modes}.lb-morebtn{grid-area:more}.lb-more{grid-column:1/-1}
+  .lb-logo{flex-direction:row;align-items:center;gap:var(--s3)}.lb-logo b{font-size:16px}
+  .lb-play{min-height:0;height:100%;align-self:stretch;grid-template-columns:auto 1fr;grid-template-rows:auto auto;align-content:center;padding:var(--s3)}
+  .lb-go{display:none}.lb-ptext b{font-size:20px}.lb-pface{width:56px;height:56px}
+  .lb-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lb-card{padding:var(--s2);gap:var(--s1)}.lb-ico,.lb-bface{width:32px;height:32px;font-size:18px}.lb-ct b{font-size:13px}
+  .lb-tile{padding:var(--s2) var(--s1)}.lb-tile i{font-size:22px}.lb-tile small{display:none}
+  .lb-more{grid-template-columns:repeat(4,1fr)}
+}
+@media (prefers-reduced-motion:reduce){.lb-play::after,.lb-go,.lb-chest,.lb-more{animation:none}}
+html[data-speed="off"] .lb-play::after,html[data-speed="off"] .lb-go,html[data-speed="off"] .lb-chest{animation:none}

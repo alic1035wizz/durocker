@@ -23,6 +23,7 @@ tgStart(() => {
     return;
   }
   setUrl(null);
+  if (typeof lobbyStart === 'function') lobbyStart(); /* главный экран-лобби: волна 6 */
   /* первый визит — сразу меню, чтобы было видно карьеру и режимы */
   if (!load('durocker-seen')) { store('durocker-seen', '1'); TUT.offer(); }
 });

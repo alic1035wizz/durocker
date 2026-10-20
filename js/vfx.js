@@ -2,7 +2,7 @@
 'use strict';
 
 const VFX = (() => {
-  let cv, cx, parts = [], running = false;
+  let cv, cx, parts = [], running = false, ts = 1; /* ts — масштаб времени для slow-mo */
   function ensure() {
     if (cv) return;
     cv = document.createElement('canvas'); cv.id = 'fxc'; cv.setAttribute('aria-hidden', 'true');
@@ -14,7 +14,13 @@ const VFX = (() => {
     cx.clearRect(0, 0, innerWidth, innerHeight);
     parts = parts.filter(p => p.life > 0);
     for (const p of parts) {
-      p.life -= 1; p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.985; p.rot += p.vr;
+      p.life -= ts;
+      if (p.ring) {
+        p.r += p.vr * ts; cx.globalAlpha = Math.max(0, p.life / p.max) * 0.7; cx.strokeStyle = p.c; cx.lineWidth = 2;
+        cx.beginPath(); cx.ellipse(p.x, p.y, p.r, p.r * 0.38, 0, 0, Math.PI * 2); cx.stroke();
+        continue;
+      }
+      p.x += p.vx * ts; p.y += p.vy * ts; p.vy += p.g * ts; p.vx *= Math.pow(0.985, ts); p.rot += p.vr * ts;
       const a = Math.min(1, p.life / 25);
       cx.globalAlpha = a; cx.fillStyle = p.c;
       cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
@@ -40,6 +46,19 @@ const VFX = (() => {
     for (let i = 0; i < 140; i++) parts.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * 200, vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, g: 0.05, life: 160 + Math.random() * 60, s: 6 + Math.random() * 5, c: cols[i % cols.length], rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, conf: true });
     go();
   }
+  /* посадка карты на стол: пыль и искры цвета масти + кольцо-удар. pw — сила, w — ширина карты */
+  function land(x, y, s, pw = 1, w = 40) {
+    if (reduced) return; ensure();
+    const red = s === 1 || s === 2, cols = s === 4 ? ['#c79bff', '#f3d27a', '#fff'] : red ? ['#ff6b5e', '#ffb3a8', '#fff4f0'] : ['#9db8ff', '#e8edff', '#fff'];
+    const n = Math.round(9 * pw);
+    for (let i = 0; i < n; i++) {
+      const side = i % 2 ? 1 : -1, v = (1.2 + Math.random() * 2.6) * pw;
+      parts.push({ x: x + side * w * 0.3 * Math.random(), y, vx: side * v, vy: -(0.4 + Math.random() * 1.6) * pw, g: 0.16, life: 22 + Math.random() * 16, s: 2.5 + Math.random() * 3, c: cols[i % cols.length], rot: 0, vr: 0 });
+    }
+    parts.push({ ring: true, x, y, r: w * 0.25, vr: 1.6 * pw, life: 16, max: 16, c: cols[1] });
+    go();
+  }
+  const setTime = k => { ts = k; };
   /* искры из центра стола */
   function burstFelt(t) {
     const f = $('felt').getBoundingClientRect();
@@ -75,5 +94,5 @@ const VFX = (() => {
     document.documentElement.dataset.skin = cur;
     return cur;
   }
-  return { sparks, confetti, burstFelt, actionZoom, suitColor, bindTilt, SKINS, skin };
+  return { sparks, confetti, burstFelt, actionZoom, suitColor, bindTilt, SKINS, skin, land, setTime };
 })();

@@ -165,9 +165,13 @@ kbd{font-family:var(--f-pix);font-size:12px;background:rgba(255,255,255,.1);bord
 @keyframes clkp{50%{opacity:.6}}
 .oppinfo small .clk{font-size:9px;padding:1px 4px}
 .reactbtn{background:rgba(0,0,0,.45);border:2px solid var(--line);border-radius:8px;padding:0 8px;height:26px;font-size:14px}
-.hand{--w:60px;position:relative;height:130px;width:100%}
-.slot{position:absolute;bottom:12px;transform-origin:50% 120%;transition:transform .18s cubic-bezier(.3,1.5,.5,1);perspective:700px}
+.hand{--w:68px;position:relative;height:150px;width:100%}
+.slot{position:absolute;bottom:12px;transform-origin:50% 120%;transition:transform .18s cubic-bezier(.3,1.5,.5,1);perspective:700px;
+  transform:translateY(calc(var(--y,0px) + var(--lift,0px))) rotate(var(--r,0deg)) scale(var(--sc,1))}
 .hand .slot{cursor:pointer}
+.hand .slot.sel{--lift:-26px;--sc:1.1}
+.hand .slot.peek{--lift:-22px;--sc:1.16;z-index:2000!important}
+.hand .slot.sel.peek{--lift:-30px}
 .botHand .slot{top:0;bottom:auto;transform-origin:50% -60%}
 .controls{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
 .ctl{display:flex}
@@ -191,12 +195,13 @@ kbd{font-family:var(--f-pix);font-size:12px;background:rgba(255,255,255,.1);bord
 .card.down{transform:rotateY(180deg)}
 .front,.back{position:absolute;inset:0;border-radius:calc(var(--w)*.1);backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .front{background:var(--paper);color:var(--ink);border:2px solid #fff;box-shadow:0 3px 0 var(--paper-edge),0 5px 6px rgba(0,0,0,.35);overflow:hidden}
-.front.red{color:var(--red)}
+.front{color:#17141f}
+.front.red{color:#e0202b}
 .back{transform:rotateY(180deg);border:2px solid var(--paper);box-shadow:0 3px 0 rgba(0,0,0,.4);background:var(--backbg)}
-.ix{position:absolute;display:flex;flex-direction:column;align-items:center;gap:.25em;line-height:1;font-family:var(--f-hard);font-size:.6em}
+.ix{position:absolute;display:flex;flex-direction:column;align-items:center;gap:.25em;line-height:1;font-family:var(--f-hard);font-size:.66em;font-weight:900}
 .ix i{font-style:normal;font-size:1.35em;font-family:var(--f-pix)}
 .tl{left:7%;top:6%}.br{right:7%;bottom:6%;transform:rotate(180deg)}
-.pip{position:absolute;inset:0;display:grid;place-items:center;font-size:1.9em;line-height:1}
+.pip{position:absolute;inset:0;display:grid;place-items:center;font-size:2.05em;line-height:1}
 .pip .fc{font-family:var(--f-hard);font-size:.62em;display:flex;flex-direction:column;align-items:center;gap:2px}
 .pip .fc small{font-family:var(--f-pix);font-size:1.1em}
 .card.trump .front{border-color:var(--gold);box-shadow:0 3px 0 #a87a1e,0 0 10px rgba(234,181,75,.55)}
@@ -223,8 +228,9 @@ kbd{font-family:var(--f-pix);font-size:12px;background:rgba(255,255,255,.1);bord
 .card.act-plus .front{background:radial-gradient(circle at 50% 42%,#4f2a21 0,#24130f 70%);border-color:#f39b2b}
 .card.act-trump .front{background:radial-gradient(circle at 50% 42%,#4a3d14 0,#211b08 70%);border-color:var(--gold)}
 @media (hover:hover){
-  .hand .card{transform:translateY(var(--ly,0)) rotateX(var(--rx,0)) rotateY(var(--ry,0));transition:transform .15s ease}
-  .hand .slot:hover .card{--ly:-10px}
+  .hand .card{transform:rotateX(var(--rx,0)) rotateY(var(--ry,0));transition:transform .15s ease}
+  .hand .slot:hover{--lift:-14px;--sc:1.07;z-index:1500!important}
+  .hand .slot.sel:hover{--lift:-30px;--sc:1.12}
 }
 /* рубашки карт (открываются наградами) */
 :root{--backbg:radial-gradient(circle at 50% 50%,rgba(255,255,255,.18) 0 18%,transparent 19%),repeating-conic-gradient(var(--back1) 0 25%,var(--back2) 0 50%) 0 0/8px 8px}
@@ -366,74 +372,8 @@ html[data-skin="gold"] .felt{background:radial-gradient(ellipse at 50% 35%,#5a14
   box-shadow:inset 0 0 0 3px var(--gold),inset 0 0 0 6px #4a3508,inset 0 0 50px rgba(0,0,0,.5),inset 0 0 70px var(--tg),0 0 24px rgba(234,181,75,.25),0 8px 0 rgba(0,0,0,.35)}
 html[data-skin="gold"] .felt::before{border-color:rgba(234,181,75,.5)}
 
-/* ============ телефон лёжа: табло слева, стол и рука справа, всё на одном экране ============ */
-@media (orientation:landscape) and (max-height:520px){
-  html,body{height:100%;overflow:hidden}
-  body{padding-block:6px;font-size:14px}
-  .app{max-width:none;height:calc(100dvh - 12px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:0;
-    display:grid;grid-template-columns:clamp(200px,28vw,260px) minmax(0,1fr);gap:8px}
-  .hud{display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto}
-  .hud>*,.board>*{order:0}
-  .board{display:flex;flex-direction:column;gap:4px;min-width:0;min-height:0}
-  .hudbar{flex-wrap:wrap}
-  .oppcard{order:3;flex-basis:100%}
-  .scorebox{flex:1;justify-content:center;padding:4px 8px}
-  .trumpbox{display:flex}
-  .botHand{--w:22px;height:36px;flex:none}
-  .felt{flex:1;min-height:0;--w:40px}
-  .battles{padding:16px 60px 16px 10px;gap:12px 10px}
-  .print{display:none}
-  .hand{--w:50px;height:96px;flex:none}
-  .controls{grid-template-columns:1fr auto 1fr}
-  .btn{font-size:15px;padding:9px 8px}
-  .siderules{display:block}
-  /* узкая колонка слева: «его × твоя» столбиком на всю ширину, чтобы читалось */
-  .combo{min-height:0;flex:none;flex-direction:column;gap:4px;padding:5px}
-  .combo .plate{flex:none;padding:4px 8px}
-  .combo .plate b{white-space:normal;font-size:11px;line-height:1.35}
-  .combo .plate small{font-size:9px;white-space:normal}
-  .combo .vs{width:auto;height:16px;font-size:11px}
-  .rulehint{font-size:12px}
-  .offer .pick{--w:76px}
-  .actzoom .zcard{--w:84px}
-  .hype{font-size:17px}
-  .banner .big{font-size:15px;padding:8px 12px}.banner .sub{font-size:13px}
-  /* на низком экране баннер — компактная плашка у верхнего края стола, подпись в строку рядом */
-  .banner{top:6px;transform:translateX(-50%);display:flex;align-items:center;gap:8px}
-  .banner .big{font-size:12px;padding:5px 9px;box-shadow:0 3px 0 rgba(0,0,0,.45)}
-  .banner .sub{margin:0;font-size:12px}
-}
-
-/* ============ ПК: как Balatro — табло слева на всю высоту ============ */
-@media (min-width:900px) and (min-height:521px){
-  body{padding-block:14px}
-  .app{max-width:1280px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;min-height:calc(100vh - 28px)}
-  .hud{display:flex;flex-direction:column;gap:10px;position:sticky;top:14px;align-self:start}
-  .hud>*,.board>*{order:0}
-  .board{display:flex;flex-direction:column;gap:8px;min-width:0}
-  .hudbar{flex-wrap:wrap}
-  .oppcard{order:3;flex-basis:100%;padding:8px 10px}
-  .oppcard .ava{width:40px;height:40px;font-size:11px}
-  .oppinfo b{font-size:16px}
-  .scorebox{flex:1;justify-content:center;padding:8px}
-  .scorebox b{font-size:22px}.scorebox span{font-size:11px}
-  .trumpbox{display:flex}
-  .siderules{display:block}
-  .botHand{--w:44px;height:86px}
-  .felt{min-height:420px;--w:64px;border-radius:40px}
-  .felt::before{border-radius:32px}
-  .gravecol{--w:44px}
-  .battles{gap:30px 24px;padding:34px 100px 34px 30px}
-  .battle .tag{font-size:12px;top:-19px}
-  .battle .def{left:18px;top:34px}
-  .hand{--w:90px;height:190px}
-  .banner .big{font-size:28px;padding:14px 20px}.banner .sub{font-size:18px}
-  .hype{font-size:34px}
-  .plate b{font-size:13px}
-  .controls{max-width:760px;width:100%;margin:0 auto}
-  .sheet{align-items:center}
-  .sheet .in{border-radius:16px;max-width:620px}
-}
+/* ============ широкий и горизонтальный экран — раскладка в css/table.css ============ */
+@media (min-width:900px) and (min-height:521px){.sheet{align-items:center}.sheet .in{border-radius:16px;max-width:620px}}
 .trumpbox{align-items:center;gap:10px;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:8px 10px}
 .trumpbox b{font-size:30px;line-height:1;color:var(--gold)}
 .trumpbox b.red{color:#ff6b5e}
@@ -444,7 +384,7 @@ html[data-skin="gold"] .felt::before{border-color:rgba(234,181,75,.5)}
 .siderules dt{color:var(--gold);white-space:nowrap}
 .siderules dd{margin:0}
 html:not([data-hints="novice"]) .siderules{display:none!important}
-@media (max-width:380px){.hand{--w:54px;height:120px}.felt{--w:40px}.banner .big{font-size:15px}.hype{font-size:18px}}
+@media (max-width:380px){.hand{--w:60px;height:140px}.felt{--w:40px}.banner .big{font-size:15px}.hype{font-size:18px}}
 @media (prefers-reduced-motion:reduce){.hand .slot .card .front,.card.trump .front::after,.card.joker .front::after,.battle.open .atk .card .front,.wait,.felt.last{animation:none}}
 
 /* правила, выключенные в текущем наборе */

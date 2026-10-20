@@ -3,7 +3,7 @@
 const exe = process.env.CHROMIUM_PATH || undefined;
 module.exports = {
   testDir: 'tests',
-  testMatch: /ui\.spec\.js$/,
+  testMatch: /(ui|features)\.spec\.js$/,
   timeout: 170000,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list']],

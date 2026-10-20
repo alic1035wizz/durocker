@@ -88,7 +88,7 @@ const run = (c, code) => vm.runInContext(code, c);
   const c2 = world();
   c2.BUS.hook('currentBot', () => { throw new Error('bad'); });
   c2.BUS.hook('currentBot', next => ({ ...next(), ok: 1 }));
-  ok(run(c2, 'currentBot().ok') === 1 && c2.warns === 0, 'хук, бросивший ошибку до next(), пропускается без падения (внешний работает)');
+  ok(run(c2, 'currentBot().ok') === 1 && c2.warns === 1, 'внутренний хук упал до next() — пропускается, внешний работает');
   const c3 = world();
   c3.BUS.hook('currentBot', next => ({ ...next(), ok: 1 }));
   c3.BUS.hook('currentBot', () => { throw new Error('bad'); });
