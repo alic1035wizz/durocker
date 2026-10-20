@@ -3,3 +3,10 @@ native/node_modules/
 native/www/
 node_modules/
 test-results/
+
+native/android/
+native/ios/
+native/dist/
+native/release.keystore
+*.keystore
+*.jks

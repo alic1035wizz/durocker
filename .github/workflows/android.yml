@@ -1,0 +1,97 @@
+name: Android (AAB + APK)
+
+# Ручной запуск: GitHub → Actions → «Android (AAB + APK)» → Run workflow.
+# Или push тега: git tag v1.0.0 && git push origin v1.0.0
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Android SDK
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Версия
+        id: ver
+        run: |
+          NAME=$(grep -oP "VERSION = '\K[^']+" js/rules.js | head -1)
+          echo "name=${NAME:-1.0}" >> "$GITHUB_OUTPUT"
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "versionName=${NAME:-1.0}, versionCode=${{ github.run_number }}"
+
+      - name: Зависимости (Capacitor)
+        working-directory: native
+        run: npm install --no-audit --no-fund
+
+      - name: Сайт → native/www
+        working-directory: native
+        run: node scripts/copy-web.js
+
+      - name: Платформа Android
+        working-directory: native
+        run: |
+          if [ ! -d android ]; then npx cap add android; fi
+          npx capacitor-assets generate --android --assetPath resources || echo "иконки: используются стандартные"
+          npx cap sync android
+
+      - name: versionCode / versionName
+        working-directory: native/android/app
+        run: |
+          sed -i -E "s/versionCode [0-9]+/versionCode ${{ steps.ver.outputs.code }}/" build.gradle
+          sed -i -E "s/versionName \"[^\"]*\"/versionName \"${{ steps.ver.outputs.name }}\"/" build.gradle
+          grep -nE "versionCode|versionName" build.gradle
+
+      - name: Сборка (AAB release + APK debug)
+        working-directory: native/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon bundleRelease assembleDebug
+
+      - name: Подпись AAB
+        working-directory: native/android
+        run: |
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          mkdir -p ../dist
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KEY_ALIAS" ]; then
+            echo "$KS_B64" | base64 -d > ../release.keystore
+            jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
+              -keystore ../release.keystore -storepass "$KS_PASS" -keypass "${KEY_PASS:-$KS_PASS}" \
+              "$AAB" "$KEY_ALIAS"
+            jarsigner -verify "$AAB" | tail -n 2
+            cp "$AAB" ../dist/durker-release-signed.aab
+            echo "AAB подписан ключом из GitHub Secrets."
+          else
+            cp "$AAB" ../dist/durker-release-UNSIGNED.aab
+            echo "::warning::Секреты ANDROID_KEYSTORE_* не заданы — AAB НЕ подписан, в Google Play такой не загрузить. Инструкция: native/PLAY.md, шаг «Ключ подписи»."
+          fi
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/durker-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: durker-android-${{ steps.ver.outputs.code }}
+          path: native/dist/*
+          if-no-files-found: error
