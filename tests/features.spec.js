@@ -63,7 +63,7 @@ test('фичи на шине событий работают после парт
   expect(emos.size, 'эмоции портрета менялись за партию').toBeGreaterThan(1);
   /* меню: пункты от фич добавлены шиной */
   await page.evaluate(() => openMenu());
-  const gos = await page.evaluate(() => [...document.querySelectorAll('#menuIn .menugrid [data-go]')].map(b => b.dataset.go));
+  const gos = await page.evaluate(() => [...document.querySelectorAll('#menuIn [data-go]')].map(b => b.dataset.go));
   for (const k of ['chips', 'pass', 'rogue', 'quick', 'profile']) expect(gos, 'пункт меню ' + k).toContain(k);
   /* menuKey: пункты «Фишки» и «Профиль» открываются */
   await page.evaluate(() => menuGo('chips'));

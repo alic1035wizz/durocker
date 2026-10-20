@@ -59,7 +59,7 @@ function wait(ms) { const t = TOK; return new Promise((res, rej) => setTimeout((
 function run(f) { f().catch(e => { if (e !== 'stale') console.error(e); }); }
 
 /* версия игры: в онлайне хозяин и гость сверяют её, чтобы играть по одним правилам */
-const VERSION = '2026.10.19-w5';
+const VERSION = '2026.10.20-w6';
 const myNick = () => (load('durocker-nick') || 'Игрок').slice(0, 16);
 
 /* ---------- оценка комбинаций ---------- */

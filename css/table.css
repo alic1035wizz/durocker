@@ -60,6 +60,7 @@
   .battles{padding:16px 60px 16px 10px;gap:12px 10px}
   .print{display:none}
   .rulehint span{-webkit-line-clamp:4}
+  .siderules{display:none!important}
   .trumpbox{padding:3px 8px;gap:8px}.trumpbox b{font-size:20px}
   .combo{gap:3px;padding:4px}.combo .plate{padding:3px 7px}
   .oppcard .ava{width:26px;height:26px}
