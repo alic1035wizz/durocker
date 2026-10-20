@@ -230,7 +230,7 @@ const UI4 = (() => {
     C.on = true; C.mode = mode; C.me = me || 0; C.sel = new Set(); C.pick = null; C.lastEv = 0; C.lastHype = 0; C.seen = new Set(); C.tok++;
     C.log = []; C.say = {}; C.cheat = null; C.cheatTurn = -1; C.offerLater = false; C.overShown = null;
     $4('m4').hidden = false;
-    $4('m4').dataset.theme = (C.faces || []).some(f => f && f.ai === 'sharper') ? 'casino' : 'kitchen';
+    $4('m4').dataset.theme = (C.faces || []).some(f => f && f.id === 'sharper') ? 'casino' : 'kitchen';
     document.documentElement.classList.add('m4on');
     try { closeSheets(); } catch (e) {}
   }
