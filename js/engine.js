@@ -172,7 +172,7 @@ function newGame() {
 }
 
 function startTurn(who) {
-  if (G.over) return;
+  if (!G || G.over) return; /* G=null — режим сменили до конца раздачи (setMode → карточка правила) */
   G.attacker = who; G.table = []; G.turnCovers = 0; G.chained = false; G.upgraded = false;
   G.turnNo++; G.stats.turns++; G.noTransfer = false;
   G.limit = Math.min(HAND, H(other(who)).length);

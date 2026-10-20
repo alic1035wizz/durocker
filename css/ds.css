@@ -101,9 +101,10 @@
 
 /* ============ итог партии (#over) и подсказки-окна ============ */
 .over{border-radius:var(--r-lg)}
-.rulecard{display:flex;flex-direction:column;gap:var(--s3);padding-top:var(--s4)}
-.rulecard .tag{font-size:var(--t-micro);letter-spacing:.1em;color:var(--gold);font-weight:700}
-.rulecard h2{font-family:var(--f-hard);font-size:var(--t-title);line-height:1.5;margin:0;color:var(--gold);font-weight:400}
+.rulecard{display:flex;flex-direction:column;align-items:center;gap:var(--s3);padding-top:var(--s4)}
+.rulecard .tag{margin:0;border-radius:var(--r-sm)}
+.rulecard h2{margin:0}
+.rulecard .ex{margin:0;width:100%;border-radius:var(--r-md)}
 
 /* движение: в режимах «Без анимаций»/«Турбо» глобальные правила style.css уже режут время; здесь — reduced-motion */
 @media (prefers-reduced-motion:reduce){

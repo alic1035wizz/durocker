@@ -110,7 +110,7 @@ const TABLE = (() => {
       const hh = 4 * e * (1 - e) * lift;
       kf.push({
         offset: t * 0.84,
-        transform: `translate(${dx * (1 - e) + hh * 0.14}px,${dy * (1 - e) + hh * 0.5}px) rotate(${r0 * (1 - e)}deg) scale(${1 + 0.06 * h})`,
+        transform: `translate(${dx * (1 - e) + hh * 0.1}px,${dy * (1 - e) + hh * 0.3}px) rotate(${r0 * (1 - e)}deg) scale(${1 + 0.06 * h})`,
         opacity: 0.5 - 0.22 * h, filter: `blur(${3 + 7 * h}px)`,
       });
     }
@@ -121,7 +121,7 @@ const TABLE = (() => {
   }
   function arcFly(el, o) {
     const { dx, dy, fromDown, toDown, dur, delay = 0, land } = o;
-    const dist = Math.hypot(dx, dy), lift = Math.min(130, Math.max(14, dist * 0.26));
+    const dist = Math.hypot(dx, dy), lift = Math.min(96, Math.max(12, dist * 0.2));
     const r0 = o.rot0 != null ? o.rot0 : (dx > 0 ? -1 : 1) * (6 + Math.min(14, dist / 40));
     const arrive = land ? 0.84 : 1, N = 12, kf = [];
     const y0 = fromDown ? 180 : 0, y1 = toDown ? 180 : 0;
@@ -137,7 +137,7 @@ const TABLE = (() => {
     if (land) kf.push({ offset: 0.91, transform: `scale(1.08,.92) ${end}` }, { offset: 0.96, transform: `scale(.985,1.02) ${end}` });
     kf.push({ offset: 1, transform: `scale(1) ${end}` });
     el.animate(kf, { duration: dur, delay, easing: 'linear', fill: 'backwards' });
-    if (dist > 36 && !o.noShadow) shadowFor(el.getBoundingClientRect(), dx, dy, r0, lift, dur, delay);
+    if (dist > 36 && !o.noShadow && o.rect) shadowFor(o.rect, dx, dy, r0, lift, dur, delay);
   }
   /* FLIP всех карт: старые плывут по дуге, новые вылетают из колоды, на стол — с «ударом» */
   function flights(snap, deal) {
@@ -153,7 +153,12 @@ const TABLE = (() => {
         const dx = o.x - cx, dy = o.y - cy;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && o.down === down) return;
         const onTable = !!el.closest('#battles'), dur = 460 * k;
-        arcFly(el, { dx, dy, fromDown: o.down, toDown: down, dur, land: onTable });
+        if (!onTable && Math.hypot(dx, dy) < 90 && o.down === down) {
+          /* перестройка веера: короткий скользящий переход без полёта */
+          el.animate([{ transform: `translate(${dx}px,${dy}px) ${o.down ? 'rotateY(180deg)' : ''}` }, { transform: end }], { duration: 300 * k, easing: 'cubic-bezier(.2,.9,.25,1.08)' });
+          return;
+        }
+        arcFly(el, { dx, dy, fromDown: o.down, toDown: down, dur, land: onTable, rect: r, noShadow: !onTable });
         if (onTable) {
           const t = Math.round(dur * 0.84 * animK());
           const st = suitOf(el), pw = G && G.fx && G.fx.t >= 5 ? 1.7 : 1;
@@ -161,7 +166,7 @@ const TABLE = (() => {
         }
       } else if (deal && el.closest('.hand,.botHand')) {
         if (kk < 12) setTimeout(() => AU.play('deal'), kk * 70);
-        arcFly(el, { dx: dx0 - cx, dy: dy0 - cy, fromDown: true, toDown: down, dur: 520 * k, delay: (kk++) * 70, rot0: -25, land: false, noShadow: kk > 8 });
+        arcFly(el, { dx: dx0 - cx, dy: dy0 - cy, fromDown: true, toDown: down, dur: 520 * k, delay: (kk++) * 70, rot0: -25, land: false, noShadow: kk > 8, rect: r });
       } else {
         el.animate([{ transform: `scale(1.4) ${end === 'none' ? '' : end}`, opacity: 0 }, { transform: end, opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.3,1.5,.5,1)' });
       }
